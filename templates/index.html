@@ -32,6 +32,71 @@
             margin-bottom: 20px;
             color: #856404;
         }
+        
+        /* Mobil responsive düzenlemeler */
+        @media (max-width: 768px) {
+            .container-fluid {
+                padding: 10px;
+            }
+            .fc-toolbar-title {
+                font-size: 1.2rem !important;
+            }
+            .filter-section {
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+            .warning-box {
+                padding: 8px;
+                font-size: 0.9rem;
+            }
+            h1 {
+                font-size: 1.8rem !important;
+            }
+            .next-exam-info h5 {
+                font-size: 1rem;
+            }
+            .next-exam-info .fw-bold {
+                font-size: 0.95rem;
+            }
+            .next-exam-info small {
+                font-size: 0.8rem;
+            }
+            /* Butonları mobilde daha kompakt yap */
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+            /* FullCalendar mobil düzenlemeleri */
+            .fc-header-toolbar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .fc-toolbar-chunk {
+                display: flex;
+                justify-content: center;
+            }
+            .fc-button {
+                padding: 4px 8px;
+                font-size: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container-fluid {
+                padding: 5px;
+            }
+            .filter-section .row {
+                text-align: center;
+            }
+            .filter-section .col-md-6:last-child {
+                margin-top: 10px;
+            }
+            .btn {
+                margin: 2px;
+                width: 100%;
+                max-width: 200px;
+            }
+        }
     </style>
 </head>
 <body>

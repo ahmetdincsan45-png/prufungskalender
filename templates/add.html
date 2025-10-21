@@ -26,6 +26,49 @@
             margin-bottom: 20px;
             color: #856404;
         }
+        
+        /* Mobil responsive düzenlemeler */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .form-container {
+                max-width: 100%;
+                padding: 20px;
+                margin: 10px;
+            }
+            h1 {
+                font-size: 1.8rem !important;
+            }
+            .warning-box {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container {
+                padding: 5px;
+            }
+            .form-container {
+                padding: 15px;
+                margin: 5px;
+            }
+            h1 {
+                font-size: 1.5rem !important;
+            }
+            .d-grid.gap-2.d-md-flex {
+                text-align: center;
+            }
+            .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
     </style>
 </head>
 <body>
