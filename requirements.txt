@@ -2,5 +2,6 @@ Flask==3.0.0
 Flask-Cors==4.0.0
 pytz==2023.3
 gunicorn==21.2.0
-pg8000==1.30.3
+SQLAlchemy==2.0.21
+psycopg2-binary==2.9.7
 psycopg2==2.9.9
