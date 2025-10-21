@@ -138,15 +138,8 @@
                 },
                 eventClick: function(info) {
                     var event = info.event;
-                    var props = event.extendedProps;
                     
-                    alert(
-                        'Fach: ' + props.subject + '\n' +
-                        'Klasse: ' + props.grade + '\n' +
-                        'Datum: ' + props.date + '\n' +
-                        'Beginn: ' + props.start_time + '\n' +
-                        'Ende: ' + props.end_time
-                    );
+                    alert('Fach: ' + event.title);
                 },
                 eventMouseEnter: function(info) {
                     info.el.style.cursor = 'pointer';
