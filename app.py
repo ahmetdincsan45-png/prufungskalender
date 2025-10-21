@@ -15,9 +15,10 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)
 
-# PostgreSQL bağlantı URL'si (Render.com otomatik sağlayacak)
+# Kalıcı SQLite veritabanı yolu
+DATABASE_DIR = '/opt/render/project/src/data'
+DATABASE = os.path.join(DATABASE_DIR, 'exams.db') if os.path.exists('/opt/render') else 'exams.db'
 DATABASE_URL = os.getenv('DATABASE_URL')
-DATABASE = 'exams.db'
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
@@ -29,20 +30,9 @@ else:
     print(f"🔗 Database type: SQLite")
 
 def get_db_connection():
-    """Veritabanı bağlantısı - PostgreSQL öncelikli, SQLite fallback."""
-    # PostgreSQL dene (eğer mevcut ve URL varsa)
-    if DATABASE_URL and POSTGRES_AVAILABLE:
-        try:
-            print(f"🔗 Connecting to PostgreSQL...")
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
-            return conn
-        except Exception as e:
-            print(f"⚠️ PostgreSQL connection failed: {e}")
-            print("🔄 Falling back to SQLite...")
-    
-    # SQLite kullan (varsayılan)
+    """Kalıcı SQLite veritabanı bağlantısı."""
     try:
-        print("🔧 Using SQLite database")
+        print(f"� Using persistent SQLite database: {DATABASE}")
         conn = sqlite3.connect(DATABASE)
         conn.row_factory = sqlite3.Row
         return conn
@@ -54,47 +44,32 @@ def init_db():
     """Veritabanı ve tabloyu oluştur."""
     try:
         print("🔧 Initializing database...")
+        
+        # Render.com'da data klasörü oluştur
+        if os.path.exists('/opt/render'):
+            os.makedirs(DATABASE_DIR, exist_ok=True)
+            print(f"� Database directory: {DATABASE_DIR}")
+        
         conn = get_db_connection()
         if not conn:
             print("❌ Could not establish database connection")
             return False
         
-        # PostgreSQL mi SQLite mi kontrol et
-        is_postgres = DATABASE_URL and POSTGRES_AVAILABLE
-        
-        if is_postgres:
-            print("📊 Creating PostgreSQL table...")
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS exams (
-                    id SERIAL PRIMARY KEY,
-                    subject VARCHAR(255) NOT NULL,
-                    grade VARCHAR(50) NOT NULL,
-                    date DATE NOT NULL,
-                    start_time TIME NOT NULL,
-                    end_time TIME NOT NULL,
-                    created_at TIMESTAMP NOT NULL
-                )
-            ''')
-            conn.commit()
-            cursor.close()
-        else:
-            print("📊 Creating SQLite table...")
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS exams (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    subject TEXT NOT NULL,
-                    grade TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    start_time TEXT NOT NULL,
-                    end_time TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                )
-            ''')
-            conn.commit()
-        
+        print("📊 Creating SQLite table...")
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS exams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject TEXT NOT NULL,
+                grade TEXT NOT NULL,
+                date TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
         conn.close()
-        print("✅ Database initialized successfully!")
+        print(f"✅ Database initialized successfully! Location: {DATABASE}")
         return True
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
