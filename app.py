@@ -4,13 +4,7 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 
-# PostgreSQL için import
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    POSTGRES_AVAILABLE = True
-except ImportError:
-    POSTGRES_AVAILABLE = False
+# Kalıcı SQLite sistemi - PostgreSQL dependency yok
 
 app = Flask(__name__)
 CORS(app)
@@ -22,12 +16,8 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
-print(f"📊 PostgreSQL module available: {POSTGRES_AVAILABLE}")
-print(f"📊 Database URL present: {bool(DATABASE_URL)}")
-if DATABASE_URL and POSTGRES_AVAILABLE:
-    print(f"🔗 Database type: PostgreSQL")
-else:
-    print(f"🔗 Database type: SQLite")
+print(f"� Database type: Persistent SQLite")
+print(f"� Database location: {DATABASE}")
 
 def get_db_connection():
     """Kalıcı SQLite veritabanı bağlantısı."""
@@ -89,16 +79,10 @@ def index():
         cursor = conn.cursor()
         today = datetime.now().strftime('%Y-%m-%d')
         
-        if DATABASE_URL:  # PostgreSQL
-            cursor.execute(
-                'SELECT * FROM exams WHERE date >= %s ORDER BY date LIMIT 1',
-                (today,)
-            )
-        else:  # SQLite
-            cursor.execute(
-                'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
-                (today,)
-            )
+        cursor.execute(
+            'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
+            (today,)
+        )
             
         next_exam = cursor.fetchone()
         
@@ -124,38 +108,17 @@ def events():
         if not conn:
             return jsonify([])
         
-        is_postgres = DATABASE_URL and POSTGRES_AVAILABLE
-        
-        if is_postgres:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM exams ORDER BY date')
-            exams = cursor.fetchall()
-            columns = [desc[0] for desc in cursor.description]
-            cursor.close()
-            
-            events_list = []
-            for exam in exams:
-                exam_dict = dict(zip(columns, exam))
-                events_list.append({
-                    'id': exam_dict['id'],
-                    'title': exam_dict['subject'],
-                    'start': f"{exam_dict['date']}T{exam_dict['start_time']}",
-                    'end': f"{exam_dict['date']}T{exam_dict['end_time']}",
-                    'backgroundColor': '#007bff',
-                    'borderColor': '#007bff'
-                })
-        else:
-            exams = conn.execute('SELECT * FROM exams ORDER BY date').fetchall()
-            events_list = []
-            for exam in exams:
-                events_list.append({
-                    'id': exam['id'],
-                    'title': exam['subject'],
-                    'start': f"{exam['date']}T{exam['start_time']}",
-                    'end': f"{exam['date']}T{exam['end_time']}",
-                    'backgroundColor': '#007bff',
-                    'borderColor': '#007bff'
-                })
+        exams = conn.execute('SELECT * FROM exams ORDER BY date').fetchall()
+        events_list = []
+        for exam in exams:
+            events_list.append({
+                'id': exam['id'],
+                'title': exam['subject'],
+                'start': f"{exam['date']}T{exam['start_time']}",
+                'end': f"{exam['date']}T{exam['end_time']}",
+                'backgroundColor': '#007bff',
+                'borderColor': '#007bff'
+            })
         
         conn.close()
         return jsonify(events_list)
@@ -188,16 +151,10 @@ def add_exam():
                 
             cursor = conn.cursor()
             
-            if DATABASE_URL:  # PostgreSQL
-                cursor.execute(
-                    'INSERT INTO exams (subject, grade, date, start_time, end_time, created_at) VALUES (%s, %s, %s, %s, %s, %s)',
-                    (subject, grade, date, start_time, end_time, created_at)
-                )
-            else:  # SQLite
-                cursor.execute(
-                    'INSERT INTO exams (subject, grade, date, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                    (subject, grade, date, start_time, end_time, created_at.isoformat())
-                )
+            cursor.execute(
+                'INSERT INTO exams (subject, grade, date, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                (subject, grade, date, start_time, end_time, created_at.isoformat())
+            )
             
             conn.commit()
             cursor.close()
@@ -225,10 +182,7 @@ def delete_exam():
                 if conn:
                     cursor = conn.cursor()
                     
-                    if DATABASE_URL:  # PostgreSQL
-                        cursor.execute('DELETE FROM exams WHERE id = %s', (exam_id,))
-                    else:  # SQLite
-                        cursor.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
+                    cursor.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
                     
                     conn.commit()
                     cursor.close()
