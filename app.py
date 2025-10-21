@@ -69,7 +69,7 @@ def events():
         for exam in exams:
             events_list.append({
                 'id': exam['id'],
-                'title': f"{exam['subject']} (Klasse)",
+                'title': exam['subject'],
                 'start': f"{exam['date']}T{exam['start_time']}",
                 'end': f"{exam['date']}T{exam['end_time']}",
                 'backgroundColor': '#007bff',
