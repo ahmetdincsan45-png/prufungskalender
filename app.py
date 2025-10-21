@@ -28,18 +28,21 @@ def get_db_connection():
 @app.route('/')
 def index():
     """Ana sayfa - FullCalendar takvimi."""
-    # Gelecek sınavı bul
-    from datetime import datetime
-    today = datetime.now().strftime('%Y-%m-%d')
-    
-    conn = get_db_connection()
-    next_exam = conn.execute(
-        'SELECT * FROM exams WHERE date >= ? ORDER BY date, start_time LIMIT 1',
-        (today,)
-    ).fetchone()
-    conn.close()
-    
-    return render_template('index.html', next_exam=next_exam)
+    try:
+        # Gelecek sınavı bul
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        conn = get_db_connection()
+        next_exam = conn.execute(
+            'SELECT * FROM exams WHERE date >= ? ORDER BY date, start_time LIMIT 1',
+            (today,)
+        ).fetchone()
+        conn.close()
+        
+        return render_template('index.html', next_exam=next_exam)
+    except Exception as e:
+        # Hata durumunda basit sayfa döndür
+        return render_template('index.html', next_exam=None)
 
 @app.route('/events')
 def events():
