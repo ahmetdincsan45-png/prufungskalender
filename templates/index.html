@@ -198,12 +198,7 @@
                 },
                 height: 'auto',
                 eventDisplay: 'block',
-                displayEventTime: true,
-                eventTimeFormat: {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                },
+                displayEventTime: false,
                 events: function(fetchInfo, successCallback, failureCallback) {
                     fetch('/events')
                         .then(response => response.json())
