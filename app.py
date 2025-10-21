@@ -37,7 +37,7 @@ def events():
     
     conn = get_db_connection()
     
-    if grade_filter and grade_filter != 'Hepsi':
+    if grade_filter and grade_filter != 'Alle':
         exams = conn.execute(
             'SELECT * FROM exams WHERE grade = ? ORDER BY date, start_time',
             (grade_filter,)
@@ -79,9 +79,9 @@ def add_exam():
         start_time = request.form.get('start_time', '').strip()
         end_time = request.form.get('end_time', '').strip()
         
-        # Basit validasyon
+        # Einfache Validierung
         if not all([subject, grade, date, start_time, end_time]):
-            return render_template('add.html', error='Tüm alanları doldurunuz.')
+            return render_template('add.html', error='Bitte füllen Sie alle Felder aus.')
         
         # Veritabanına ekle
         conn = get_db_connection()
@@ -105,21 +105,21 @@ def export_csv():
     ).fetchall()
     conn.close()
     
-    # CSV oluştur
+    # CSV erstellen
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Başlık satırı
-    writer.writerow(['date', 'start_time', 'end_time', 'grade', 'subject'])
+    # Kopfzeile
+    writer.writerow(['datum', 'startzeit', 'endzeit', 'klasse', 'fach'])
     
-    # Veri satırları
+    # Datenzeilen
     for exam in exams:
         writer.writerow([exam['date'], exam['start_time'], exam['end_time'], exam['grade'], exam['subject']])
     
-    # Response oluştur
+    # Response erstellen
     response = make_response(output.getvalue())
     response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    response.headers['Content-Disposition'] = 'attachment; filename=sinavlar.csv'
+    response.headers['Content-Disposition'] = 'attachment; filename=pruefungen.csv'
     
     return response
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sınav Takvimi</title>
+    <title>Prüfungskalender</title>
     
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -39,34 +39,34 @@
         <div class="row">
             <div class="col-12">
                 <h1 class="text-center mb-4">
-                    <i class="bi bi-calendar-event"></i> Sınav Takvimi
+                    <i class="bi bi-calendar-event"></i> Prüfungskalender
                 </h1>
                 
-                <!-- Güvenlik Uyarısı -->
+                <!-- Sicherheitshinweis -->
                 <div class="warning-box">
-                    <strong>⚠️ Güvenlik Uyarısı:</strong> Bu sistemde kişisel veriler (tam isim, öğrenci numarası vb.) girmeyin. Sadece ders ve sınıf bilgilerini kullanın.
+                    <strong>⚠️ Sicherheitshinweis:</strong> Geben Sie in diesem System keine persönlichen Daten (vollständige Namen, Matrikelnummern usw.) ein. Verwenden Sie nur Fach- und Klasseninformationen.
                 </div>
                 
                 <!-- Filtre ve Butonlar -->
                 <div class="filter-section">
                     <div class="row align-items-center">
                         <div class="col-md-3">
-                            <label for="gradeFilter" class="form-label fw-bold">Sınıf Filtresi:</label>
+                            <label for="gradeFilter" class="form-label fw-bold">Klassenfilter:</label>
                             <select id="gradeFilter" class="form-select">
-                                <option value="Hepsi">Hepsi</option>
+                                <option value="Alle">Alle</option>
                                 <option value="4A">4A</option>
                                 <option value="4B">4B</option>
                             </select>
                         </div>
                         <div class="col-md-9 text-end">
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
-                                <i class="bi bi-calendar-day"></i> Bugün
+                                <i class="bi bi-calendar-day"></i> Heute
                             </button>
                             <a href="/add" class="btn btn-success me-2">
-                                <i class="bi bi-plus-circle"></i> Sınav Ekle
+                                <i class="bi bi-plus-circle"></i> Prüfung hinzufügen
                             </a>
                             <a href="/export.csv" class="btn btn-info">
-                                <i class="bi bi-download"></i> CSV Dışa Aktar
+                                <i class="bi bi-download"></i> CSV exportieren
                             </a>
                         </div>
                     </div>
@@ -86,7 +86,7 @@
     
     <!-- FullCalendar 6 JS -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/tr.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/de.global.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -96,8 +96,8 @@
             
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                locale: 'tr',
-                firstDay: 1, // Pazartesi'den başla
+                locale: 'de',
+                firstDay: 1, // Montag beginnen
                 headerToolbar: {
                     left: 'prev,next',
                     center: 'title',
@@ -131,11 +131,11 @@
                     var props = event.extendedProps;
                     
                     alert(
-                        'Ders: ' + props.subject + '\n' +
-                        'Sınıf: ' + props.grade + '\n' +
-                        'Tarih: ' + props.date + '\n' +
-                        'Başlangıç: ' + props.start_time + '\n' +
-                        'Bitiş: ' + props.end_time
+                        'Fach: ' + props.subject + '\n' +
+                        'Klasse: ' + props.grade + '\n' +
+                        'Datum: ' + props.date + '\n' +
+                        'Beginn: ' + props.start_time + '\n' +
+                        'Ende: ' + props.end_time
                     );
                 },
                 eventMouseEnter: function(info) {
@@ -145,12 +145,12 @@
             
             calendar.render();
             
-            // Filtre değiştiğinde takvimi yenile
+            // Kalender aktualisieren bei Filteränderung
             gradeFilter.addEventListener('change', function() {
                 calendar.refetchEvents();
             });
             
-            // Bugün butonuna tıklandığında
+            // Heute-Button Klick
             todayBtn.addEventListener('click', function() {
                 calendar.today();
             });
