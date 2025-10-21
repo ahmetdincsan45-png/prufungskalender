@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sınav Ekle - Sınav Takvimi</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="bi bi-plus-circle"></i> Sınav Ekle
+                </h1>
+                
+                <!-- Güvenlik Uyarısı -->
+                <div class="warning-box">
+                    <strong>⚠️ Güvenlik Uyarısı:</strong> Bu sistemde kişisel veriler (tam isim, öğrenci numarası vb.) girmeyin. Sadece ders ve sınıf bilgilerini kullanın.
+                </div>
+                
+                <div class="form-container">
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="subject" class="form-label fw-bold">
+                                <i class="bi bi-book"></i> Ders Adı *
+                            </label>
+                            <input type="text" class="form-control" id="subject" name="subject" 
+                                   placeholder="Örn: Matematik, Fizik, Kimya" required>
+                            <div class="form-text">Sınav yapılacak dersin adını giriniz.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="grade" class="form-label fw-bold">
+                                <i class="bi bi-people"></i> Sınıf *
+                            </label>
+                            <select class="form-select" id="grade" name="grade" required>
+                                <option value="">Sınıf Seçiniz</option>
+                                <option value="4A">4A</option>
+                                <option value="4B">4B</option>
+                            </select>
+                            <div class="form-text">Sınavın yapılacağı sınıfı seçiniz.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="date" class="form-label fw-bold">
+                                <i class="bi bi-calendar-date"></i> Sınav Tarihi *
+                            </label>
+                            <input type="date" class="form-control" id="date" name="date" required>
+                            <div class="form-text">Sınavın yapılacağı tarihi seçiniz.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="start_time" class="form-label fw-bold">
+                                        <i class="bi bi-clock"></i> Başlangıç Saati *
+                                    </label>
+                                    <input type="time" class="form-control" id="start_time" name="start_time" required>
+                                    <div class="form-text">Sınavın başlama saati.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="end_time" class="form-label fw-bold">
+                                        <i class="bi bi-clock-history"></i> Bitiş Saati *
+                                    </label>
+                                    <input type="time" class="form-control" id="end_time" name="end_time" required>
+                                    <div class="form-text">Sınavın bitiş saati.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left"></i> Geri
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle"></i> Sınav Ekle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Örnek Bilgiler -->
+                <div class="mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Bilgi</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                                <li>Tüm alanlar zorunludur ve doldurulmalıdır.</li>
+                                <li>Ders adları: Matematik, Fizik, Kimya, Biyoloji, Tarih, Coğrafya vb.</li>
+                                <li>Sınıflar: Sadece 4A veya 4B seçenekleri mevcuttur.</li>
+                                <li>Saat formatı: 24 saat formatında (Örn: 09:00, 14:30)</li>
+                                <li>Bitiş saati başlangıç saatinden sonra olmalıdır.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Bugünkü tarihi varsayılan olarak ayarla
+            var today = new Date();
+            var formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('date').value = formattedDate;
+            
+            // Form validasyonu
+            var form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                var startTime = document.getElementById('start_time').value;
+                var endTime = document.getElementById('end_time').value;
+                
+                if (startTime && endTime && startTime >= endTime) {
+                    e.preventDefault();
+                    alert('Bitiş saati başlangıç saatinden sonra olmalıdır!');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
