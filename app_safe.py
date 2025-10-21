@@ -29,18 +29,16 @@ def get_db_connection():
 def index():
     """Ana sayfa - FullCalendar takvimi."""
     try:
-        # Gelecek sınavı bul
-        today = datetime.now().strftime('%Y-%m-%d')
-        
+        # Gelecek sınavı bul - basit versiyon
         conn = get_db_connection()
         next_exam = conn.execute(
-            'SELECT * FROM exams WHERE date >= ? ORDER BY date, start_time LIMIT 1',
-            (today,)
+            'SELECT * FROM exams ORDER BY date, start_time LIMIT 1'
         ).fetchone()
         conn.close()
         
         return render_template('index.html', next_exam=next_exam)
     except Exception as e:
+        print(f"Hata: {e}")
         # Hata durumunda basit sayfa döndür
         return render_template('index.html', next_exam=None)
 
@@ -131,17 +129,5 @@ def delete_exam():
     return render_template('delete.html', exams=exams)
 
 if __name__ == '__main__':
-    try:
-        init_db()
-        print("✅ Veritabanı hazır!")
-        app.run(debug=True, host='0.0.0.0', port=5000)
-    except Exception as e:
-        print(f"❌ Başlatma hatası: {e}")
-        # Basit sürüm çalıştır
-        simple_app = Flask(__name__)
-        
-        @simple_app.route('/')
-        def simple_home():
-            return '<h1>🔧 Basit Mod Aktif</h1><p>Ana uygulama hatası var, basit mod çalışıyor.</p>'
-            
-        simple_app.run(debug=True, host='0.0.0.0', port=5000)
+    init_db()
+    app.run(debug=True, host='0.0.0.0', port=5000)
