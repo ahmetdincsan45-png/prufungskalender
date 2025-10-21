@@ -11,34 +11,70 @@ CORS(app)
 # PostgreSQL bağlantı URL'si (Render.com otomatik sağlayacak)
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+# Debug bilgileri
+print("🚀 Starting Prüfungskalender application...")
+print(f"📊 Database URL present: {bool(DATABASE_URL)}")
+if DATABASE_URL:
+    print(f"🔗 Database type: PostgreSQL")
+else:
+    print(f"🔗 Database type: SQLite (fallback)")
+
 def get_db_connection():
     """PostgreSQL veritabanı bağlantısı."""
     try:
         # Yerel geliştirme için SQLite fallback
         if not DATABASE_URL:
+            print("🔧 Using SQLite fallback for local development")
             import sqlite3
             conn = sqlite3.connect('exams.db')
             conn.row_factory = sqlite3.Row
             return conn
         
         # Production için PostgreSQL
-        conn = psycopg2.connect(DATABASE_URL)
+        print(f"🔗 Connecting to PostgreSQL: {DATABASE_URL[:20]}...")
+        
+        # SSL gerektiren Render.com için
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         return conn
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        # psycopg2 yoksa SQLite fallback
+        try:
+            import sqlite3
+            print("🔄 Falling back to SQLite")
+            conn = sqlite3.connect('exams.db')
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception as e2:
+            print(f"❌ SQLite fallback failed: {e2}")
+            return None
     except Exception as e:
         print(f"❌ Database connection error: {e}")
-        return None
+        # Hata durumunda SQLite fallback dene
+        try:
+            import sqlite3
+            print("🔄 Emergency fallback to SQLite")
+            conn = sqlite3.connect('exams.db')
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception as e2:
+            print(f"❌ Emergency fallback failed: {e2}")
+            return None
 
 def init_db():
     """Veritabanı ve tabloyu oluştur."""
     try:
+        print("🔧 Initializing database...")
         conn = get_db_connection()
         if not conn:
+            print("❌ Could not establish database connection")
             return False
             
         cursor = conn.cursor()
         
         # PostgreSQL ve SQLite için uyumlu tablo oluşturma
         if DATABASE_URL:  # PostgreSQL
+            print("📊 Creating PostgreSQL table...")
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS exams (
                     id SERIAL PRIMARY KEY,
@@ -51,6 +87,7 @@ def init_db():
                 )
             ''')
         else:  # SQLite fallback
+            print("📊 Creating SQLite table...")
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS exams (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,10 +103,13 @@ def init_db():
         conn.commit()
         cursor.close()
         conn.close()
-        print("✅ Database ready!")
+        print("✅ Database initialized successfully!")
         return True
     except Exception as e:
-        print(f"❌ Database error: {e}")
+        print(f"❌ Database initialization error: {e}")
+        print(f"❌ Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         return False
 
 @app.route('/')
@@ -252,5 +292,21 @@ def delete_exam():
         return render_template('delete.html', exams=[], error=str(e))
 
 if __name__ == '__main__':
+    try:
+        print("🎯 Initializing database on startup...")
+        init_success = init_db()
+        if not init_success:
+            print("⚠️ Database initialization failed, but app will continue")
+        
+        print("🚀 Starting Flask application...")
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    except Exception as e:
+        print(f"❌ Application startup error: {e}")
+        import traceback
+        traceback.print_exc()
+
+# Render.com için de database init dene
+try:
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+except Exception as e:
+    print(f"⚠️ Initial database setup failed: {e}")
