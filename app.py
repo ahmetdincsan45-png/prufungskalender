@@ -4,12 +4,19 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 
-# PostgreSQL için opsiyonel import
+# PostgreSQL için opsiyonel import (pg8000 ve psycopg2 desteği)
+POSTGRES_AVAILABLE = False
 try:
     import psycopg2
+    POSTGRES_DRIVER = 'psycopg2'
     POSTGRES_AVAILABLE = True
 except ImportError:
-    POSTGRES_AVAILABLE = False
+    try:
+        import pg8000
+        POSTGRES_DRIVER = 'pg8000'
+        POSTGRES_AVAILABLE = True
+    except ImportError:
+        POSTGRES_DRIVER = None
 
 app = Flask(__name__)
 CORS(app)
@@ -32,8 +39,25 @@ def get_db_connection():
     # PostgreSQL dene (eğer mevcut ve URL varsa)
     if DATABASE_URL and POSTGRES_AVAILABLE:
         try:
-            print(f"🔗 Connecting to PostgreSQL...")
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            print(f"🔗 Connecting to PostgreSQL with {POSTGRES_DRIVER}...")
+            
+            if POSTGRES_DRIVER == 'psycopg2':
+                import psycopg2
+                conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            elif POSTGRES_DRIVER == 'pg8000':
+                import pg8000
+                # pg8000 için URL'yi parse et
+                import urllib.parse as urlparse
+                url = urlparse.urlparse(DATABASE_URL)
+                conn = pg8000.connect(
+                    host=url.hostname,
+                    port=url.port,
+                    user=url.username,
+                    password=url.password,
+                    database=url.path[1:],  # Remove leading slash
+                    ssl_context=True
+                )
+            
             return conn
         except Exception as e:
             print(f"⚠️ PostgreSQL connection failed: {e}")
