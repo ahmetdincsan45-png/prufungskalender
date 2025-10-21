@@ -1,65 +1,53 @@
 import os
-import psycopg2
+import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
-from urllib.parse import urlparse
+
+# PostgreSQL için opsiyonel import
+try:
+    import psycopg2
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 app = Flask(__name__)
 CORS(app)
 
 # PostgreSQL bağlantı URL'si (Render.com otomatik sağlayacak)
 DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASE = 'exams.db'
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
+print(f"📊 PostgreSQL module available: {POSTGRES_AVAILABLE}")
 print(f"📊 Database URL present: {bool(DATABASE_URL)}")
-if DATABASE_URL:
+if DATABASE_URL and POSTGRES_AVAILABLE:
     print(f"🔗 Database type: PostgreSQL")
 else:
-    print(f"🔗 Database type: SQLite (fallback)")
+    print(f"🔗 Database type: SQLite")
 
 def get_db_connection():
-    """PostgreSQL veritabanı bağlantısı."""
+    """Veritabanı bağlantısı - PostgreSQL öncelikli, SQLite fallback."""
+    # PostgreSQL dene (eğer mevcut ve URL varsa)
+    if DATABASE_URL and POSTGRES_AVAILABLE:
+        try:
+            print(f"🔗 Connecting to PostgreSQL...")
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            return conn
+        except Exception as e:
+            print(f"⚠️ PostgreSQL connection failed: {e}")
+            print("🔄 Falling back to SQLite...")
+    
+    # SQLite kullan (varsayılan)
     try:
-        # Yerel geliştirme için SQLite fallback
-        if not DATABASE_URL:
-            print("🔧 Using SQLite fallback for local development")
-            import sqlite3
-            conn = sqlite3.connect('exams.db')
-            conn.row_factory = sqlite3.Row
-            return conn
-        
-        # Production için PostgreSQL
-        print(f"🔗 Connecting to PostgreSQL: {DATABASE_URL[:20]}...")
-        
-        # SSL gerektiren Render.com için
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        print("🔧 Using SQLite database")
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
         return conn
-    except ImportError as e:
-        print(f"❌ Import error: {e}")
-        # psycopg2 yoksa SQLite fallback
-        try:
-            import sqlite3
-            print("🔄 Falling back to SQLite")
-            conn = sqlite3.connect('exams.db')
-            conn.row_factory = sqlite3.Row
-            return conn
-        except Exception as e2:
-            print(f"❌ SQLite fallback failed: {e2}")
-            return None
     except Exception as e:
-        print(f"❌ Database connection error: {e}")
-        # Hata durumunda SQLite fallback dene
-        try:
-            import sqlite3
-            print("🔄 Emergency fallback to SQLite")
-            conn = sqlite3.connect('exams.db')
-            conn.row_factory = sqlite3.Row
-            return conn
-        except Exception as e2:
-            print(f"❌ Emergency fallback failed: {e2}")
-            return None
+        print(f"❌ SQLite connection failed: {e}")
+        return None
 
 def init_db():
     """Veritabanı ve tabloyu oluştur."""
@@ -69,12 +57,13 @@ def init_db():
         if not conn:
             print("❌ Could not establish database connection")
             return False
-            
-        cursor = conn.cursor()
         
-        # PostgreSQL ve SQLite için uyumlu tablo oluşturma
-        if DATABASE_URL:  # PostgreSQL
+        # PostgreSQL mi SQLite mi kontrol et
+        is_postgres = DATABASE_URL and POSTGRES_AVAILABLE
+        
+        if is_postgres:
             print("📊 Creating PostgreSQL table...")
+            cursor = conn.cursor()
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS exams (
                     id SERIAL PRIMARY KEY,
@@ -86,9 +75,11 @@ def init_db():
                     created_at TIMESTAMP NOT NULL
                 )
             ''')
-        else:  # SQLite fallback
+            conn.commit()
+            cursor.close()
+        else:
             print("📊 Creating SQLite table...")
-            cursor.execute('''
+            conn.execute('''
                 CREATE TABLE IF NOT EXISTS exams (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     subject TEXT NOT NULL,
@@ -99,15 +90,13 @@ def init_db():
                     created_at TEXT NOT NULL
                 )
             ''')
+            conn.commit()
         
-        conn.commit()
-        cursor.close()
         conn.close()
         print("✅ Database initialized successfully!")
         return True
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
-        print(f"❌ Error type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
         return False
@@ -158,36 +147,41 @@ def events():
         conn = get_db_connection()
         if not conn:
             return jsonify([])
-            
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM exams ORDER BY date')
-        exams = cursor.fetchall()
         
-        # Sütun adlarını al
-        if DATABASE_URL:  # PostgreSQL
+        is_postgres = DATABASE_URL and POSTGRES_AVAILABLE
+        
+        if is_postgres:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM exams ORDER BY date')
+            exams = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
-        else:  # SQLite
-            columns = ['id', 'subject', 'grade', 'date', 'start_time', 'end_time', 'created_at']
-        
-        cursor.close()
-        conn.close()
-        
-        events_list = []
-        for exam in exams:
-            if DATABASE_URL:  # PostgreSQL
+            cursor.close()
+            
+            events_list = []
+            for exam in exams:
                 exam_dict = dict(zip(columns, exam))
-            else:  # SQLite
-                exam_dict = dict(exam) if hasattr(exam, 'keys') else dict(zip(columns, exam))
-                
-            events_list.append({
-                'id': exam_dict['id'],
-                'title': exam_dict['subject'],
-                'start': f"{exam_dict['date']}T{exam_dict['start_time']}",
-                'end': f"{exam_dict['date']}T{exam_dict['end_time']}",
-                'backgroundColor': '#007bff',
-                'borderColor': '#007bff'
-            })
+                events_list.append({
+                    'id': exam_dict['id'],
+                    'title': exam_dict['subject'],
+                    'start': f"{exam_dict['date']}T{exam_dict['start_time']}",
+                    'end': f"{exam_dict['date']}T{exam_dict['end_time']}",
+                    'backgroundColor': '#007bff',
+                    'borderColor': '#007bff'
+                })
+        else:
+            exams = conn.execute('SELECT * FROM exams ORDER BY date').fetchall()
+            events_list = []
+            for exam in exams:
+                events_list.append({
+                    'id': exam['id'],
+                    'title': exam['subject'],
+                    'start': f"{exam['date']}T{exam['start_time']}",
+                    'end': f"{exam['date']}T{exam['end_time']}",
+                    'backgroundColor': '#007bff',
+                    'borderColor': '#007bff'
+                })
         
+        conn.close()
         return jsonify(events_list)
     except Exception as e:
         print(f"❌ Events error: {e}")
