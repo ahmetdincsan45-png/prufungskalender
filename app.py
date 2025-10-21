@@ -12,7 +12,6 @@ CORS(app)
 # Kalıcı SQLite veritabanı yolu
 DATABASE_DIR = '/opt/render/project/src/data'
 DATABASE = os.path.join(DATABASE_DIR, 'exams.db') if os.path.exists('/opt/render') else 'exams.db'
-DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
