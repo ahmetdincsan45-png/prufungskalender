@@ -1,19 +1,57 @@
 import os
-import sqlite3
+import psycopg2
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 CORS(app)
 
-DATABASE = 'exams.db'
+# PostgreSQL bağlantı URL'si (Render.com otomatik sağlayacak)
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+def get_db_connection():
+    """PostgreSQL veritabanı bağlantısı."""
+    try:
+        # Yerel geliştirme için SQLite fallback
+        if not DATABASE_URL:
+            import sqlite3
+            conn = sqlite3.connect('exams.db')
+            conn.row_factory = sqlite3.Row
+            return conn
+        
+        # Production için PostgreSQL
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
+    except Exception as e:
+        print(f"❌ Database connection error: {e}")
+        return None
 
 def init_db():
     """Veritabanı ve tabloyu oluştur."""
     try:
-        with sqlite3.connect(DATABASE) as conn:
-            conn.execute('''
+        conn = get_db_connection()
+        if not conn:
+            return False
+            
+        cursor = conn.cursor()
+        
+        # PostgreSQL ve SQLite için uyumlu tablo oluşturma
+        if DATABASE_URL:  # PostgreSQL
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS exams (
+                    id SERIAL PRIMARY KEY,
+                    subject VARCHAR(255) NOT NULL,
+                    grade VARCHAR(50) NOT NULL,
+                    date DATE NOT NULL,
+                    start_time TIME NOT NULL,
+                    end_time TIME NOT NULL,
+                    created_at TIMESTAMP NOT NULL
+                )
+            ''')
+        else:  # SQLite fallback
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS exams (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     subject TEXT NOT NULL,
@@ -24,18 +62,15 @@ def init_db():
                     created_at TEXT NOT NULL
                 )
             ''')
-            conn.commit()
-            print("✅ Database ready!")
-            return True
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("✅ Database ready!")
+        return True
     except Exception as e:
         print(f"❌ Database error: {e}")
         return False
-
-def get_db_connection():
-    """Veritabanı bağlantısı."""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 @app.route('/')
 def index():
@@ -43,17 +78,36 @@ def index():
     try:
         init_db()
         conn = get_db_connection()
-        
-        # Gelecek sınavı bul
+        if not conn:
+            return render_template('index.html', next_exam=None)
+            
+        cursor = conn.cursor()
         today = datetime.now().strftime('%Y-%m-%d')
-        next_exam = conn.execute(
-            'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
-            (today,)
-        ).fetchone()
+        
+        if DATABASE_URL:  # PostgreSQL
+            cursor.execute(
+                'SELECT * FROM exams WHERE date >= %s ORDER BY date LIMIT 1',
+                (today,)
+            )
+        else:  # SQLite
+            cursor.execute(
+                'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
+                (today,)
+            )
+            
+        next_exam = cursor.fetchone()
+        
+        # Sonucu dict'e çevir
+        if next_exam:
+            columns = [desc[0] for desc in cursor.description]
+            next_exam = dict(zip(columns, next_exam))
+            
+        cursor.close()
         conn.close()
         
         return render_template('index.html', next_exam=next_exam)
-    except:
+    except Exception as e:
+        print(f"❌ Index error: {e}")
         return render_template('index.html', next_exam=None)
 
 @app.route('/events')
@@ -62,22 +116,41 @@ def events():
     try:
         init_db()
         conn = get_db_connection()
-        exams = conn.execute('SELECT * FROM exams ORDER BY date').fetchall()
+        if not conn:
+            return jsonify([])
+            
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM exams ORDER BY date')
+        exams = cursor.fetchall()
+        
+        # Sütun adlarını al
+        if DATABASE_URL:  # PostgreSQL
+            columns = [desc[0] for desc in cursor.description]
+        else:  # SQLite
+            columns = ['id', 'subject', 'grade', 'date', 'start_time', 'end_time', 'created_at']
+        
+        cursor.close()
         conn.close()
         
         events_list = []
         for exam in exams:
+            if DATABASE_URL:  # PostgreSQL
+                exam_dict = dict(zip(columns, exam))
+            else:  # SQLite
+                exam_dict = dict(exam) if hasattr(exam, 'keys') else dict(zip(columns, exam))
+                
             events_list.append({
-                'id': exam['id'],
-                'title': exam['subject'],
-                'start': f"{exam['date']}T{exam['start_time']}",
-                'end': f"{exam['date']}T{exam['end_time']}",
+                'id': exam_dict['id'],
+                'title': exam_dict['subject'],
+                'start': f"{exam_dict['date']}T{exam_dict['start_time']}",
+                'end': f"{exam_dict['date']}T{exam_dict['end_time']}",
                 'backgroundColor': '#007bff',
                 'borderColor': '#007bff'
             })
         
         return jsonify(events_list)
-    except:
+    except Exception as e:
+        print(f"❌ Events error: {e}")
         return jsonify([])
 
 @app.route('/add', methods=['GET', 'POST'])
@@ -97,19 +170,33 @@ def add_exam():
             grade = '4A'
             start_time = '08:00'
             end_time = '16:00'
-            created_at = datetime.now().isoformat()
+            created_at = datetime.now()
             
             conn = get_db_connection()
-            conn.execute(
-                'INSERT INTO exams (subject, grade, date, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                (subject, grade, date, start_time, end_time, created_at)
-            )
+            if not conn:
+                return render_template('add.html', error='Database connection failed!')
+                
+            cursor = conn.cursor()
+            
+            if DATABASE_URL:  # PostgreSQL
+                cursor.execute(
+                    'INSERT INTO exams (subject, grade, date, start_time, end_time, created_at) VALUES (%s, %s, %s, %s, %s, %s)',
+                    (subject, grade, date, start_time, end_time, created_at)
+                )
+            else:  # SQLite
+                cursor.execute(
+                    'INSERT INTO exams (subject, grade, date, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                    (subject, grade, date, start_time, end_time, created_at.isoformat())
+                )
+            
             conn.commit()
+            cursor.close()
             conn.close()
             
             return redirect(url_for('index'))
             
         except Exception as e:
+            print(f"❌ Add exam error: {e}")
             return render_template('add.html', error=f'Fehler: {str(e)}')
     
     return render_template('add.html')
@@ -125,20 +212,43 @@ def delete_exam():
             
             if exam_id:
                 conn = get_db_connection()
-                conn.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
-                conn.commit()
-                conn.close()
+                if conn:
+                    cursor = conn.cursor()
+                    
+                    if DATABASE_URL:  # PostgreSQL
+                        cursor.execute('DELETE FROM exams WHERE id = %s', (exam_id,))
+                    else:  # SQLite
+                        cursor.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
+                    
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
                 
                 return redirect(url_for('delete_exam'))
         
         # Tüm sınavları listele
         conn = get_db_connection()
-        exams = conn.execute('SELECT * FROM exams ORDER BY date').fetchall()
+        if not conn:
+            return render_template('delete.html', exams=[], error="Database connection failed")
+            
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM exams ORDER BY date')
+        exams = cursor.fetchall()
+        
+        # Sütun adlarını al ve dict'e çevir
+        columns = [desc[0] for desc in cursor.description]
+        exams_list = []
+        for exam in exams:
+            exam_dict = dict(zip(columns, exam))
+            exams_list.append(exam_dict)
+        
+        cursor.close()
         conn.close()
         
-        return render_template('delete.html', exams=exams)
+        return render_template('delete.html', exams=exams_list)
         
     except Exception as e:
+        print(f"❌ Delete exam error: {e}")
         return render_template('delete.html', exams=[], error=str(e))
 
 if __name__ == '__main__':
