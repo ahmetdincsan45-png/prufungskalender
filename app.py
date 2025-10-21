@@ -33,20 +33,10 @@ def index():
 @app.route('/events')
 def events():
     """Takvim etkinlikleri JSON formatında döndürür."""
-    grade_filter = request.args.get('grade', '')
-    
     conn = get_db_connection()
-    
-    if grade_filter and grade_filter != 'Alle':
-        exams = conn.execute(
-            'SELECT * FROM exams WHERE grade = ? ORDER BY date, start_time',
-            (grade_filter,)
-        ).fetchall()
-    else:
-        exams = conn.execute(
-            'SELECT * FROM exams ORDER BY date, start_time'
-        ).fetchall()
-    
+    exams = conn.execute(
+        'SELECT * FROM exams ORDER BY date, start_time'
+    ).fetchall()
     conn.close()
     
     events_list = []
@@ -56,8 +46,8 @@ def events():
             'title': f"{exam['subject']} ({exam['grade']})",
             'start': f"{exam['date']}T{exam['start_time']}",
             'end': f"{exam['date']}T{exam['end_time']}",
-            'backgroundColor': '#007bff' if exam['grade'] == '4A' else '#28a745',
-            'borderColor': '#007bff' if exam['grade'] == '4A' else '#28a745',
+            'backgroundColor': '#007bff',
+            'borderColor': '#007bff',
             'extendedProps': {
                 'subject': exam['subject'],
                 'grade': exam['grade'],
@@ -96,32 +86,35 @@ def add_exam():
     
     return render_template('add.html')
 
-@app.route('/export.csv')
-def export_csv():
-    """Sınavları CSV formatında indir."""
+@app.route('/delete', methods=['GET', 'POST'])
+def delete_exam():
+    """Sınav silme sayfası."""
+    if request.method == 'POST':
+        exam_id = request.form.get('exam_id', '').strip()
+        
+        if not exam_id:
+            conn = get_db_connection()
+            exams = conn.execute('SELECT * FROM exams ORDER BY date, start_time').fetchall()
+            conn.close()
+            return render_template('delete.html', exams=exams, error='Bitte wählen Sie eine Prüfung aus.')
+        
+        # Sınavı sil
+        conn = get_db_connection()
+        conn.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
+        conn.commit()
+        conn.close()
+        
+        # Başarı mesajıyla sayfayı yenile
+        conn = get_db_connection()
+        exams = conn.execute('SELECT * FROM exams ORDER BY date, start_time').fetchall()
+        conn.close()
+        return render_template('delete.html', exams=exams, message='Prüfung wurde erfolgreich gelöscht.')
+    
+    # GET request - tüm sınavları listele
     conn = get_db_connection()
-    exams = conn.execute(
-        'SELECT date, start_time, end_time, grade, subject FROM exams ORDER BY date, start_time'
-    ).fetchall()
+    exams = conn.execute('SELECT * FROM exams ORDER BY date, start_time').fetchall()
     conn.close()
-    
-    # CSV erstellen
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    # Kopfzeile
-    writer.writerow(['datum', 'startzeit', 'endzeit', 'klasse', 'fach'])
-    
-    # Datenzeilen
-    for exam in exams:
-        writer.writerow([exam['date'], exam['start_time'], exam['end_time'], exam['grade'], exam['subject']])
-    
-    # Response erstellen
-    response = make_response(output.getvalue())
-    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    response.headers['Content-Disposition'] = 'attachment; filename=pruefungen.csv'
-    
-    return response
+    return render_template('delete.html', exams=exams)
 
 if __name__ == '__main__':
     init_db()

@@ -50,23 +50,15 @@
                 <!-- Filtre ve Butonlar -->
                 <div class="filter-section">
                     <div class="row align-items-center">
-                        <div class="col-md-3">
-                            <label for="gradeFilter" class="form-label fw-bold">Klassenfilter:</label>
-                            <select id="gradeFilter" class="form-select">
-                                <option value="Alle">Alle</option>
-                                <option value="4A">4A</option>
-                                <option value="4B">4B</option>
-                            </select>
-                        </div>
-                        <div class="col-md-9 text-end">
+                        <div class="col-12 text-end">
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
                                 <i class="bi bi-calendar-day"></i> Heute
                             </button>
                             <a href="/add" class="btn btn-success me-2">
                                 <i class="bi bi-plus-circle"></i> Prüfung hinzufügen
                             </a>
-                            <a href="/export.csv" class="btn btn-info">
-                                <i class="bi bi-download"></i> CSV exportieren
+                            <a href="/delete" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Prüfung löschen
                             </a>
                         </div>
                     </div>
@@ -91,7 +83,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
-            var gradeFilter = document.getElementById('gradeFilter');
             var todayBtn = document.getElementById('todayBtn');
             
             var calendar = new FullCalendar.Calendar(calendarEl, {
@@ -112,17 +103,11 @@
                     hour12: false
                 },
                 events: function(fetchInfo, successCallback, failureCallback) {
-                    var grade = gradeFilter.value;
-                    var url = '/events';
-                    if (grade && grade !== 'Hepsi') {
-                        url += '?grade=' + encodeURIComponent(grade);
-                    }
-                    
-                    fetch(url)
+                    fetch('/events')
                         .then(response => response.json())
                         .then(data => successCallback(data))
                         .catch(error => {
-                            console.error('Etkinlikler yüklenirken hata:', error);
+                            console.error('Prüfungen laden Fehler:', error);
                             failureCallback(error);
                         });
                 },
@@ -144,11 +129,6 @@
             });
             
             calendar.render();
-            
-            // Kalender aktualisieren bei Filteränderung
-            gradeFilter.addEventListener('change', function() {
-                calendar.refetchEvents();
-            });
             
             // Heute-Button Klick
             todayBtn.addEventListener('click', function() {
