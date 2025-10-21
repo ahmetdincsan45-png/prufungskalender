@@ -28,7 +28,18 @@ def get_db_connection():
 @app.route('/')
 def index():
     """Ana sayfa - FullCalendar takvimi."""
-    return render_template('index.html')
+    # Gelecek sınavı bul
+    from datetime import datetime
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    conn = get_db_connection()
+    next_exam = conn.execute(
+        'SELECT * FROM exams WHERE date >= ? ORDER BY date, start_time LIMIT 1',
+        (today,)
+    ).fetchone()
+    conn.close()
+    
+    return render_template('index.html', next_exam=next_exam)
 
 @app.route('/events')
 def events():
@@ -64,13 +75,13 @@ def add_exam():
     """Sınav ekleme sayfası."""
     if request.method == 'POST':
         subject = request.form.get('subject', '').strip()
-        grade = request.form.get('grade', '').strip()
+        grade = '4A'  # Sabit değer
         date = request.form.get('date', '').strip()
-        start_time = request.form.get('start_time', '').strip()
+        start_time = '08:00'  # Sabit başlangıç saati
         end_time = request.form.get('end_time', '').strip()
         
         # Einfache Validierung
-        if not all([subject, grade, date, start_time, end_time]):
+        if not all([subject, date, end_time]):
             return render_template('add.html', error='Bitte füllen Sie alle Felder aus.')
         
         # Veritabanına ekle

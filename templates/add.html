@@ -58,16 +58,7 @@
                             <div class="form-text">Geben Sie den Namen des Prüfungsfachs ein.</div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="grade" class="form-label fw-bold">
-                                <i class="bi bi-people"></i> Klasse *
-                            </label>
-                            <select class="form-select" id="grade" name="grade" required>
-                                <option value="">Klasse auswählen</option>
-                                <option value="4A">4A</option>
-                            </select>
-                            <div class="form-text">Wählen Sie die Klasse für die Prüfung aus.</div>
-                        </div>
+
                         
                         <div class="mb-3">
                             <label for="date" class="form-label fw-bold">
@@ -77,25 +68,12 @@
                             <div class="form-text">Wählen Sie das Datum der Prüfung aus.</div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="start_time" class="form-label fw-bold">
-                                        <i class="bi bi-clock"></i> Startzeit *
-                                    </label>
-                                    <input type="time" class="form-control" id="start_time" name="start_time" required>
-                                    <div class="form-text">Beginn der Prüfung.</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="end_time" class="form-label fw-bold">
-                                        <i class="bi bi-clock-history"></i> Endzeit *
-                                    </label>
-                                    <input type="time" class="form-control" id="end_time" name="end_time" required>
-                                    <div class="form-text">Ende der Prüfung.</div>
-                                </div>
-                            </div>
+                        <div class="mb-3">
+                            <label for="end_time" class="form-label fw-bold">
+                                <i class="bi bi-clock-history"></i> Endzeit *
+                            </label>
+                            <input type="time" class="form-control" id="end_time" name="end_time" required>
+                            <div class="form-text">Ende der Prüfung.</div>
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -117,11 +95,11 @@
                         </div>
                         <div class="card-body">
                             <ul class="mb-0">
-                                <li>Tüm alanlar zorunludur ve doldurulmalıdır.</li>
-                                <li>Ders adları: Matematik, Fizik, Kimya, Biyoloji, Tarih, Coğrafya vb.</li>
-                                <li>Sınıflar: Sadece 4A veya 4B seçenekleri mevcuttur.</li>
-                                <li>Saat formatı: 24 saat formatında (Örn: 09:00, 14:30)</li>
-                                <li>Bitiş saati başlangıç saatinden sonra olmalıdır.</li>
+                                <li>Alle Felder sind erforderlich und müssen ausgefüllt werden.</li>
+                                <li>Fächer: Mathematik, Physik, Chemie, Biologie, Geschichte, Geografie usw.</li>
+                                <li>Automatisch: Klasse 4A, Startzeit 08:00</li>
+                                <li>Zeitformat: 24-Stunden-Format (z.B.: 09:00, 14:30)</li>
+                                <li>Endzeit muss nach 08:00 sein.</li>
                             </ul>
                         </div>
                     </div>
@@ -143,12 +121,12 @@
             // Form validasyonu
             var form = document.querySelector('form');
             form.addEventListener('submit', function(e) {
-                var startTime = document.getElementById('start_time').value;
                 var endTime = document.getElementById('end_time').value;
+                var startTime = '08:00'; // Sabit başlangıç saati
                 
-                if (startTime && endTime && startTime >= endTime) {
+                if (endTime && startTime >= endTime) {
                     e.preventDefault();
-                    alert('Bitiş saati başlangıç saatinden sonra olmalıdır!');
+                    alert('Endzeit muss nach 08:00 sein!');
                 }
             });
         });

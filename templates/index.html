@@ -47,10 +47,29 @@
                     <strong>⚠️ Sicherheitshinweis:</strong> Geben Sie in diesem System keine persönlichen Daten (vollständige Namen, Matrikelnummern usw.) ein. Verwenden Sie nur Fach- und Klasseninformationen.
                 </div>
                 
-                <!-- Filtre ve Butonlar -->
+                <!-- Gelecek Prüfung ve Butonlar -->
                 <div class="filter-section">
                     <div class="row align-items-center">
-                        <div class="col-12 text-end">
+                        <div class="col-md-6">
+                            {% if next_exam %}
+                            <div class="next-exam-info">
+                                <h5 class="fw-bold text-primary mb-1">
+                                    <i class="bi bi-alarm"></i> Nächste Prüfung:
+                                </h5>
+                                <div class="fw-bold fs-6">{{ next_exam.subject }}</div>
+                                <small class="text-muted">
+                                    {{ next_exam.date }} um {{ next_exam.start_time }} - {{ next_exam.end_time }}
+                                </small>
+                            </div>
+                            {% else %}
+                            <div class="next-exam-info">
+                                <h5 class="fw-bold text-muted mb-1">
+                                    <i class="bi bi-calendar-check"></i> Keine bevorstehenden Prüfungen
+                                </h5>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-end">
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
                                 <i class="bi bi-calendar-day"></i> Heute
                             </button>
@@ -93,6 +112,12 @@
                     left: 'prev,next',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Heute',
+                    month: 'Monat',
+                    week: 'Woche',
+                    day: 'Tag'
                 },
                 height: 'auto',
                 eventDisplay: 'block',
