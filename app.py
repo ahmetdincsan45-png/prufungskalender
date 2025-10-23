@@ -4,7 +4,16 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 
-# Sadece SQLite kullan - Render.com'da persistent disk ile
+# PostgreSQL bağlantısı öncelik, SQLite fallback
+try:
+    import psycopg2
+    import psycopg2.extras
+    POSTGRESQL_AVAILABLE = True
+    print("✅ PostgreSQL module available: True")
+except ImportError:
+    POSTGRESQL_AVAILABLE = False
+    print("❌ PostgreSQL module available: False")
+
 DATABASE_DIR = '/opt/render/project/src'
 SQLITE_DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
 
@@ -13,14 +22,33 @@ CORS(app)
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
-print(f"🔗 Database type: SQLite ONLY (on persistent disk)")
-print(f"📁 SQLite location: {SQLITE_DATABASE}")
-print("⚠️ IMPORTANT: Data will persist on /opt/render/project/src/ (24h+ lifetime)")
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgresql://') and POSTGRESQL_AVAILABLE:
+    print(f"🔗 Database type: PostgreSQL (Supabase)")
+    print(f"📡 Database URL: {DATABASE_URL[:50]}...")
+    print("✅ Data will persist PERMANENTLY on Supabase")
+else:
+    print(f"🔗 Database type: SQLite FALLBACK")
+    print(f"📁 SQLite location: {SQLITE_DATABASE}")
+    print("⚠️ FALLBACK: Using SQLite (data may be temporary)")
 
 def get_db_connection():
-    """Persistent SQLite database connection."""
+    """Get database connection - PostgreSQL preferred, SQLite fallback."""
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    
+    # Try PostgreSQL first (Supabase)
+    if DATABASE_URL and DATABASE_URL.startswith('postgresql://') and POSTGRESQL_AVAILABLE:
+        try:
+            print(f"🔗 Connecting to PostgreSQL (Supabase)...")
+            conn = psycopg2.connect(DATABASE_URL)
+            return conn, 'postgresql'
+        except Exception as e:
+            print(f"❌ PostgreSQL connection failed: {e}")
+            print("🔄 Falling back to SQLite...")
+    
+    # Fallback to SQLite
     try:
-        print(f"� Using PERSISTENT SQLite database: {SQLITE_DATABASE}")
+        print(f"📱 Using SQLite database: {SQLITE_DATABASE}")
         
         # Ensure directory exists
         os.makedirs(DATABASE_DIR, exist_ok=True)
