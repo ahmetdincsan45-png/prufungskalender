@@ -1,21 +1,9 @@
 import os
-import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
-
-# PostgreSQL bağlantısı öncelik, SQLite fallback
-try:
-    import psycopg2
-    import psycopg2.extras
-    POSTGRESQL_AVAILABLE = True
-    print("✅ PostgreSQL module available: True")
-except ImportError:
-    POSTGRESQL_AVAILABLE = False
-    print("❌ PostgreSQL module available: False")
-
-DATABASE_DIR = '/opt/render/project/src'
-SQLITE_DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
+import psycopg2
+import psycopg2.extras
 
 app = Flask(__name__)
 CORS(app)
@@ -23,42 +11,60 @@ CORS(app)
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
 DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL and DATABASE_URL.startswith('postgresql://') and POSTGRESQL_AVAILABLE:
+if DATABASE_URL and DATABASE_URL.startswith('postgresql://'):
     print(f"🔗 Database type: PostgreSQL (Supabase)")
     print(f"📡 Database URL: {DATABASE_URL[:50]}...")
     print("✅ Data will persist PERMANENTLY on Supabase")
 else:
-    print(f"🔗 Database type: SQLite FALLBACK")
-    print(f"📁 SQLite location: {SQLITE_DATABASE}")
-    print("⚠️ FALLBACK: Using SQLite (data may be temporary)")
+    print("❌ ERROR: DATABASE_URL not found or invalid!")
+    print("❌ PostgreSQL connection required!")
+    exit(1)
 
 def get_db_connection():
-    """Get database connection - PostgreSQL preferred, SQLite fallback."""
+    """Get PostgreSQL database connection (Supabase only)."""
     DATABASE_URL = os.environ.get('DATABASE_URL')
     
-    # Try PostgreSQL first (Supabase)
-    if DATABASE_URL and DATABASE_URL.startswith('postgresql://') and POSTGRESQL_AVAILABLE:
-        try:
-            print(f"🔗 Connecting to PostgreSQL (Supabase)...")
-            conn = psycopg2.connect(DATABASE_URL)
-            return conn, 'postgresql'
-        except Exception as e:
-            print(f"❌ PostgreSQL connection failed: {e}")
-            print("🔄 Falling back to SQLite...")
+    if not DATABASE_URL or not DATABASE_URL.startswith('postgresql://'):
+        raise Exception("❌ DATABASE_URL not found or invalid! PostgreSQL required.")
     
-    # Fallback to SQLite
     try:
-        print(f"📱 Using SQLite database: {SQLITE_DATABASE}")
-        
-        # Ensure directory exists
-        os.makedirs(DATABASE_DIR, exist_ok=True)
-        
-        conn = sqlite3.connect(SQLITE_DATABASE)
-        conn.row_factory = sqlite3.Row
-        return conn, 'sqlite'
+        print(f"🔗 Connecting to PostgreSQL (Supabase)...")
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.cursor_factory = psycopg2.extras.RealDictCursor
+        return conn
     except Exception as e:
-        print(f"❌ SQLite connection failed: {e}")
-        return None, None
+        print(f"❌ PostgreSQL connection failed: {e}")
+        raise Exception(f"❌ Could not connect to Supabase PostgreSQL: {e}")
+
+def init_db():
+    """Initialize PostgreSQL database and create tables."""
+    try:
+        print("🔧 Initializing PostgreSQL database...")
+        
+        conn = get_db_connection()
+        
+        print("🗄️ Creating PostgreSQL table (PERMANENT)...")
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS exams (
+                id SERIAL PRIMARY KEY,
+                subject VARCHAR(255) NOT NULL,
+                grade VARCHAR(50) NOT NULL,
+                date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                created_at TIMESTAMP NOT NULL
+            )
+        ''')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("✅ PostgreSQL database initialized successfully! (PERMANENT)")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        raise e
 
 def init_db():
     """Initialize database and create tables."""
