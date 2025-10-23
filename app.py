@@ -4,48 +4,27 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 
-# PostgreSQL için import
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    POSTGRES_AVAILABLE = True
-except ImportError:
-    POSTGRES_AVAILABLE = False
+# Sadece SQLite kullan - Render.com'da persistent disk ile
+DATABASE_DIR = '/opt/render/project/src'
+SQLITE_DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
 
 app = Flask(__name__)
 CORS(app)
 
-# Database URL'si (PostgreSQL öncelik, SQLite fallback)
-DATABASE_URL = os.getenv('DATABASE_URL')
-# SQLite yolu (sadece fallback için)
-DATABASE_DIR = '/var/data' if os.path.exists('/var/data') else '/opt/render/project/src' if os.path.exists('/opt/render') else '.'
-SQLITE_DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
-
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
-print(f"📊 PostgreSQL module available: {POSTGRES_AVAILABLE}")
-print(f"📊 Database URL present: {bool(DATABASE_URL)}")
-if DATABASE_URL and POSTGRES_AVAILABLE:
-    print(f"🔗 Database type: PostgreSQL (PERMANENT)")
-else:
-    print(f"🔗 Database type: SQLite (temporary fallback)")
-    print(f"📁 SQLite location: {SQLITE_DATABASE}")
+print(f"🔗 Database type: SQLite ONLY (on persistent disk)")
+print(f"📁 SQLite location: {SQLITE_DATABASE}")
+print("⚠️ IMPORTANT: Data will persist on /opt/render/project/src/ (24h+ lifetime)")
 
 def get_db_connection():
-    """Database connection - PostgreSQL priority, SQLite fallback."""
-    # PostgreSQL kullanmayı dene (kalıcı çözüm)
-    if DATABASE_URL and POSTGRES_AVAILABLE:
-        try:
-            print("🔗 Connecting to PostgreSQL (PERMANENT)...")
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
-            return conn, 'postgresql'
-        except Exception as e:
-            print(f"⚠️ PostgreSQL connection failed: {e}")
-            print("🔄 Falling back to SQLite...")
-    
-    # SQLite fallback (geçici)
+    """Persistent SQLite database connection."""
     try:
-        print(f"🔧 Using SQLite database (TEMPORARY): {SQLITE_DATABASE}")
+        print(f"� Using PERSISTENT SQLite database: {SQLITE_DATABASE}")
+        
+        # Ensure directory exists
+        os.makedirs(DATABASE_DIR, exist_ok=True)
+        
         conn = sqlite3.connect(SQLITE_DATABASE)
         conn.row_factory = sqlite3.Row
         return conn, 'sqlite'
