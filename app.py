@@ -9,9 +9,10 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Kalıcı SQLite veritabanı yolu
-DATABASE_DIR = '/opt/render/project/src/data'
-DATABASE = os.path.join(DATABASE_DIR, 'exams.db') if os.path.exists('/opt/render') else 'exams.db'
+# Kalıcı SQLite veritabanı yolu - Render.com persistent disk
+# Render.com'da persistent disk mount point: /var/data
+DATABASE_DIR = '/var/data' if os.path.exists('/var/data') else '/opt/render/project/src' if os.path.exists('/opt/render') else '.'
+DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
@@ -33,11 +34,21 @@ def init_db():
     """Veritabanı ve tabloyu oluştur."""
     try:
         print("🔧 Initializing database...")
+        print(f"📁 Target database directory: {DATABASE_DIR}")
         
-        # Render.com'da data klasörü oluştur
-        if os.path.exists('/opt/render'):
+        # Render.com'da persistent disk klasörü oluştur
+        if DATABASE_DIR != '.':
             os.makedirs(DATABASE_DIR, exist_ok=True)
-            print(f"� Database directory: {DATABASE_DIR}")
+            print(f"📁 Database directory created/verified: {DATABASE_DIR}")
+        
+        # Database dosyasının tam yolunu kontrol et
+        print(f"💾 Full database path: {DATABASE}")
+        
+        # Database dosyası var mı kontrol et
+        if os.path.exists(DATABASE):
+            print(f"✅ Existing database found: {DATABASE}")
+        else:
+            print(f"🆕 Creating new database: {DATABASE}")
         
         conn = get_db_connection()
         if not conn:
@@ -59,6 +70,12 @@ def init_db():
         conn.commit()
         conn.close()
         print(f"✅ Database initialized successfully! Location: {DATABASE}")
+        
+        # Dosya izinlerini kontrol et
+        if os.path.exists(DATABASE):
+            file_size = os.path.getsize(DATABASE)
+            print(f"📊 Database file size: {file_size} bytes")
+            
         return True
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
