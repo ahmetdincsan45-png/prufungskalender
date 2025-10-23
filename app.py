@@ -1,114 +1,71 @@
 import os
-import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
-
-# PostgreSQL import with fallback
-try:
-    import psycopg2
-    import psycopg2.extras
-    POSTGRESQL_AVAILABLE = True
-    print("✅ PostgreSQL module available")
-except ImportError:
-    POSTGRESQL_AVAILABLE = False
-    print("❌ PostgreSQL not available - will use SQLite fallback")
+import psycopg2
+import psycopg2.extras
 
 app = Flask(__name__)
 CORS(app)
 
 def get_db_connection():
-    """Get database connection - PostgreSQL preferred, SQLite fallback."""
+    """Get PostgreSQL database connection (Supabase only)."""
     DATABASE_URL = os.environ.get('DATABASE_URL')
     
-    # Try PostgreSQL first (Supabase)
-    if DATABASE_URL and DATABASE_URL.startswith('postgresql://') and POSTGRESQL_AVAILABLE:
-        try:
-            print("🔗 Connecting to PostgreSQL (Supabase)...")
-            conn = psycopg2.connect(DATABASE_URL)
-            conn.cursor_factory = psycopg2.extras.RealDictCursor
-            return conn, 'postgresql'
-        except Exception as e:
-            print(f"❌ PostgreSQL failed: {e}")
-            print("🔄 Falling back to SQLite...")
+    if not DATABASE_URL or not DATABASE_URL.startswith('postgresql://'):
+        raise Exception("❌ DATABASE_URL not found! Supabase PostgreSQL required.")
     
-    # Fallback to SQLite
     try:
-        print("📱 Using SQLite database")
-        conn = sqlite3.connect('/tmp/exams.db')
-        conn.row_factory = sqlite3.Row
-        return conn, 'sqlite'
+        print("🔗 Connecting to Supabase PostgreSQL...")
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.cursor_factory = psycopg2.extras.RealDictCursor
+        return conn
     except Exception as e:
-        print(f"❌ SQLite failed: {e}")
-        return None, None
+        raise Exception(f"❌ Supabase PostgreSQL connection failed: {e}")
 
 def init_db():
-    """Initialize database and create tables."""
+    """Initialize Supabase PostgreSQL database and create tables."""
     try:
-        conn, db_type = get_db_connection()
-        if not conn:
-            return False
+        conn = get_db_connection()
         
+        print("🗄️ Creating Supabase PostgreSQL table (PERMANENT)")
         cursor = conn.cursor()
-        
-        if db_type == 'postgresql':
-            print("🗄️ Creating PostgreSQL table (PERMANENT)")
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS exams (
-                    id SERIAL PRIMARY KEY,
-                    subject VARCHAR(255) NOT NULL,
-                    grade VARCHAR(50) NOT NULL DEFAULT '4A',
-                    date DATE NOT NULL,
-                    start_time TIME NOT NULL DEFAULT '08:00',
-                    end_time TIME NOT NULL DEFAULT '16:00',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        else:
-            print("📊 Creating SQLite table (TEMPORARY)")
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS exams (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    subject TEXT NOT NULL,
-                    grade TEXT NOT NULL DEFAULT '4A',
-                    date TEXT NOT NULL,
-                    start_time TEXT NOT NULL DEFAULT '08:00',
-                    end_time TEXT NOT NULL DEFAULT '16:00',
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS exams (
+                id SERIAL PRIMARY KEY,
+                subject VARCHAR(255) NOT NULL,
+                grade VARCHAR(50) NOT NULL DEFAULT '4A',
+                date DATE NOT NULL,
+                start_time TIME NOT NULL DEFAULT '08:00',
+                end_time TIME NOT NULL DEFAULT '16:00',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"✅ Database initialized ({db_type})")
+        print("✅ Supabase PostgreSQL database initialized (PERMANENT)")
         return True
         
     except Exception as e:
         print(f"❌ Database initialization failed: {e}")
-        return False
+        raise e
 
 @app.route('/')
 def index():
     """Ana sayfa."""
     try:
-        try:
-            init_db()
-            conn, db_type = get_db_connection()
-            
-            cursor = conn.cursor()
-            today = datetime.now().strftime('%Y-%m-%d')
-            
-            if db_type == 'postgresql':
-                cursor.execute(
-                    'SELECT * FROM exams WHERE date >= %s ORDER BY date LIMIT 1',
-                    (today,)
-                )
-            else:
-                cursor.execute(
-                    'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
-                    (today,)
-                )
+        init_db()
+        conn = get_db_connection()
+        
+        cursor = conn.cursor()
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        cursor.execute(
+            'SELECT * FROM exams WHERE date >= %s ORDER BY date LIMIT 1',
+            (today,)
+        )
             
         next_exam = cursor.fetchone()
         
@@ -124,7 +81,7 @@ def index():
 def events():
     """JSON etkinlikler."""
     try:
-        conn, db_type = get_db_connection()
+        conn = get_db_connection()
         
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM exams ORDER BY date')
@@ -158,19 +115,13 @@ def add_exam():
             if not subject or not date:
                 return render_template('add.html', error='Bitte alle Felder ausfüllen!')
             
-            conn, db_type = get_db_connection()
+            conn = get_db_connection()
             cursor = conn.cursor()
             
-            if db_type == 'postgresql':
-                cursor.execute(
-                    'INSERT INTO exams (subject, date) VALUES (%s, %s)',
-                    (subject, date)
-                )
-            else:
-                cursor.execute(
-                    'INSERT INTO exams (subject, date) VALUES (?, ?)',
-                    (subject, date)
-                )
+            cursor.execute(
+                'INSERT INTO exams (subject, date) VALUES (%s, %s)',
+                (subject, date)
+            )
             
             conn.commit()
             cursor.close()
@@ -192,13 +143,10 @@ def delete_exam():
             exam_id = request.form.get('exam_id', '').strip()
             
             if exam_id:
-                conn, db_type = get_db_connection()
+                conn = get_db_connection()
                 cursor = conn.cursor()
                 
-                if db_type == 'postgresql':
-                    cursor.execute('DELETE FROM exams WHERE id = %s', (exam_id,))
-                else:
-                    cursor.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
+                cursor.execute('DELETE FROM exams WHERE id = %s', (exam_id,))
                 
                 conn.commit()
                 cursor.close()
@@ -207,7 +155,7 @@ def delete_exam():
             return redirect(url_for('delete_exam'))
         
         # Tüm sınavları listele
-        conn, db_type = get_db_connection()
+        conn = get_db_connection()
         
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM exams ORDER BY date')
@@ -224,7 +172,7 @@ def delete_exam():
 
 if __name__ == '__main__':
     try:
-        print("🎯 Initializing database on startup...")
+        print("🎯 Initializing Supabase PostgreSQL database...")
         init_db()
         print("✅ Database initialized successfully!")
         
@@ -237,6 +185,6 @@ if __name__ == '__main__':
 # Render.com için database init
 try:
     init_db()
-    print("✅ Render.com database initialization successful!")
+    print("✅ Render.com Supabase database initialization successful!")
 except Exception as e:
     print(f"❌ Render.com database initialization failed: {e}")
