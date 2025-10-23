@@ -4,78 +4,99 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 
-# Kalıcı SQLite sistemi - PostgreSQL dependency yok
+# PostgreSQL için import
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 app = Flask(__name__)
 CORS(app)
 
-# Kalıcı SQLite veritabanı yolu - Render.com persistent disk
-# Render.com'da persistent disk mount point: /var/data
+# Database URL'si (PostgreSQL öncelik, SQLite fallback)
+DATABASE_URL = os.getenv('DATABASE_URL')
+# SQLite yolu (sadece fallback için)
 DATABASE_DIR = '/var/data' if os.path.exists('/var/data') else '/opt/render/project/src' if os.path.exists('/opt/render') else '.'
-DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
+SQLITE_DATABASE = os.path.join(DATABASE_DIR, 'exams.db')
 
 # Debug bilgileri
 print("🚀 Starting Prüfungskalender application...")
-print(f"� Database type: Persistent SQLite")
-print(f"� Database location: {DATABASE}")
+print(f"📊 PostgreSQL module available: {POSTGRES_AVAILABLE}")
+print(f"📊 Database URL present: {bool(DATABASE_URL)}")
+if DATABASE_URL and POSTGRES_AVAILABLE:
+    print(f"🔗 Database type: PostgreSQL (PERMANENT)")
+else:
+    print(f"🔗 Database type: SQLite (temporary fallback)")
+    print(f"📁 SQLite location: {SQLITE_DATABASE}")
 
 def get_db_connection():
-    """Kalıcı SQLite veritabanı bağlantısı."""
+    """Database connection - PostgreSQL priority, SQLite fallback."""
+    # PostgreSQL kullanmayı dene (kalıcı çözüm)
+    if DATABASE_URL and POSTGRES_AVAILABLE:
+        try:
+            print("🔗 Connecting to PostgreSQL (PERMANENT)...")
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
+            return conn, 'postgresql'
+        except Exception as e:
+            print(f"⚠️ PostgreSQL connection failed: {e}")
+            print("🔄 Falling back to SQLite...")
+    
+    # SQLite fallback (geçici)
     try:
-        print(f"� Using persistent SQLite database: {DATABASE}")
-        conn = sqlite3.connect(DATABASE)
+        print(f"🔧 Using SQLite database (TEMPORARY): {SQLITE_DATABASE}")
+        conn = sqlite3.connect(SQLITE_DATABASE)
         conn.row_factory = sqlite3.Row
-        return conn
+        return conn, 'sqlite'
     except Exception as e:
         print(f"❌ SQLite connection failed: {e}")
-        return None
+        return None, None
 
 def init_db():
-    """Veritabanı ve tabloyu oluştur."""
+    """Initialize database and create tables."""
     try:
         print("🔧 Initializing database...")
-        print(f"📁 Target database directory: {DATABASE_DIR}")
         
-        # Render.com'da persistent disk klasörü oluştur
-        if DATABASE_DIR != '.':
-            os.makedirs(DATABASE_DIR, exist_ok=True)
-            print(f"📁 Database directory created/verified: {DATABASE_DIR}")
-        
-        # Database dosyasının tam yolunu kontrol et
-        print(f"💾 Full database path: {DATABASE}")
-        
-        # Database dosyası var mı kontrol et
-        if os.path.exists(DATABASE):
-            print(f"✅ Existing database found: {DATABASE}")
-        else:
-            print(f"🆕 Creating new database: {DATABASE}")
-        
-        conn = get_db_connection()
+        conn, db_type = get_db_connection()
         if not conn:
             print("❌ Could not establish database connection")
             return False
         
-        print("📊 Creating SQLite table...")
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS exams (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                subject TEXT NOT NULL,
-                grade TEXT NOT NULL,
-                date TEXT NOT NULL,
-                start_time TEXT NOT NULL,
-                end_time TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        ''')
-        conn.commit()
-        conn.close()
-        print(f"✅ Database initialized successfully! Location: {DATABASE}")
+        if db_type == 'postgresql':
+            print("� Creating PostgreSQL table (PERMANENT)...")
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS exams (
+                    id SERIAL PRIMARY KEY,
+                    subject VARCHAR(255) NOT NULL,
+                    grade VARCHAR(50) NOT NULL,
+                    date DATE NOT NULL,
+                    start_time TIME NOT NULL,
+                    end_time TIME NOT NULL,
+                    created_at TIMESTAMP NOT NULL
+                )
+            ''')
+            conn.commit()
+            cursor.close()
+            print("✅ PostgreSQL database initialized successfully! (PERMANENT)")
+        else:
+            print("📊 Creating SQLite table (TEMPORARY)...")
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS exams (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    subject TEXT NOT NULL,
+                    grade TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    start_time TEXT NOT NULL,
+                    end_time TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            ''')
+            conn.commit()
+            print("⚠️ SQLite database initialized (TEMPORARY - will be deleted)")
         
-        # Dosya izinlerini kontrol et
-        if os.path.exists(DATABASE):
-            file_size = os.path.getsize(DATABASE)
-            print(f"📊 Database file size: {file_size} bytes")
-            
+        conn.close()
         return True
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
@@ -88,24 +109,33 @@ def index():
     """Ana sayfa."""
     try:
         init_db()
-        conn = get_db_connection()
+        conn, db_type = get_db_connection()
         if not conn:
             return render_template('index.html', next_exam=None)
             
         cursor = conn.cursor()
         today = datetime.now().strftime('%Y-%m-%d')
         
-        cursor.execute(
-            'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
-            (today,)
-        )
+        if db_type == 'postgresql':
+            cursor.execute(
+                'SELECT * FROM exams WHERE date >= %s ORDER BY date LIMIT 1',
+                (today,)
+            )
+        else:
+            cursor.execute(
+                'SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1',
+                (today,)
+            )
             
         next_exam = cursor.fetchone()
         
         # Sonucu dict'e çevir
         if next_exam:
-            columns = [desc[0] for desc in cursor.description]
-            next_exam = dict(zip(columns, next_exam))
+            if db_type == 'postgresql':
+                next_exam = dict(next_exam)
+            else:
+                columns = [desc[0] for desc in cursor.description]
+                next_exam = dict(zip(columns, next_exam))
             
         cursor.close()
         conn.close()
