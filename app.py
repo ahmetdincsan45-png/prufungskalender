@@ -7,15 +7,24 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# Database configuration
+DATABASE = os.environ.get('DATABASE_URL', 'prufungskalender.db')
+
 def get_db_connection():
     """Get SQLite database connection."""
-    conn = sqlite3.connect('prufungskalender.db')
+    # Extract database name from URL or use direct path
+    if DATABASE.startswith('sqlite:///'):
+        db_path = DATABASE[10:]  # Remove 'sqlite:///'
+    else:
+        db_path = DATABASE
+    
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
     """Initialize SQLite database and create tables."""
-    print("🗄️ Creating SQLite database (24 hour storage)")
+    print(f"🗄️ Creating SQLite database: {DATABASE}")
     conn = get_db_connection()
     conn.execute('''
         CREATE TABLE IF NOT EXISTS exams (
@@ -30,7 +39,7 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-    print("✅ SQLite database initialized (24h temporary storage)")
+    print("✅ SQLite database initialized")
 
 @app.route('/')
 def index():
@@ -145,6 +154,6 @@ if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
 # Render.com için database init
-print("🎯 Render.com SQLite initialization...")
+print("🎯 Render.com database initialization...")
 init_db()
-print("✅ Render.com SQLite database ready (24h temporary storage)!")
+print("✅ Render.com database ready!")
