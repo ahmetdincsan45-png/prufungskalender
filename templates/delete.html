@@ -142,7 +142,7 @@
                             {% if exams %}
                             <div class="exam-list">
                                 {% for exam in exams %}
-                                <div class="exam-item" data-exam-id="{{ exam.id }}" onclick="selectExam({{ exam.id }})">
+                                <div class="exam-item" data-exam-id="{{ exam.id }}" onclick="selectExam('{{ exam.id }}')">
                                     <div class="row">
                                         <div class="col-md-3">
                                             <strong>{{ exam.subject }}</strong>
