@@ -135,7 +135,7 @@
                                 </h5>
                                 <div class="fw-bold fs-6">{{ next_exam.subject }}</div>
                                 <small class="text-muted">
-                                    {{ next_exam.date }}
+                                    <strong>{{ next_exam.date | strftime('%d.%m.%Y') }}</strong>
                                 </small>
                             </div>
                             {% else %}
