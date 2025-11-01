@@ -112,12 +112,12 @@ def events():
                 })
         # Bayern ferien-api.de'den güncel tatil tarihlerini çek, olmazsa yedek kullan
         backup_ferien = [
-            {"start": "2025-03-03", "end": "2025-03-07"},
-            {"start": "2025-04-14", "end": "2025-04-25"},
-            {"start": "2025-06-10", "end": "2025-06-20"},
-            {"start": "2025-08-01", "end": "2025-09-15"},
-            {"start": "2025-11-03", "end": "2025-11-07"},  # Herbstferien 3-7 Kasım (ICS ile uyumlu)
-            {"start": "2025-12-22", "end": "2026-01-05"},
+            {"start": "2025-03-03", "end": "2025-03-08"},
+            {"start": "2025-04-14", "end": "2025-04-26"},
+            {"start": "2025-06-10", "end": "2025-06-21"},
+            {"start": "2025-08-01", "end": "2025-09-16"},
+            {"start": "2025-11-03", "end": "2025-11-08"},  # Herbstferien 3-7 Kasım (7 dahil)
+            {"start": "2025-12-22", "end": "2026-01-06"},
         ]
         ferien_eklendi = False
         try:
@@ -125,6 +125,7 @@ def events():
             response = requests.get(ferien_url, timeout=5)
             if response.status_code == 200:
                 ferien = response.json()
+                from datetime import datetime, timedelta
                 for holiday in ferien:
                     start = holiday.get('start')
                     end = holiday.get('end')
@@ -132,9 +133,12 @@ def events():
                     if start == "2025-11-19" and end == "2025-11-19":
                         continue
                     if start and end:
+                        # end tarihini +1 gün yap
+                        end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)
+                        end_str = end_dt.strftime("%Y-%m-%d")
                         events_list.append({
                             'start': start,
-                            'end': end,
+                            'end': end_str,
                             'rendering': 'background',
                             'backgroundColor': 'black',
                             'display': 'background'
