@@ -5,7 +5,6 @@ from pathlib import Path
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
-from flask import template_filter
 
 # -------------------- Flask --------------------
 app = Flask(__name__)
