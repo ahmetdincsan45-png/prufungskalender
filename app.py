@@ -1,3 +1,16 @@
+from flask import send_from_directory
+# Favicon ve Apple Touch Icon rotaları
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static', 'favicon.ico', mimetype='image/x-icon')
+
+@app.route('/apple-touch-icon.png')
+def apple_touch_icon():
+    return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
+
+@app.route('/apple-touch-icon-precomposed.png')
+def apple_touch_icon_pre():
+    return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 import os
 import sqlite3
 import threading
