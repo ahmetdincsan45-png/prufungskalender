@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
+import requests
 
 # -------------------- Flask --------------------
 app = Flask(__name__)
@@ -94,6 +95,25 @@ def events():
                     'backgroundColor': color,
                     'borderColor': color
                 })
+        # Bayern ferien-api.de'den güncel tatil tarihlerini çek
+        try:
+            ferien_url = 'https://ferien-api.de/api/v1/holidays/BY/2025'
+            response = requests.get(ferien_url, timeout=5)
+            if response.status_code == 200:
+                ferien = response.json()
+                for holiday in ferien:
+                    # Sadece Schulferien olanları ekle
+                    if holiday.get('type') == 'FERIEN':
+                        events_list.append({
+                            'start': holiday['start'],
+                            'end': holiday['end'],
+                            'rendering': 'background',
+                            'backgroundColor': 'black',
+                            'display': 'background',
+                            'title': holiday.get('name', 'Ferien')
+                        })
+        except Exception as e:
+            print(f"Ferien API hatası: {e}")
         return jsonify(events_list)
     except Exception as e:
         print(f"❌ Events error: {e}")
