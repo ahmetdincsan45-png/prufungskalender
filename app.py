@@ -101,8 +101,7 @@ def events():
             {"start": "2025-04-14", "end": "2025-04-25"},
             {"start": "2025-06-10", "end": "2025-06-20"},
             {"start": "2025-08-01", "end": "2025-09-15"},
-            {"start": "2025-11-03", "end": "2025-11-06"},  # Herbstferien 3-6 Kasım
-            {"start": "2025-11-07", "end": "2025-11-07"},  # 7 Kasım tek gün
+            {"start": "2025-11-03", "end": "2025-11-07"},  # Herbstferien 3-7 Kasım (ICS ile uyumlu)
             {"start": "2025-12-22", "end": "2026-01-05"},
         ]
         ferien_eklendi = False
