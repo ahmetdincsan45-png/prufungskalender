@@ -35,6 +35,12 @@
             color: #856404;
         }
         
+        /* Ferien (background event) günlerinde gün numarasını beyaz yap */
+        .fc-daygrid-day[data-ferientag="true"] .fc-daygrid-day-number {
+            color: #fff !important;
+            text-shadow: 0 0 2px #000;
+        }
+        
         /* Mobil responsive düzenlemeler */
         @media (max-width: 768px) {
             .container-fluid {
@@ -223,6 +229,21 @@
             // Heute-Button Klick
             todayBtn.addEventListener('click', function() {
                 calendar.today();
+            });
+            
+            // Ferien günlerinde gün numarasını beyaz yapmak için hücrelere data-ferientag ekle
+            calendar.on('datesSet', function() {
+                // Tüm gün hücrelerinden ferientag işaretini kaldır
+                document.querySelectorAll('.fc-daygrid-day[data-ferientag]').forEach(function(cell) {
+                    cell.removeAttribute('data-ferientag');
+                });
+                // Tüm background event günlerini bul ve işaretle
+                document.querySelectorAll('.fc-bg-event').forEach(function(bg) {
+                    var cell = bg.closest('.fc-daygrid-day');
+                    if (cell) {
+                        cell.setAttribute('data-ferientag', 'true');
+                    }
+                });
             });
         });
     </script>
