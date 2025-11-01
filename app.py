@@ -1,4 +1,18 @@
 from flask import send_from_directory
+import os
+import sqlite3
+import threading
+from pathlib import Path
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_cors import CORS
+import requests
+
+# -------------------- Flask --------------------
+
+app = Flask(__name__)
+CORS(app)
+
 # Favicon ve Apple Touch Icon rotaları
 @app.route('/favicon.ico')
 def favicon():
@@ -11,18 +25,6 @@ def apple_touch_icon():
 @app.route('/apple-touch-icon-precomposed.png')
 def apple_touch_icon_pre():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
-import os
-import sqlite3
-import threading
-from pathlib import Path
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_cors import CORS
-import requests
-
-# -------------------- Flask --------------------
-app = Flask(__name__)
-CORS(app)
 
 # -------------------- DB Yolu (kalıcı disk) --------------------
 DB_PATH = os.getenv("SQLITE_DB_PATH", "/var/data/prufungskalender.db")
