@@ -3,7 +3,7 @@ import os
 import sqlite3
 import threading
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 import requests
@@ -125,7 +125,6 @@ def events():
             response = requests.get(ferien_url, timeout=5)
             if response.status_code == 200:
                 ferien = response.json()
-                from datetime import datetime, timedelta
                 for holiday in ferien:
                     start = holiday.get('start')
                     end = holiday.get('end')
