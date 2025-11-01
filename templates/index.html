@@ -41,6 +41,17 @@
             text-shadow: 0 0 2px #000;
         }
         
+        /* Ferien (background event) günlerinde gün numarasını beyaz yap - daha güçlü seçici */
+        .fc-daygrid-day-bg + .fc-daygrid-day-events + .fc-daygrid-day-top .fc-daygrid-day-number {
+            color: #fff !important;
+            text-shadow: 0 0 2px #000;
+        }
+        /* Alternatif: arka planı siyah olan hücrede gün numarası beyaz olsun */
+        .fc-daygrid-day .fc-daygrid-day-bg[style*="background-color: black"] ~ .fc-daygrid-day-top .fc-daygrid-day-number {
+            color: #fff !important;
+            text-shadow: 0 0 2px #000;
+        }
+        
         /* Mobil responsive düzenlemeler */
         @media (max-width: 768px) {
             .container-fluid {
