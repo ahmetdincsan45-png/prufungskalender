@@ -97,13 +97,15 @@ def events():
                 })
         # Bayern ferien-api.de'den güncel tatil tarihlerini çek, olmazsa yedek kullan
         backup_ferien = [
-            {"start": "2025-03-03", "end": "2025-03-07", "name": "Winterferien Bayern 2025"},
-            {"start": "2025-04-14", "end": "2025-04-25", "name": "Osterferien Bayern 2025"},
-            {"start": "2025-06-10", "end": "2025-06-20", "name": "Pfingstferien Bayern 2025"},
-            {"start": "2025-08-01", "end": "2025-09-15", "name": "Sommerferien Bayern 2025"},
-            {"start": "2025-11-03", "end": "2025-11-07", "name": "Herbstferien Bayern 2025"},
-            {"start": "2025-12-22", "end": "2026-01-05", "name": "Weihnachtsferien Bayern 2025"},
+            {"start": "2025-03-03", "end": "2025-03-07"},
+            {"start": "2025-04-14", "end": "2025-04-25"},
+            {"start": "2025-06-10", "end": "2025-06-20"},
+            {"start": "2025-08-01", "end": "2025-09-15"},
+            {"start": "2025-11-03", "end": "2025-11-07"},
+            {"start": "2025-12-22", "end": "2026-01-05"},
         ]
+        # 7 Kasım 2025'i de tek gün olarak ekle (okul yok)
+        backup_ferien.append({"start": "2025-11-07", "end": "2025-11-07"})
         ferien_eklendi = False
         try:
             ferien_url = 'https://ferien-api.de/api/v1/holidays/BY/2025'
@@ -111,18 +113,18 @@ def events():
             if response.status_code == 200:
                 ferien = response.json()
                 for holiday in ferien:
-                    # Sadece Schulferien olanları ekle (veya hepsini ekle)
                     start = holiday.get('start')
                     end = holiday.get('end')
-                    name = holiday.get('name', 'Ferien')
+                    # 19 Kasım 2025'i ekleme
+                    if start == "2025-11-19" and end == "2025-11-19":
+                        continue
                     if start and end:
                         events_list.append({
                             'start': start,
                             'end': end,
                             'rendering': 'background',
                             'backgroundColor': 'black',
-                            'display': 'background',
-                            'title': name
+                            'display': 'background'
                         })
                         ferien_eklendi = True
         except Exception as e:
@@ -135,8 +137,7 @@ def events():
                     'end': holiday['end'],
                     'rendering': 'background',
                     'backgroundColor': 'black',
-                    'display': 'background',
-                    'title': holiday['name']
+                    'display': 'background'
                 })
         return jsonify(events_list)
     except Exception as e:
