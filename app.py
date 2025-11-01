@@ -102,7 +102,6 @@ def events():
             {"start": "2025-06-10", "end": "2025-06-20", "name": "Pfingstferien Bayern 2025"},
             {"start": "2025-08-01", "end": "2025-09-15", "name": "Sommerferien Bayern 2025"},
             {"start": "2025-11-03", "end": "2025-11-07", "name": "Herbstferien Bayern 2025"},
-            {"start": "2025-11-19", "end": "2025-11-19", "name": "Herbstferien Bayern 2025 (beweglicher Ferientag)"},
             {"start": "2025-12-22", "end": "2026-01-05", "name": "Weihnachtsferien Bayern 2025"},
         ]
         ferien_eklendi = False
