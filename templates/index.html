@@ -261,7 +261,9 @@
                 events: function(fetchInfo, successCallback, failureCallback) {
                     fetch('/events')
                         .then(response => response.json())
-                        .then(data => successCallback(data))
+                        .then(data => {
+                            successCallback(data);
+                        })
                         .catch(error => {
                             console.error('Prüfungen laden Fehler:', error);
                             failureCallback(error);
@@ -287,31 +289,25 @@
                 calendar.today();
             });
             
-            // Ferien günlerinde gün numarasını beyaz yapmak - render sonrası çalıştır
             // Ferien günlerinin tarihlerini tutan dizi
             var ferienDates = [];
-            // Ferien günlerini çek
-            function fetchFerienDates() {
-                return fetch('/events')
-                    .then(response => response.json())
-                    .then(data => {
-                        ferienDates = [];
-                        data.forEach(function(event) {
-                            if (event.display === 'background') {
-                                var start = new Date(event.start);
-                                var end = new Date(event.end);
-                                // end tarihi exclusive, end'den bir gün öncesine kadar ekle
-                                var d = new Date(start);
-                                while (d < end) {
-                                    var yyyy = d.getFullYear();
-                                    var mm = String(d.getMonth() + 1).padStart(2, '0');
-                                    var dd = String(d.getDate()).padStart(2, '0');
-                                    ferienDates.push(yyyy + '-' + mm + '-' + dd);
-                                    d.setDate(d.getDate() + 1);
-                                }
-                            }
-                        });
-                    });
+            function computeFerienDatesFromEvents(events) {
+                var result = [];
+                events.forEach(function(ev) {
+                    if (ev.display === 'background') {
+                        var start = new Date(ev.start);
+                        var end = new Date(ev.end);
+                        var d = new Date(start);
+                        while (d < end) {
+                            var yyyy = d.getFullYear();
+                            var mm = String(d.getMonth() + 1).padStart(2, '0');
+                            var dd = String(d.getDate()).padStart(2, '0');
+                            result.push(yyyy + '-' + mm + '-' + dd);
+                            d.setDate(d.getDate() + 1);
+                        }
+                    }
+                });
+                ferienDates = result;
             }
 
             function updateFerienDayNumbers() {
@@ -342,16 +338,14 @@
                             }
                         }
                     });
-                }, 100);
+                }, 0);
             }
             
-            // İlk yükleme ve ay değişikliklerinde çalıştır
-            // Ferien günlerini çekip, gün numaralarını güncelle
-            fetchFerienDates().then(function() {
-                updateFerienDayNumbers();
-            });
-            calendar.on('datesSet', function() {
-                fetchFerienDates().then(function() {
+            // FullCalendar etkinlikleri set ettiğinde ferien tarihlerini hesaplayıp hemen uygula
+            calendar.on('eventsSet', function(events) {
+                computeFerienDatesFromEvents(events);
+                // render sonrasına bırakmak için bir sonraki frame'i bekle
+                requestAnimationFrame(function(){
                     updateFerienDayNumbers();
                 });
             });
