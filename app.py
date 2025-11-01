@@ -74,22 +74,29 @@ def index():
         print("❌ Index error:", e)
         return render_template("index.html", next_exam=None)
 
-@app.route("/events")
+@app.route('/events')
 def events():
     try:
         with get_db_connection() as conn:
-            exams = conn.execute("SELECT * FROM exams ORDER BY date").fetchall()
-        events_list = [{
-            "id": row["id"],
-            "title": row["subject"],
-            "start": f"{row['date']}T{row['start_time']}",
-            "end":   f"{row['date']}T{row['end_time']}",
-            "backgroundColor": "#007bff",
-            "borderColor": "#007bff",
-        } for row in exams]
+            cur = conn.cursor()
+            cur.execute('SELECT * FROM exams ORDER BY date')
+            exams = cur.fetchall()
+            events_list = []
+            today = datetime.now().strftime('%Y-%m-%d')
+            for exam in exams:
+                is_past = exam['date'] < today
+                color = '#dc3545' if is_past else '#007bff'
+                events_list.append({
+                    'id': exam['id'],
+                    'title': exam['subject'],
+                    'start': f"{exam['date']}T{exam['start_time']}",
+                    'end': f"{exam['date']}T{exam['end_time']}",
+                    'backgroundColor': color,
+                    'borderColor': color
+                })
         return jsonify(events_list)
     except Exception as e:
-        print("❌ Events error:", e)
+        print(f"❌ Events error: {e}")
         return jsonify([])
 
 @app.route("/add", methods=["GET", "POST"])
