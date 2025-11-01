@@ -40,12 +40,16 @@
             background-color: rgba(255, 193, 7, 0.25) !important;
         }
         
-        /* Takvim kutucuklarının kenar çizgilerini yuvarla */
+        /* Takvim kutucuklarının kenar çizgilerini yuvarlak gösterme tekniği */
+        /* 1) Varsayılan tablo kenarlıklarını kapat */
         .fc-theme-standard td, .fc-theme-standard th {
-            border-radius: 6px !important;
+            border: 0 !important;
         }
-        .fc .fc-scrollgrid {
-            border-radius: 8px !important;
+        /* 2) Her gün hücresinin iç çerçevesini yuvarlak ve ince çizgiyle oluştur */
+        .fc .fc-daygrid-day-frame {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px var(--fc-border-color);
         }
         
         /* Ferien (background event) günlerinde gün numarasını beyaz yap */
