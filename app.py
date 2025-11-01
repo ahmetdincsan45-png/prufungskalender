@@ -101,11 +101,10 @@ def events():
             {"start": "2025-04-14", "end": "2025-04-25"},
             {"start": "2025-06-10", "end": "2025-06-20"},
             {"start": "2025-08-01", "end": "2025-09-15"},
-            {"start": "2025-11-03", "end": "2025-11-07"},
+            {"start": "2025-11-03", "end": "2025-11-06"},  # Herbstferien 3-6 Kasım
+            {"start": "2025-11-07", "end": "2025-11-07"},  # 7 Kasım tek gün
             {"start": "2025-12-22", "end": "2026-01-05"},
         ]
-        # 7 Kasım 2025'i de tek gün olarak ekle (okul yok)
-        backup_ferien.append({"start": "2025-11-07", "end": "2025-11-07"})
         ferien_eklendi = False
         try:
             ferien_url = 'https://ferien-api.de/api/v1/holidays/BY/2025'
