@@ -120,10 +120,30 @@ def events():
             {"start": "2025-12-22", "end": "2026-01-06"},
         ]
         ferien_event_count = 0
+        # Görünüm aralığına göre ilgili yılları belirle
+        years_to_fetch = set()
+        start_arg = (request.args.get('start') or '')[:10]
+        end_arg = (request.args.get('end') or '')[:10]
         try:
-            ferien_url = 'https://ferien-api.de/api/v1/holidays/BY/2025'
-            response = requests.get(ferien_url, timeout=5)
-            if response.status_code == 200:
+            if start_arg and end_arg:
+                start_year = datetime.strptime(start_arg, "%Y-%m-%d").year
+                end_year = datetime.strptime(end_arg, "%Y-%m-%d").year
+                for y in range(start_year, end_year + 1):
+                    years_to_fetch.add(y)
+        except Exception as _:
+            pass
+        # Varsayılan: en azından mevcut yıl ve bir sonraki yıl
+        if not years_to_fetch:
+            now_y = datetime.now().year
+            years_to_fetch.update({now_y, now_y + 1})
+
+        try:
+            added_pairs = set()
+            for y in sorted(years_to_fetch):
+                ferien_url = f'https://ferien-api.de/api/v1/holidays/BY/{y}'
+                response = requests.get(ferien_url, timeout=5)
+                if response.status_code != 200:
+                    continue
                 ferien = response.json()
                 for holiday in ferien:
                     start = holiday.get('start')
@@ -132,9 +152,12 @@ def events():
                     if start == "2025-11-19" and end == "2025-11-19":
                         continue
                     if start and end:
-                        # end tarihini +1 gün yap
                         end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)
                         end_str = end_dt.strftime("%Y-%m-%d")
+                        key = (start, end_str)
+                        if key in added_pairs:
+                            continue
+                        added_pairs.add(key)
                         events_list.append({
                             'start': start,
                             'end': end_str,
