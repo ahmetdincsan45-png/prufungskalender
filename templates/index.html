@@ -232,6 +232,21 @@
                 },
                 eventMouseEnter: function(info) {
                     info.el.style.cursor = 'pointer';
+                },
+                eventDidMount: function(info) {
+                    // Background event (Ferien) ise gün numarasını beyaz yap
+                    if (info.event.display === 'background') {
+                        var eventEl = info.el;
+                        var dayCell = eventEl.closest('.fc-daygrid-day');
+                        if (dayCell) {
+                            var dayNumber = dayCell.querySelector('.fc-daygrid-day-number');
+                            if (dayNumber) {
+                                dayNumber.style.color = '#fff';
+                                dayNumber.style.textShadow = '0 0 2px #000';
+                                dayNumber.style.fontWeight = 'bold';
+                            }
+                        }
+                    }
                 }
             });
             
