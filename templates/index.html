@@ -35,6 +35,12 @@
             color: #856404;
         }
         
+        /* Hafta sonu (Cumartesi/Pazar) gün numaralarını kırmızı yap */
+        .fc-day-sat .fc-daygrid-day-number,
+        .fc-day-sun .fc-daygrid-day-number {
+            color: #dc3545 !important; /* Bootstrap danger tonu */
+        }
+        
         /* Bugünün rengini 2 ton daha koyu yap */
         .fc .fc-daygrid-day.fc-day-today {
             background-color: rgba(255, 193, 7, 0.25) !important;
