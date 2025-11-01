@@ -14,6 +14,16 @@
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
     
     <style>
+        /* Takvim kutucuklarını minimal yuvarlat (gün hücreleri) */
+        .fc-daygrid-day {
+            border-radius: 8px;
+            overflow: hidden;
+            transition: box-shadow 0.2s;
+        }
+        /* Hover efektiyle hafif gölge */
+        .fc-daygrid-day:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
         .fc-toolbar-title {
             font-size: 1.5rem;
         }
