@@ -139,12 +139,29 @@ def events():
 
         try:
             added_pairs = set()
+            cache_dir = Path(DB_PATH).parent / "ferien_cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
             for y in sorted(years_to_fetch):
+                ferien = None
                 ferien_url = f'https://ferien-api.de/api/v1/holidays/BY/{y}'
-                response = requests.get(ferien_url, timeout=5)
-                if response.status_code != 200:
+                try:
+                    response = requests.get(ferien_url, timeout=5)
+                    if response.status_code == 200:
+                        ferien = response.json()
+                        # Başarılıysa cache'e yaz
+                        (cache_dir / f"BY_{y}.json").write_text(response.text, encoding='utf-8')
+                    else:
+                        raise RuntimeError(f"HTTP {response.status_code}")
+                except Exception as _:
+                    # Cache'den dene
+                    cache_file = cache_dir / f"BY_{y}.json"
+                    if cache_file.exists():
+                        try:
+                            ferien = requests.utils.json.loads(cache_file.read_text(encoding='utf-8'))
+                        except Exception as _:
+                            ferien = None
+                if not ferien:
                     continue
-                ferien = response.json()
                 for holiday in ferien:
                     start = holiday.get('start')
                     end = holiday.get('end')
