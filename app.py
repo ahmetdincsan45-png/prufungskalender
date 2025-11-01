@@ -119,7 +119,7 @@ def events():
             {"start": "2025-11-03", "end": "2025-11-08"},  # Herbstferien 3-7 Kasım (7 dahil)
             {"start": "2025-12-22", "end": "2026-01-06"},
         ]
-        ferien_eklendi = False
+        ferien_event_count = 0
         try:
             ferien_url = 'https://ferien-api.de/api/v1/holidays/BY/2025'
             response = requests.get(ferien_url, timeout=5)
@@ -143,11 +143,12 @@ def events():
                             'backgroundColor': 'black',
                             'display': 'background'
                         })
-                        ferien_eklendi = True
+                        ferien_event_count += 1
         except Exception as e:
             print(f"Ferien API hatası: {e}")
-        # Eğer API'dan veri gelmediyse yedekleri ekle
-        if not ferien_eklendi:
+        # Eğer API'dan hiç tatil eklenmediyse yedekleri ekle
+        if ferien_event_count == 0:
+            print("Ferien API'dan hiç tatil eklenmedi, yedekler kullanılıyor.")
             for holiday in backup_ferien:
                 events_list.append({
                     'start': holiday['start'],
