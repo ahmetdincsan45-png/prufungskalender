@@ -40,6 +40,25 @@
         .fc-day-sun .fc-daygrid-day-number {
             color: #dc3545 !important; /* Bootstrap danger tonu */
         }
+
+        /* Gün hücrelerinde pürüzsüz geçişler için temel transition */
+        .fc .fc-daygrid-day-frame {
+            transition: background-color 180ms ease, box-shadow 180ms ease;
+        }
+
+        /* Masaüstü: hover desteği olan cihazlarda hafif vurgu */
+        @media (hover: hover) {
+            .fc .fc-daygrid-day-frame:hover {
+                background-color: rgba(0, 0, 0, 0.03);
+            }
+        }
+
+        /* Mobil/Dokunmatik: kısa süreli tap geri bildirimi */
+        @media (hover: none) {
+            .fc .fc-daygrid-day-frame:active {
+                background-color: rgba(0, 0, 0, 0.06);
+            }
+        }
         
         /* Bugünün rengini 2 ton daha koyu yap */
         .fc .fc-daygrid-day.fc-day-today {
