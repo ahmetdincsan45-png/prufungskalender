@@ -35,6 +35,11 @@
             color: #856404;
         }
         
+        /* Tüm takvim günlerinin köşelerini yuvarla */
+        .fc-daygrid-day {
+            border-radius: 6px;
+        }
+        
         /* Ferien (background event) günlerinde gün numarasını beyaz yap */
         .fc-daygrid-day[data-ferientag="true"] .fc-daygrid-day-number {
             color: #fff !important;
@@ -277,11 +282,17 @@
                     document.querySelectorAll('.fc-daygrid-day[data-date]').forEach(function(cell) {
                         var date = cell.getAttribute('data-date');
                         if (ferienDates.includes(date)) {
+                            // Gün numarasını beyaz yap
                             var dayNumber = cell.querySelector('.fc-daygrid-day-number');
                             if (dayNumber) {
                                 dayNumber.style.color = '#fff';
                                 dayNumber.style.textShadow = '0 0 2px #000';
                                 dayNumber.style.fontWeight = 'bold';
+                            }
+                            // Arka planı siyah yap
+                            var dayBg = cell.querySelector('.fc-daygrid-day-bg');
+                            if (dayBg) {
+                                dayBg.style.backgroundColor = 'black';
                             }
                         }
                     });
