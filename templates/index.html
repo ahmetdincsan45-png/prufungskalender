@@ -162,6 +162,10 @@
             .container-fluid {
                 padding: 5px;
             }
+            /* Nächste Prüfung satırını mobilde ortala */
+            .next-exam-info {
+                text-align: center;
+            }
             .filter-section .row {
                 text-align: center;
                 justify-content: center;
@@ -206,9 +210,9 @@
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             {% if next_exam %}
-                            <div class="next-exam-info">
+                            <div class="next-exam-info" data-next-date="{{ next_exam.date }}">
                                 <h5 class="fw-bold text-primary mb-1">
-                                    <i class="bi bi-alarm"></i> Nächste Prüfung:
+                                    <i class="bi bi-alarm"></i> Nächste Prüfung: <span id="countdownText"></span>
                                 </h5>
                                 <div class="fw-bold fs-6">{{ next_exam.subject }}</div>
                                 <small class="text-muted">
@@ -301,6 +305,35 @@
             });
             
             calendar.render();
+
+            // Nächste Prüfung için geri sayım metni (noch X Tage / noch 1 Tag / heute)
+            (function(){
+                var nextInfoEl = document.querySelector('.next-exam-info[data-next-date]');
+                if (!nextInfoEl) return;
+                var dateStr = nextInfoEl.getAttribute('data-next-date');
+                if (!dateStr) return;
+                var parts = dateStr.split('-');
+                if (parts.length !== 3) return;
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10) - 1;
+                var d = parseInt(parts[2], 10);
+                var targetUTC = Date.UTC(y, m, d);
+                var now = new Date();
+                var todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+                var delta = Math.round((targetUTC - todayUTC) / 86400000);
+                var text = '';
+                if (delta > 1) text = 'noch ' + delta + ' Tage';
+                else if (delta === 1) text = 'noch 1 Tag';
+                else if (delta === 0) text = 'heute';
+                var span = document.getElementById('countdownText');
+                if (span && text) {
+                    span.textContent = text;
+                    if (delta <= 3 && delta >= 0) {
+                        span.style.color = '#dc3545';
+                        span.style.fontWeight = 'bold';
+                    }
+                }
+            })();
             
             // Heute-Button Klick
             todayBtn.addEventListener('click', function() {
