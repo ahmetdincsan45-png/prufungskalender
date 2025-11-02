@@ -41,6 +41,22 @@
             color: #dc3545 !important; /* Bootstrap danger tonu */
         }
 
+        /* Hafta sonu sütun başlıklarını (Sa, So) kırmızı yap ve alt çizgiyi kaldır */
+        .fc .fc-col-header a.fc-col-header-cell-cushion {
+            text-decoration: none; /* Bootstrap link underline'ını kaldır */
+        }
+        .fc .fc-col-header .fc-day-sat a.fc-col-header-cell-cushion,
+        .fc .fc-col-header .fc-day-sun a.fc-col-header-cell-cushion {
+            color: #dc3545 !important;
+        }
+
+        /* Takvim içindeki tüm linklerde (gün numarası, başlık, "daha fazla" vb.) alt çizgiyi kaldır */
+        .fc a,
+        .fc a:hover,
+        .fc a:focus {
+            text-decoration: none;
+        }
+
         /* Gün hücrelerinde pürüzsüz geçişler için temel transition */
         .fc .fc-daygrid-day-frame {
             transition: background-color 180ms ease, box-shadow 180ms ease;
