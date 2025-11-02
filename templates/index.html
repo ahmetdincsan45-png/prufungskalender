@@ -322,8 +322,8 @@
                 var todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
                 var delta = Math.round((targetUTC - todayUTC) / 86400000);
                 var text = '';
-                if (delta > 1) text = 'noch ' + delta + ' Tage';
-                else if (delta === 1) text = 'noch 1 Tag';
+                if (delta > 1) text = 'in ' + delta + ' Tagen';
+                else if (delta === 1) text = 'in 1 Tag';
                 else if (delta === 0) text = 'heute';
                 var span = document.getElementById('countdownText');
                 if (span && text) {
