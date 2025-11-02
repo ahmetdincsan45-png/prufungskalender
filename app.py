@@ -148,8 +148,12 @@ def events():
                     response = requests.get(ferien_url, timeout=5)
                     if response.status_code == 200:
                         ferien = response.json()
-                        # Başarılıysa cache'e yaz
-                        (cache_dir / f"BY_{y}.json").write_text(response.text, encoding='utf-8')
+                        # Yalnızca dolu liste döndüyse cache'e yaz (boş [] ise yazma)
+                        try:
+                            if isinstance(ferien, list) and len(ferien) > 0:
+                                (cache_dir / f"BY_{y}.json").write_text(response.text, encoding='utf-8')
+                        except Exception:
+                            pass
                     else:
                         raise RuntimeError(f"HTTP {response.status_code}")
                 except Exception as _:
