@@ -169,9 +169,6 @@ def events():
                 for holiday in ferien:
                     start = holiday.get('start')
                     end = holiday.get('end')
-                    # 19 Kasım 2025'i ekleme
-                    if start == "2025-11-19" and end == "2025-11-19":
-                        continue
                     if start and end:
                         end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)
                         end_str = end_dt.strftime("%Y-%m-%d")
