@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 import requests
+import json
 
 # -------------------- Flask --------------------
 
@@ -140,7 +141,9 @@ def events():
         try:
             added_pairs = set()
             cache_dir = Path(DB_PATH).parent / "ferien_cache"
+            fallback_dir = Path(DB_PATH).parent / "ferien_fallback"
             cache_dir.mkdir(parents=True, exist_ok=True)
+            fallback_dir.mkdir(parents=True, exist_ok=True)
             for y in sorted(years_to_fetch):
                 ferien = None
                 ferien_url = f'https://ferien-api.de/api/v1/holidays/BY/{y}'
@@ -164,7 +167,19 @@ def events():
                             ferien = requests.utils.json.loads(cache_file.read_text(encoding='utf-8'))
                         except Exception as _:
                             ferien = None
-                if not ferien:
+                # Eğer API boş liste döndüyse veya hiç veri yoksa, yıllık lokal fallback'i dene
+                try:
+                    if not ferien or (isinstance(ferien, list) and len(ferien) == 0):
+                        fb_file = fallback_dir / f"BY_{y}.json"
+                        if fb_file.exists():
+                            try:
+                                ferien = json.loads(fb_file.read_text(encoding='utf-8'))
+                                print(f"ℹ️ Fallback ferien kullanıldı: {fb_file}")
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+                if not ferien or (isinstance(ferien, list) and len(ferien) == 0):
                     continue
                 for holiday in ferien:
                     start = holiday.get('start')
