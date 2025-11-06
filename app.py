@@ -177,6 +177,51 @@ def events():
             fallback_dir = FALLBACK_DIR
             cache_dir.mkdir(parents=True, exist_ok=True)
             fallback_dir.mkdir(parents=True, exist_ok=True)
+            # Hafta sonlarını boyamamak için: verilen aralığı yalnızca hafta içi bloklar halinde arka plan olarak ekle
+            def add_weekday_background_ranges(start_str: str, end_exclusive_str: str) -> int:
+                appended = 0
+                try:
+                    d = datetime.strptime(start_str, "%Y-%m-%d")
+                    end_ex = datetime.strptime(end_exclusive_str, "%Y-%m-%d")
+                except Exception:
+                    return 0
+                run_start = None
+                while d < end_ex:
+                    if d.weekday() < 5:  # 0=Mon .. 4=Fri
+                        if run_start is None:
+                            run_start = d
+                    else:
+                        if run_start is not None:
+                            s = run_start.strftime("%Y-%m-%d")
+                            e = d.strftime("%Y-%m-%d")
+                            key = (s, e)
+                            if key not in added_pairs:
+                                added_pairs.add(key)
+                                events_list.append({
+                                    'start': s,
+                                    'end': e,
+                                    'rendering': 'background',
+                                    'backgroundColor': 'black',
+                                    'display': 'background'
+                                })
+                                appended += 1
+                            run_start = None
+                    d += timedelta(days=1)
+                if run_start is not None:
+                    s = run_start.strftime("%Y-%m-%d")
+                    e = end_ex.strftime("%Y-%m-%d")
+                    key = (s, e)
+                    if key not in added_pairs:
+                        added_pairs.add(key)
+                        events_list.append({
+                            'start': s,
+                            'end': e,
+                            'rendering': 'background',
+                            'backgroundColor': 'black',
+                            'display': 'background'
+                        })
+                        appended += 1
+                return appended
             for y in sorted(years_to_fetch):
                 ferien = None
                 ferien_url = f'https://ferien-api.de/api/v1/holidays/BY/{y}'
@@ -220,18 +265,7 @@ def events():
                     if start and end:
                         end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)
                         end_str = end_dt.strftime("%Y-%m-%d")
-                        key = (start, end_str)
-                        if key in added_pairs:
-                            continue
-                        added_pairs.add(key)
-                        events_list.append({
-                            'start': start,
-                            'end': end_str,
-                            'rendering': 'background',
-                            'backgroundColor': 'black',
-                            'display': 'background'
-                        })
-                        ferien_event_count += 1
+                        ferien_event_count += add_weekday_background_ranges(start, end_str)
         except Exception as e:
             print(f"Ferien API hatası: {e}")
         # Bayern resmî tatilleri (Feiertage) de arka plan olarak ekle (okullar kapalı)
@@ -274,6 +308,9 @@ def events():
                             continue
                         # Tek günlük background event: end = date + 1 gün (exclusive end)
                         start_dt = datetime.strptime(date_str, "%Y-%m-%d")
+                        # Hafta sonu ise atla (yalnızca hafta içi önemli)
+                        if start_dt.weekday() >= 5:
+                            continue
                         end_dt = start_dt + timedelta(days=1)
                         end_str = end_dt.strftime("%Y-%m-%d")
                         key = (date_str, end_str)
@@ -293,17 +330,17 @@ def events():
                         continue
         except Exception as e:
             print(f"Feiertage çekme hatası: {e}")
-        # Eğer API'dan hiç tatil eklenmediyse yedekleri ekle
+        # Eğer API'dan hiç tatil eklenmediyse yedekleri ekle (hafta sonlarını atla)
         if ferien_event_count == 0:
             print("Ferien API'dan hiç tatil eklenmedi, yedekler kullanılıyor.")
             for holiday in backup_ferien:
-                events_list.append({
-                    'start': holiday['start'],
-                    'end': holiday['end'],
-                    'rendering': 'background',
-                    'backgroundColor': 'black',
-                    'display': 'background'
-                })
+                try:
+                    # backup 'end' değerinin exclusive olduğu varsayımıyla kullan
+                    _ = datetime.strptime(holiday['start'], "%Y-%m-%d")
+                    _ = datetime.strptime(holiday['end'], "%Y-%m-%d")
+                    _ = add_weekday_background_ranges(holiday['start'], holiday['end'])
+                except Exception:
+                    continue
         return jsonify(events_list)
     except Exception as e:
         print(f"❌ Events error: {e}")
