@@ -29,7 +29,11 @@ def apple_touch_icon_pre():
 
 # -------------------- DB Yolu (kalıcı disk) --------------------
 DB_PATH = os.getenv("SQLITE_DB_PATH", "/var/data/prufungskalender.db")
-Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)  # /var/data yoksa oluştur
+DATA_DIR = Path(DB_PATH).parent
+DATA_DIR.mkdir(parents=True, exist_ok=True)  # /var/data yoksa oluştur
+CACHE_DIR = DATA_DIR / "ferien_cache"
+FALLBACK_DIR = DATA_DIR / "ferien_fallback"
+SEED_FALLBACK_DIR = Path(__file__).parent / "ferien_fallback_seed"
 print("🗄️ Using SQLite path:", DB_PATH)
 
 # -------------------- Bağlantı --------------------
@@ -46,6 +50,26 @@ def get_db_connection():
 # -------------------- İlk kurulum (1 kez) --------------------
 _init_lock = threading.Lock()
 _init_done = False
+_seed_done = False
+
+def seed_fallback_if_needed():
+    """Repo ile gelen seed fallback JSON'larını kalıcı diske ilk çalıştırmada kopyala."""
+    global _seed_done
+    if _seed_done:
+        return
+    try:
+        FALLBACK_DIR.mkdir(parents=True, exist_ok=True)
+        if SEED_FALLBACK_DIR.exists():
+            for p in SEED_FALLBACK_DIR.glob("BY_*.json"):
+                dst = FALLBACK_DIR / p.name
+                if not dst.exists():
+                    try:
+                        dst.write_text(p.read_text(encoding='utf-8'), encoding='utf-8')
+                        print(f"🌱 Seed fallback kopyalandı: {dst}")
+                    except Exception as e:
+                        print(f"Seed kopyalama hatası {p} -> {dst}: {e}")
+    finally:
+        _seed_done = True
 
 def init_db():
     """Tabloları güvenli şekilde bir kere oluştur."""
@@ -68,6 +92,13 @@ def init_db():
                 )
             """)
             conn.commit()
+        # Veri dizinlerini ve seed fallback'leri hazırla
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            FALLBACK_DIR.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        seed_fallback_if_needed()
         _init_done = True
         print(f"✅ SQLite initialized at {DB_PATH}")
 
@@ -140,8 +171,8 @@ def events():
 
         try:
             added_pairs = set()
-            cache_dir = Path(DB_PATH).parent / "ferien_cache"
-            fallback_dir = Path(DB_PATH).parent / "ferien_fallback"
+            cache_dir = CACHE_DIR
+            fallback_dir = FALLBACK_DIR
             cache_dir.mkdir(parents=True, exist_ok=True)
             fallback_dir.mkdir(parents=True, exist_ok=True)
             for y in sorted(years_to_fetch):
