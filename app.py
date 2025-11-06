@@ -151,6 +151,7 @@ def events():
             {"start": "2025-06-10", "end": "2025-06-21"},
             {"start": "2025-08-01", "end": "2025-09-16"},
             {"start": "2025-11-03", "end": "2025-11-08"},  # Herbstferien 3-7 Kasım (7 dahil)
+            {"start": "2025-11-19", "end": "2025-11-19"},  # Buß- und Bettag (schulfrei)
             {"start": "2025-12-22", "end": "2026-01-06"},
         ]
         ferien_event_count = 0
@@ -335,10 +336,11 @@ def events():
             print("Ferien API'dan hiç tatil eklenmedi, yedekler kullanılıyor.")
             for holiday in backup_ferien:
                 try:
-                    # backup 'end' değerinin exclusive olduğu varsayımıyla kullan
-                    _ = datetime.strptime(holiday['start'], "%Y-%m-%d")
-                    _ = datetime.strptime(holiday['end'], "%Y-%m-%d")
-                    _ = add_weekday_background_ranges(holiday['start'], holiday['end'])
+                    # backup 'end' değerini inclusive kabul edip +1 günle exclusive'e çevir
+                    start_incl = holiday['start']
+                    end_incl = holiday['end']
+                    end_ex = (datetime.strptime(end_incl, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+                    _ = add_weekday_background_ranges(start_incl, end_ex)
                 except Exception:
                     continue
         return jsonify(events_list)
