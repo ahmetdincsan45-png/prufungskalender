@@ -1,0 +1,12 @@
+{
+  "sourceUrls": [
+    "https://www.schulferien.org/deutschland/ferien/bayern/",
+    "https://www.holidays-info.com/germany/school-holidays/bavaria/"
+  ],
+  "checkedAt": "2025-11-06",
+  "notes": [
+    "Weihnachtsferien: 22.12.2025–05.01.2026 (06.01 Bavyera’da resmi tatil; okul tatil aralığına genelde dahil edilmez)",
+    "Winterferien = Frühjahrsferien terminolojisi",
+    "Backend end tarihini +1 gün (exclusive end) olarak FullCalendar’a gönderir"
+  ]
+}
