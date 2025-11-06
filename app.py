@@ -33,6 +33,7 @@ DATA_DIR = Path(DB_PATH).parent
 DATA_DIR.mkdir(parents=True, exist_ok=True)  # /var/data yoksa oluştur
 CACHE_DIR = DATA_DIR / "ferien_cache"
 FALLBACK_DIR = DATA_DIR / "ferien_fallback"
+FEIERTAGE_CACHE_DIR = DATA_DIR / "feiertage_cache"
 SEED_FALLBACK_DIR = Path(__file__).parent / "ferien_fallback_seed"
 print("🗄️ Using SQLite path:", DB_PATH)
 
@@ -96,6 +97,7 @@ def init_db():
         try:
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
             FALLBACK_DIR.mkdir(parents=True, exist_ok=True)
+            FEIERTAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         except Exception:
             pass
         seed_fallback_if_needed()
@@ -232,6 +234,65 @@ def events():
                         ferien_event_count += 1
         except Exception as e:
             print(f"Ferien API hatası: {e}")
+        # Bayern resmî tatilleri (Feiertage) de arka plan olarak ekle (okullar kapalı)
+        try:
+            feiertage_added = 0
+            for y in sorted(years_to_fetch):
+                feiertage = None
+                feiertage_url = f'https://date.nager.at/api/v3/PublicHolidays/{y}/DE'
+                cache_file = FEIERTAGE_CACHE_DIR / f"DE_{y}.json"
+                try:
+                    resp = requests.get(feiertage_url, timeout=5)
+                    if resp.status_code == 200:
+                        feiertage = resp.json()
+                        # doluysa cachele
+                        try:
+                            if isinstance(feiertage, list) and len(feiertage) > 0:
+                                cache_file.write_text(resp.text, encoding='utf-8')
+                        except Exception:
+                            pass
+                    else:
+                        raise RuntimeError(f"HTTP {resp.status_code}")
+                except Exception:
+                    if cache_file.exists():
+                        try:
+                            feiertage = json.loads(cache_file.read_text(encoding='utf-8'))
+                        except Exception:
+                            feiertage = None
+                if not feiertage or (isinstance(feiertage, list) and len(feiertage) == 0):
+                    continue
+                for ft in feiertage:
+                    try:
+                        # Yalnızca Bavyera için geçerli olan veya ülke çapında (global) olan tatilleri al
+                        is_global = bool(ft.get('global'))
+                        counties = ft.get('counties') or []
+                        applies_to_by = is_global or ('DE-BY' in counties)
+                        if not applies_to_by:
+                            continue
+                        date_str = ft.get('date')  # YYYY-MM-DD
+                        if not date_str:
+                            continue
+                        # Tek günlük background event: end = date + 1 gün (exclusive end)
+                        start_dt = datetime.strptime(date_str, "%Y-%m-%d")
+                        end_dt = start_dt + timedelta(days=1)
+                        end_str = end_dt.strftime("%Y-%m-%d")
+                        key = (date_str, end_str)
+                        # Aynı aralık daha önce eklendiyse atla
+                        if key in added_pairs:
+                            continue
+                        added_pairs.add(key)
+                        events_list.append({
+                            'start': date_str,
+                            'end': end_str,
+                            'rendering': 'background',
+                            'backgroundColor': 'black',
+                            'display': 'background'
+                        })
+                        feiertage_added += 1
+                    except Exception:
+                        continue
+        except Exception as e:
+            print(f"Feiertage çekme hatası: {e}")
         # Eğer API'dan hiç tatil eklenmediyse yedekleri ekle
         if ferien_event_count == 0:
             print("Ferien API'dan hiç tatil eklenmedi, yedekler kullanılıyor.")
