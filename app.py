@@ -352,15 +352,33 @@ def events():
 def add_exam():
     if request.method == "POST":
         try:
-            subject = (request.form.get("subject") or "").strip()
+            # Yeni form: bir veya birden çok ders subjects içinde virgülle gelir
+            raw_subjects = (request.form.get("subjects") or "").strip()
+            # Eski formdan gelen tekil alanı da destekle (geri uyumluluk)
+            legacy_subject = (request.form.get("subject") or "").strip()
             date    = (request.form.get("date") or "").strip()
-            if not subject or not date:
+            if not raw_subjects and legacy_subject:
+                raw_subjects = legacy_subject
+            # Parse subjects
+            subjects = [s.strip() for s in raw_subjects.split(',') if s.strip()]
+            # Yinelenenleri temizle, makul üst sınır uygula
+            seen = set()
+            unique_subjects = []
+            for s in subjects:
+                key = s.lower()
+                if key not in seen:
+                    seen.add(key)
+                    unique_subjects.append(s)
+                if len(unique_subjects) >= 30:
+                    break
+            if not unique_subjects or not date:
                 return render_template("add.html", error="Bitte alle Felder ausfüllen!")
             with get_db_connection() as conn:
-                conn.execute(
-                    "INSERT INTO exams (subject, date) VALUES (?, ?)",
-                    (subject, date)
-                )
+                for s in unique_subjects:
+                    conn.execute(
+                        "INSERT INTO exams (subject, date) VALUES (?, ?)",
+                        (s, date)
+                    )
                 conn.commit()
             return redirect(url_for("index"))
         except Exception as e:
