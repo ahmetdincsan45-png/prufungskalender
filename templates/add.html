@@ -103,7 +103,7 @@
                                 </button>
                                 <span id="selectedSingle" class="badge bg-primary-subtle text-primary border border-primary d-none"></span>
                             </div>
-                            <div class="form-text">Nur ein Fach auswählbar: Mathematik, Deutsch, HSU oder Englisch.</div>
+                            <div class="form-text">Nur ein Fach auswählbar: Deutsch, Englisch, HSU oder Mathematik.</div>
                         </div>
                         
 
@@ -171,7 +171,9 @@
             var subjectList = document.getElementById('subjectList');
             function renderList() {
                 subjectList.innerHTML = '';
-                SUBJECT_POOL.forEach(function(s){
+                SUBJECT_POOL.slice().sort(function(a,b){
+                    return a.localeCompare(b, 'de');
+                }).forEach(function(s){
                     var item = document.createElement('button');
                     item.type = 'button';
                     item.className = 'list-group-item list-group-item-action';
