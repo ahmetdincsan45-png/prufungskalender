@@ -94,18 +94,16 @@
                     <form method="POST">
                         <div class="mb-3">
                             <label class="form-label fw-bold">
-                                <i class="bi bi-book"></i> Prüfungsfach/Fächer wählen *
+                                <i class="bi bi-book"></i> Prüfungsfach wählen *
                             </label>
-                            <!-- Seçilen dersleri göndermek için gizli alan -->
                             <input type="hidden" id="subjects" name="subjects" required>
-                            <!-- Tetikleyici buton -->
-                            <div class="d-grid d-md-flex gap-2">
+                            <div class="d-flex align-items-center gap-2">
                                 <button type="button" id="openSubjectPicker" class="btn btn-outline-primary">
-                                    <i class="bi bi-list-check"></i> Fächer auswählen
+                                    <i class="bi bi-list"></i> Auswählen
                                 </button>
-                                <div id="selectedChips" class="d-flex flex-wrap gap-2"></div>
+                                <span id="selectedSingle" class="badge bg-primary-subtle text-primary border border-primary d-none"></span>
                             </div>
-                            <div class="form-text">Tippen statt schreiben: Wählen Sie ein oder mehrere Fächer.</div>
+                            <div class="form-text">Nur ein Fach auswählbar: Mathematik, Deutsch oder HSU.</div>
                         </div>
                         
 
@@ -138,34 +136,22 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
         <!-- Fach seçici modalı -->
-        <div class="modal fade" id="subjectPickerModal" tabindex="-1" aria-labelledby="subjectPickerLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="subjectPickerLabel"><i class="bi bi-list-check"></i> Fächer auswählen</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="subjectSearch" class="form-control" placeholder="Fach suchen...">
+            <div class="modal fade" id="subjectPickerModal" tabindex="-1" aria-labelledby="subjectPickerLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="subjectPickerLabel"><i class="bi bi-list"></i> Fach auswählen</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <small class="text-muted">Mehrfachauswahl möglich</small>
-                            <div>
-                                <button type="button" id="checkAll" class="btn btn-sm btn-outline-secondary me-2">Alle</button>
-                                <button type="button" id="uncheckAll" class="btn btn-sm btn-outline-secondary">Keine</button>
-                            </div>
+                        <div class="modal-body">
+                            <div id="subjectList" class="list-group"></div>
                         </div>
-                        <div id="subjectList" class="list-group" style="max-height: 360px; overflow:auto;"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                        <button type="button" id="applySubjects" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Übernehmen</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -174,90 +160,45 @@
             var formattedDate = today.toISOString().split('T')[0];
             document.getElementById('date').value = formattedDate;
 
-            // Ders havuzu (gerekirse düzenleyin)
-            var SUBJECT_POOL = [
-                'Mathematik','Deutsch','Englisch','Physik','Chemie','Biologie','Informatik',
-                'Geschichte','Geographie','Musik','Kunst','Sport','Religion','Ethik',
-                'Französisch','Spanisch','Latein','Sozialkunde','Wirtschaft'
-            ];
+            // Sadece üç sabit ders
+            var SUBJECT_POOL = ['Mathematik','Deutsch','HSU'];
 
             var subjectsInput = document.getElementById('subjects');
-            var selectedChips = document.getElementById('selectedChips');
+            var selectedSingle = document.getElementById('selectedSingle');
             var openBtn = document.getElementById('openSubjectPicker');
             var modalEl = document.getElementById('subjectPickerModal');
             var subjectModal = new bootstrap.Modal(modalEl);
             var subjectList = document.getElementById('subjectList');
-            var subjectSearch = document.getElementById('subjectSearch');
-            var checkAllBtn = document.getElementById('checkAll');
-            var uncheckAllBtn = document.getElementById('uncheckAll');
-            var applyBtn = document.getElementById('applySubjects');
-
-            function renderList(filter) {
+            function renderList() {
                 subjectList.innerHTML = '';
-                var f = (filter || '').toLowerCase();
-                SUBJECT_POOL
-                  .filter(s => s.toLowerCase().includes(f))
-                  .forEach(function(s){
-                    var id = 's_' + s.replace(/\s+/g,'_');
-                    var item = document.createElement('label');
-                    item.className = 'list-group-item d-flex align-items-center';
-                    item.innerHTML = '<input class="form-check-input me-2" type="checkbox" value="'+s+'" id="'+id+'">'+
-                                     '<span>'+s+'</span>';
+                SUBJECT_POOL.forEach(function(s){
+                    var item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action';
+                    item.textContent = s;
+                    item.addEventListener('click', function(){
+                        subjectsInput.value = s;
+                        selectedSingle.textContent = s;
+                        selectedSingle.classList.remove('d-none');
+                        subjectModal.hide();
+                    });
                     subjectList.appendChild(item);
-                  });
-                // Var olan seçimleri işaretle
-                var current = (subjectsInput.value || '').split(',').map(s => s.trim()).filter(Boolean);
-                current.forEach(function(s){
-                    var id = 's_' + s.replace(/\s+/g,'_');
-                    var cb = document.getElementById(id);
-                    if (cb) cb.checked = true;
-                });
-            }
-
-            function renderChips() {
-                selectedChips.innerHTML = '';
-                var current = (subjectsInput.value || '').split(',').map(s => s.trim()).filter(Boolean);
-                current.forEach(function(s){
-                    var chip = document.createElement('span');
-                    chip.className = 'badge bg-primary-subtle text-primary border border-primary';
-                    chip.textContent = s;
-                    selectedChips.appendChild(chip);
                 });
             }
 
             openBtn.addEventListener('click', function(){
-                renderList(subjectSearch.value);
+                renderList();
                 subjectModal.show();
             });
-            subjectSearch.addEventListener('input', function(){
-                renderList(subjectSearch.value);
-            });
-            checkAllBtn.addEventListener('click', function(){
-                subjectList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
-            });
-            uncheckAllBtn.addEventListener('click', function(){
-                subjectList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            });
-            applyBtn.addEventListener('click', function(){
-                var selected = [];
-                subjectList.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb){
-                    selected.push(cb.value);
-                });
-                // Yinelenenleri temizle, azami 30
-                var dedup = Array.from(new Set(selected)).slice(0, 30);
-                subjectsInput.value = dedup.join(', ');
-                renderChips();
-                subjectModal.hide();
-            });
 
-            // Form doğrulama
+            // Form doğrulama (tek seçim)
             var form = document.querySelector('form');
             form.addEventListener('submit', function(e) {
-                var subjects = (subjectsInput.value || '').split(',').map(s => s.trim()).filter(Boolean);
+                var subjects = (subjectsInput.value || '').trim();
                 var date = document.getElementById('date').value.trim();
-                if (subjects.length === 0 || !date) {
+                if (!subjects || !date) {
                     e.preventDefault();
-                    alert('Bitte mindestens ein Fach und ein Datum auswählen!');
+                    alert('Bitte ein Fach und ein Datum auswählen!');
                     return;
                 }
             });
