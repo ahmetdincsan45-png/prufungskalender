@@ -189,6 +189,11 @@
             .text-end {
                 text-align: center !important;
             }
+            /* Mobilde yatay kaydırmayı engelle, yalnız dikey kaydırmaya izin ver */
+            #calendar {
+                touch-action: pan-y;
+                overflow-x: hidden;
+            }
         }
     </style>
 </head>
@@ -268,6 +273,7 @@
                 locale: 'de',
                 firstDay: 1, // Montag beginnen
                 headerToolbar: isMobile ? {
+                    left: '',
                     center: 'title',
                     right: ''
                 } : {
@@ -320,6 +326,16 @@
                         touchStartY = e.touches[0].clientY;
                     }
                 }, { passive: true });
+                // Yatay kaydırma sırasında sayfa sallanmasını engelle
+                calendarEl.addEventListener('touchmove', function(e){
+                    if (touchStartX !== null && e.touches.length === 1) {
+                        var dx = e.touches[0].clientX - touchStartX;
+                        var dy = e.touches[0].clientY - touchStartY;
+                        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
                 calendarEl.addEventListener('touchend', function(e){
                     if (touchStartX !== null) {
                         var dx = e.changedTouches[0].clientX - touchStartX;
@@ -335,7 +351,7 @@
                         touchStartX = null;
                         touchStartY = null;
                     }
-                });
+                }, { passive: true });
             }
 
             // Nächste Prüfung için geri sayım metni (noch X Tage / noch 1 Tag / heute)
