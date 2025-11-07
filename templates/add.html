@@ -103,7 +103,7 @@
                                 </button>
                                 <span id="selectedSingle" class="badge bg-primary-subtle text-primary border border-primary d-none"></span>
                             </div>
-                            <div class="form-text">Nur ein Fach auswählbar: Mathematik, Deutsch oder HSU.</div>
+                            <div class="form-text">Nur ein Fach auswählbar: Mathematik, Deutsch, HSU oder Englisch.</div>
                         </div>
                         
 
@@ -160,8 +160,8 @@
             var formattedDate = today.toISOString().split('T')[0];
             document.getElementById('date').value = formattedDate;
 
-            // Sadece üç sabit ders
-            var SUBJECT_POOL = ['Mathematik','Deutsch','HSU'];
+            // Dört sabit ders
+            var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch'];
 
             var subjectsInput = document.getElementById('subjects');
             var selectedSingle = document.getElementById('selectedSingle');
