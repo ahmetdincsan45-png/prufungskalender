@@ -261,15 +261,19 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             var todayBtn = document.getElementById('todayBtn');
+            var isMobile = window.matchMedia('(max-width: 768px)').matches;
             
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'de',
                 firstDay: 1, // Montag beginnen
-                headerToolbar: {
+                headerToolbar: isMobile ? {
+                    center: 'title',
+                    right: ''
+                } : {
                     left: 'prev,next',
                     center: 'title',
-                    right: '' // Sadece ay görünümü, diğer butonları kaldır
+                    right: ''
                 },
                 buttonText: {
                     today: 'Heute',
@@ -305,6 +309,34 @@
             });
             
             calendar.render();
+
+            // Mobilde yatay kaydırma (swipe) ile ay geçişi
+            if (isMobile) {
+                var touchStartX = null;
+                var touchStartY = null;
+                calendarEl.addEventListener('touchstart', function(e){
+                    if (e.touches.length === 1) {
+                        touchStartX = e.touches[0].clientX;
+                        touchStartY = e.touches[0].clientY;
+                    }
+                }, { passive: true });
+                calendarEl.addEventListener('touchend', function(e){
+                    if (touchStartX !== null) {
+                        var dx = e.changedTouches[0].clientX - touchStartX;
+                        var dy = e.changedTouches[0].clientY - touchStartY;
+                        // Yatay kaydırmayı dikeyden ayır: yatay fark yeterince büyük ve dikeyden fazla
+                        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                            if (dx < 0) {
+                                calendar.next(); // sola kaydır: sonraki ay
+                            } else {
+                                calendar.prev(); // sağa kaydır: önceki ay
+                            }
+                        }
+                        touchStartX = null;
+                        touchStartY = null;
+                    }
+                });
+            }
 
             // Nächste Prüfung için geri sayım metni (noch X Tage / noch 1 Tag / heute)
             (function(){
