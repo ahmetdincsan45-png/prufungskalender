@@ -76,13 +76,16 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%); /* tam merkez */
-            font-weight: 600; /* daha ince */
-            font-size: 0.50em; /* biraz daha küçük */
+            font-weight: 300; /* iki kat daha ince */
+            font-size: 0.52em; /* okunabilirliği koru */
             letter-spacing: 0; /* doğal aralık */
             color: currentColor;
             pointer-events: none;
-            text-transform: uppercase;
+            text-transform: none; /* Mo, Di, Mi, Do, Fr, Sa, So formatını koru */
             line-height: 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         
         /* Hafta sonu (Cumartesi/Pazar) gün numaralarını kırmızı yap */
