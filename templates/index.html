@@ -53,6 +53,34 @@
             color: #856404;
             font-size: 0.85rem; /* yazıları küçült */
         }
+
+        /* Takvim ikonunun içine kısaltılmış gün adını yazma (ikon boyutu sabit kalır) */
+        .calendar-day {
+            position: relative;
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin-right: 6px;
+            line-height: 1;
+        }
+        .calendar-day i.bi {
+            display: block;
+            font-size: 1em; /* ikon boyutu */
+            line-height: 1em;
+            color: inherit; /* buton rengi ile aynı */
+        }
+        .calendar-day .day-abbr {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 700;
+            font-size: 0.60em; /* 2-3 harf sığacak ölçü */
+            letter-spacing: 0.02em;
+            color: currentColor;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
         
         /* Hafta sonu (Cumartesi/Pazar) gün numaralarını kırmızı yap */
         .fc-day-sat .fc-daygrid-day-number,
@@ -256,7 +284,11 @@
                         </div>
                         <div class="col-md-6 text-end">
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
-                                <i class="bi bi-calendar-day"></i> Heute
+                                <span class="calendar-day" aria-hidden="true">
+                                    <i class="bi bi-calendar-day"></i>
+                                    <span class="day-abbr" id="todayAbbr">Pzt</span>
+                                </span>
+                                Heute
                             </button>
                             <a href="/add" class="btn btn-success me-2">
                                 <i class="bi bi-plus-circle"></i> Prüfung hinzufügen
@@ -337,6 +369,17 @@
             });
             
             calendar.render();
+
+            // Heute ikonunun içine kısaltılmış gün adını yaz
+            (function setTodayAbbr(){
+                var abbrEl = document.getElementById('todayAbbr');
+                if (!abbrEl) return;
+                // TR kısaltmalar: Pzt, Sal, Çar, Per, Cum, Cmt, Paz
+                var TR_ABBR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+                var now = new Date();
+                var dow = now.getDay(); // 0=Sun .. 6=Sat
+                abbrEl.textContent = TR_ABBR[dow] || '';
+            })();
 
             // Mobilde yatay kaydırma (swipe) ile ay geçişi
             if (isMobile) {
