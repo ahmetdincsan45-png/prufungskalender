@@ -17,6 +17,13 @@
         .fc-toolbar-title {
             font-size: 1.5rem;
         }
+        /* Takvim başlık (toolbar) üst/alt boşluklarını küçült */
+        .fc .fc-toolbar.fc-header-toolbar {
+            margin-top: 3px !important;
+            margin-bottom: 3px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
         .header-buttons {
             margin-bottom: 20px;
         }
@@ -118,6 +125,10 @@
             .fc-toolbar-title {
                 font-size: 1.2rem !important;
             }
+            /* Mobilde toolbar elemanları arası boşluğu da azalt */
+            .fc-header-toolbar {
+                gap: 3px;
+            }
             .filter-section {
                 padding: 10px;
                 margin-bottom: 15px;
@@ -146,7 +157,6 @@
             /* FullCalendar mobil düzenlemeleri */
             .fc-header-toolbar {
                 flex-direction: column;
-                gap: 10px;
             }
             .fc-toolbar-chunk {
                 display: flex;
