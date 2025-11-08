@@ -267,7 +267,7 @@
                         </div>
                         <div class="col-md-6 text-end">
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
-                                Heute<span class="today-abbr" id="todayAbbr">(Mo)</span>
+                                Heute<span class="today-abbr" id="todayAbbr">Mo</span>
                             </button>
                             <a href="/add" class="btn btn-success me-2">
                                 <i class="bi bi-plus-circle"></i> Prüfung hinzufügen
@@ -356,8 +356,7 @@
                 var DE_ABBR = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']; // 0=So .. 6=Sa
                 var now = new Date();
                 var dow = now.getDay(); // 0=Sun .. 6=Sat
-                var ab = DE_ABBR[dow] || '';
-                abbrEl.textContent = ab ? '(' + ab + ')' : '';
+                abbrEl.textContent = DE_ABBR[dow] || '';
             })();
 
             // Mobilde yatay kaydırma (swipe) ile ay geçişi
