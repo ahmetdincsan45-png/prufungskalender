@@ -69,13 +69,14 @@
         }
         .calendar-day .day-number {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-weight: 500; /* inceltildi */
-            font-size: 0.58em; /* biraz daha küçük */
+            inset: 0;            /* tüm kutuyu kapla */
+            display: grid;
+            place-items: center; /* tam merkez */
+            font-weight: 500;    /* ince */
+            font-size: 0.58em;   /* biraz daha küçük */
             color: currentColor;
             pointer-events: none;
+            line-height: 1;
         }
         
         /* Mobil responsive düzenlemeler */
