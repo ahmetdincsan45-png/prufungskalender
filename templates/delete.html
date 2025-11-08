@@ -52,29 +52,29 @@
             color: #0d6efd; /* mavi */
         }
 
-        /* Takvim ikonu içine gün numarası */
+        /* Takvim ikonu içine gün numarası (ince ve tam ortalı) */
         .calendar-day {
             position: relative;
             display: inline-block;
-            width: 1em;   /* ikonla aynı görsel alan */
-            height: 1em;  /* ikonla aynı görsel alan */
+            width: 1em;
+            height: 1em;
             margin-right: 8px;
             line-height: 1;
         }
         .calendar-day i.bi {
             display: block;
-            font-size: 1em; /* ikon boyutu aynı kalsın */
+            font-size: 1em;
             line-height: 1em;
-            color: inherit; /* past/future rengini miras al */
+            color: inherit;
         }
         .calendar-day .day-number {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -52%);
-            font-weight: 700;
-            font-size: 0.62em; /* ikon içine rahat sığsın */
-            color: currentColor; /* satır rengi (kırmızı/mavi) */
+            transform: translate(-50%, -50%);
+            font-weight: 500; /* inceltildi */
+            font-size: 0.58em; /* biraz daha küçük */
+            color: currentColor;
             pointer-events: none;
         }
         
@@ -186,7 +186,7 @@
                                             <strong class="ms-1">{{ exam.subject }}</strong>
                                         </div>
                                         <div class="col-md-6 exam-date text-md-end">
-                                            <i class="bi bi-calendar"></i> {{ exam.date_formatted }}
+                                            {{ exam.date_formatted }}
                                         </div>
                                     </div>
                                 </div>
