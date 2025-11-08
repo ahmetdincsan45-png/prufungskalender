@@ -400,18 +400,21 @@ def delete_exam():
             rows = conn.execute("SELECT * FROM exams ORDER BY date").fetchall()
         # Her satıra biçimlenmiş tarih ekle
         exams = []
+        today_str = datetime.now().strftime('%Y-%m-%d')
         for r in rows:
             date_str = r["date"]
             if isinstance(date_str, str) and len(date_str) == 10:
                 formatted = f"{date_str[8:10]}.{date_str[5:7]}.{date_str[0:4]}"
             else:
                 formatted = date_str
+            is_past = (date_str < today_str)
             exams.append({
                 'id': r['id'],
                 'subject': r['subject'],
                 'date': date_str,
                 'date_formatted': formatted,
-                'grade': r.get('grade', '4A') if hasattr(r, 'get') else '4A'
+                'grade': r.get('grade', '4A') if hasattr(r, 'get') else '4A',
+                'is_past': is_past
             })
         return render_template("delete.html", exams=exams)
     except Exception as e:
