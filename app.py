@@ -397,7 +397,22 @@ def delete_exam():
                     conn.commit()
                 return redirect(url_for("delete_exam"))
         with get_db_connection() as conn:
-            exams = conn.execute("SELECT * FROM exams ORDER BY date").fetchall()
+            rows = conn.execute("SELECT * FROM exams ORDER BY date").fetchall()
+        # Her satıra biçimlenmiş tarih ekle
+        exams = []
+        for r in rows:
+            date_str = r["date"]
+            if isinstance(date_str, str) and len(date_str) == 10:
+                formatted = f"{date_str[8:10]}.{date_str[5:7]}.{date_str[0:4]}"
+            else:
+                formatted = date_str
+            exams.append({
+                'id': r['id'],
+                'subject': r['subject'],
+                'date': date_str,
+                'date_formatted': formatted,
+                'grade': r.get('grade', '4A') if hasattr(r, 'get') else '4A'
+            })
         return render_template("delete.html", exams=exams)
     except Exception as e:
         print("❌ Delete exam error:", e)
