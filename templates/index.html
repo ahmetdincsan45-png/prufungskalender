@@ -54,38 +54,17 @@
             font-size: 0.85rem; /* yazıları küçült */
         }
 
-        /* Takvim ikonunun içine kısaltılmış gün adını yazma (ikon boyutu sabit kalır) */
-        .calendar-day {
-            position: relative;
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            margin-right: 6px;
-            line-height: 1;
-            vertical-align: middle;
-        }
-        .calendar-day i.bi {
-            display: block;
-            font-size: 0.92em; /* ikon biraz küçültüldü */
-            line-height: 1em;
-            color: inherit; /* buton rengi ile aynı */
-            font-style: normal; /* i etiketi italik olmasın */
-        }
-        .calendar-day .day-abbr {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%); /* tam merkez */
-            font-weight: 300; /* iki kat daha ince */
-            font-size: 0.52em; /* okunabilirliği koru */
-            letter-spacing: 0; /* doğal aralık */
-            color: currentColor;
-            pointer-events: none;
-            text-transform: none; /* Mo, Di, Mi, Do, Fr, Sa, So formatını koru */
-            line-height: 1;
+        /* Gün kısaltmasını ikon olmadan hafif stil ile göster */
+        .today-abbr {
+            font-weight: 300;
+            font-size: 0.75rem;
+            letter-spacing: 0;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
+            display: inline-block;
+            margin-left: 4px;
+            color: #0d6efd;
         }
         
         /* Hafta sonu (Cumartesi/Pazar) gün numaralarını kırmızı yap */
@@ -257,9 +236,7 @@
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-12">
-                <h1 class="text-center mb-4">
-                    <i class="bi bi-calendar-event"></i> Prüfungskalender
-                </h1>
+                <h1 class="text-center mb-4">Prüfungskalender</h1>
                 
                 <!-- Sicherheitshinweis -->
                 <div class="warning-box">
@@ -290,12 +267,7 @@
                         </div>
                         <div class="col-md-6 text-end">
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
-                                <span class="calendar-day" aria-hidden="true">
-                                    <!-- Sade ikon: gün sayfası detayları yok, arka "Fri" benzeri görüntü kalkar -->
-                                    <i class="bi bi-calendar"></i>
-                                    <span class="day-abbr" id="todayAbbr">Mo</span>
-                                </span>
-                                Heute
+                                Heute<span class="today-abbr" id="todayAbbr">Mo</span>
                             </button>
                             <a href="/add" class="btn btn-success me-2">
                                 <i class="bi bi-plus-circle"></i> Prüfung hinzufügen
@@ -377,7 +349,7 @@
             
             calendar.render();
 
-            // Heute ikonunun içine Almanca kısaltılmış gün adını yaz (Mo, Di, Mi, Do, Fr, Sa, So)
+            // Almanca kısaltılmış gün adını Heute metninin yanında göster (Mo, Di, Mi, Do, Fr, Sa, So)
             (function setTodayAbbr(){
                 var abbrEl = document.getElementById('todayAbbr');
                 if (!abbrEl) return;
