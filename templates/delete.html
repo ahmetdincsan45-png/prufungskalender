@@ -51,6 +51,22 @@
         .exam-item.future {
             color: #0d6efd; /* mavi */
         }
+
+        /* Gün kutusu */
+        .exam-day-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            font-weight: 700;
+            color: #fff; /* metin beyaz */
+            margin-right: 8px;
+            line-height: 1;
+        }
+        .exam-item.past .exam-day-box { background-color: #dc3545; }
+        .exam-item.future .exam-day-box { background-color: #0d6efd; }
         
         /* Mobil responsive düzenlemeler */
         @media (max-width: 768px) {
@@ -152,8 +168,9 @@
                                 {% for exam in exams %}
                                 <div class="exam-item {{ 'past' if exam.is_past else 'future' }}" data-exam-id="{{ exam.id }}" onclick="selectExam('{{ exam.id }}')">
                                     <div class="row align-items-center">
-                                        <div class="col-md-6 exam-subject">
-                                            <strong>{{ exam.subject }}</strong>
+                                        <div class="col-md-6 exam-subject d-flex align-items-center">
+                                            <span class="exam-day-box">{{ exam.day }}</span>
+                                            <strong class="ms-1">{{ exam.subject }}</strong>
                                         </div>
                                         <div class="col-md-6 exam-date text-md-end">
                                             <i class="bi bi-calendar"></i> {{ exam.date_formatted }}

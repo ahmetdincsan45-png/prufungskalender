@@ -405,8 +405,10 @@ def delete_exam():
             date_str = r["date"]
             if isinstance(date_str, str) and len(date_str) == 10:
                 formatted = f"{date_str[8:10]}.{date_str[5:7]}.{date_str[0:4]}"
+                day_part = str(int(date_str[8:10]))  # Öncü sıfırı kaldır ("09" -> "9")
             else:
                 formatted = date_str
+                day_part = ''
             is_past = (date_str < today_str)
             exams.append({
                 'id': r['id'],
@@ -414,7 +416,8 @@ def delete_exam():
                 'date': date_str,
                 'date_formatted': formatted,
                 'grade': r.get('grade', '4A') if hasattr(r, 'get') else '4A',
-                'is_past': is_past
+                'is_past': is_past,
+                'day': day_part
             })
         return render_template("delete.html", exams=exams)
     except Exception as e:
