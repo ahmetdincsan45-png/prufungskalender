@@ -444,7 +444,7 @@
                 var text = '';
                 if (delta > 1) text = 'in ' + delta + ' Tagen';
                 else if (delta === 1) text = 'in 1 Tag';
-                else if (delta === 0) text = 'heute';
+                else if (delta === 0) text = 'Heute';
                 var span = document.getElementById('countdownText');
                 if (span && text) {
                     span.textContent = text;
