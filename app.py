@@ -202,7 +202,7 @@ def events():
                                     'start': s,
                                     'end': e,
                                     'rendering': 'background',
-                                    'backgroundColor': 'black',
+                                    'backgroundColor': '#f0f0f0',
                                     'display': 'background'
                                 })
                                 appended += 1
@@ -218,7 +218,7 @@ def events():
                             'start': s,
                             'end': e,
                             'rendering': 'background',
-                            'backgroundColor': 'black',
+                            'backgroundColor': '#f0f0f0',
                             'display': 'background'
                         })
                         appended += 1
@@ -323,7 +323,7 @@ def events():
                             'start': date_str,
                             'end': end_str,
                             'rendering': 'background',
-                            'backgroundColor': 'black',
+                            'backgroundColor': '#f0f0f0',
                             'display': 'background'
                         })
                         feiertage_added += 1

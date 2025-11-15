@@ -158,10 +158,10 @@
             color: #fff !important;
             text-shadow: 0 0 2px #000;
         }
-        /* Alternatif: arka planı siyah olan hücrede gün numarası beyaz olsun */
-        .fc-daygrid-day .fc-daygrid-day-bg[style*="background-color: black"] ~ .fc-daygrid-day-top .fc-daygrid-day-number {
-            color: #fff !important;
-            text-shadow: 0 0 2px #000;
+        /* Alternatif: arka planı hafif gri olan hücrede gün numarası normal siyah olsun */
+        .fc-daygrid-day .fc-daygrid-day-bg[style*="background-color: rgb(240, 240, 240)"] ~ .fc-daygrid-day-top .fc-daygrid-day-number {
+            color: #333 !important;
+            text-shadow: none;
         }
         
         /* Mobil responsive düzenlemeler */
@@ -501,15 +501,15 @@
                             frame.style.outlineOffset = '';
                         }
                         if (ferienDates.includes(date)) {
-                            // Ferien: gün numarasını beyaz yap
+                            // Ferien: gün numarasını normal renge çevir
                             if (dayNumber) {
-                                dayNumber.style.color = '#fff';
-                                dayNumber.style.textShadow = '0 0 2px #000';
-                                dayNumber.style.fontWeight = 'bold';
+                                dayNumber.style.color = '#333';
+                                dayNumber.style.textShadow = 'none';
+                                dayNumber.style.fontWeight = 'normal';
                             }
-                            // Ferien: tüm hücre arka planını tatlı koyu (yumuşak koyu gri) yap
+                            // Ferien: tüm hücre arka planını çok hafif gri yap
                             if (frame) {
-                                frame.style.backgroundColor = '#2b2f36';
+                                frame.style.backgroundColor = '#f0f0f0';
                                 // Eğer bugün de aynı gün ise: içten vurgulu bir halka ekle ki koyu arka planda kaybolmasın
                                 if (isToday) {
                                     // Varsayılan ince kenarlığı koruyarak içe gömülü sarı bir halka çiz
