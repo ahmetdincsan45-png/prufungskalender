@@ -115,7 +115,7 @@
                                 <i class="bi bi-calendar"></i> Prüfungsdatum *
                             </label>
                             <input type="date" class="form-control" id="date" name="date" required>
-                            <div class="form-text">Wählen Sie das Datum der Prüfung aus.</div>
+                            <div class="form-text">Wählen Sie das Datum der Prüfung aus. Nur heutige oder zukünftige Termine sind zulässig.</div>
                         </div>
                         
 
@@ -157,10 +157,12 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Bugünkü tarihi varsayılan olarak ayarla
+            // Bugünkü tarihi varsayılan olarak ayarla ve min attribute ekle
             var today = new Date();
             var formattedDate = today.toISOString().split('T')[0];
-            document.getElementById('date').value = formattedDate;
+            var dateInput = document.getElementById('date');
+            dateInput.value = formattedDate;
+            dateInput.setAttribute('min', formattedDate);
 
             // Dört sabit ders
             var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch'];

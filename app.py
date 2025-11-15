@@ -373,6 +373,10 @@ def add_exam():
                     break
             if not unique_subjects or not date:
                 return render_template("add.html", error="Bitte alle Felder ausfüllen!")
+            # Geçmiş tarih kontrolü
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            if date < today_str:
+                return render_template("add.html", error="Prüfungen können nicht für vergangene Daten hinzugefügt werden.")
             with get_db_connection() as conn:
                 for s in unique_subjects:
                     conn.execute(
