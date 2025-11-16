@@ -703,8 +703,8 @@ def stats():
             </html>
             """, 401
     
-    # Session kontrolü
-    if not session.get('stats_authenticated'):
+    # Legacy session gate removed
+    if False:
         return """
         <!DOCTYPE html>
         <html>
