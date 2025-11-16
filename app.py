@@ -469,7 +469,43 @@ def health():
 
 @app.route("/stats")
 def stats():
-    """Gizli istatistik sayfası - sadece sen göreceksin"""
+    """Gizli istatistik sayfası - şifreyle korumalı"""
+    # Basit şifre kontrolü (query parameter ile)
+    password = request.args.get('p', '')
+    if password != 'admin2025':  # İstersen bu şifreyi değiştirebilirsin
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Giriş</title>
+            <style>
+                body { font-family: system-ui, -apple-system, sans-serif; display: flex; 
+                       justify-content: center; align-items: center; height: 100vh; 
+                       margin: 0; background: #f5f5f5; }
+                .login-box { background: white; padding: 40px; border-radius: 12px; 
+                             box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                input { padding: 12px; font-size: 16px; border: 1px solid #ddd; 
+                        border-radius: 6px; width: 250px; }
+                button { padding: 12px 24px; font-size: 16px; background: #007bff; 
+                         color: white; border: none; border-radius: 6px; cursor: pointer; 
+                         margin-left: 10px; }
+                button:hover { background: #0056b3; }
+            </style>
+        </head>
+        <body>
+            <div class="login-box">
+                <h2>🔒 Stats</h2>
+                <form method="get">
+                    <input type="password" name="p" placeholder="Şifre" autofocus required>
+                    <button type="submit">Giriş</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """, 401
+    
     try:
         with get_db_connection() as conn:
             # Toplam ziyaret sayısı
@@ -484,6 +520,35 @@ def stats():
             ).fetchone()[0]
             # Benzersiz IP sayısı
             unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
+            
+            # Saatlik dağılım (son 24 saat)
+            hourly = conn.execute("""
+                SELECT strftime('%H', timestamp) as hour, COUNT(*) as count
+                FROM visits
+                WHERE timestamp >= datetime('now', '-24 hours')
+                GROUP BY hour
+                ORDER BY hour
+            """).fetchall()
+            
+            # Saatlik dağılım grafiği için HTML
+            hourly_chart = "<div style='display: flex; align-items: flex-end; gap: 4px; height: 150px; margin: 20px 0;'>"
+            hourly_data = {str(h[0]).zfill(2): h[1] for h in hourly}
+            max_count = max(hourly_data.values()) if hourly_data else 1
+            
+            for hour in range(24):
+                h_str = str(hour).zfill(2)
+                count = hourly_data.get(h_str, 0)
+                height_pct = (count / max_count * 100) if max_count > 0 else 0
+                hourly_chart += f"""
+                <div style='flex: 1; display: flex; flex-direction: column; align-items: center;'>
+                    <div style='font-size: 0.7em; color: #666; margin-bottom: 4px;'>{count}</div>
+                    <div style='width: 100%; background: #007bff; border-radius: 4px 4px 0 0; 
+                                height: {height_pct}%; min-height: 2px;'></div>
+                    <div style='font-size: 0.7em; color: #666; margin-top: 4px;'>{h_str}</div>
+                </div>
+                """
+            hourly_chart += "</div>"
+            
             # Son 20 ziyaret
             recent = conn.execute(
                 "SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20"
@@ -497,14 +562,20 @@ def stats():
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Stats</title>
                 <style>
-                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }}
+                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; background: #f5f5f5; }}
                     h1 {{ color: #333; }}
-                    .stat {{ background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 8px; }}
-                    .stat strong {{ font-size: 1.2em; color: #007bff; }}
-                    table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-                    th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
-                    th {{ background: #f8f9fa; font-weight: 600; }}
+                    h2 {{ color: #555; margin-top: 30px; }}
+                    .stat {{ background: white; padding: 15px 20px; margin: 10px 0; border-radius: 8px; 
+                             box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+                    .stat strong {{ font-size: 1.3em; color: #007bff; }}
+                    .chart-container {{ background: white; padding: 20px; border-radius: 8px; 
+                                        box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 20px 0; }}
+                    table {{ width: 100%; border-collapse: collapse; margin-top: 20px; background: white; 
+                             border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+                    th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }}
+                    th {{ background: #f8f9fa; font-weight: 600; color: #555; }}
                     .small {{ font-size: 0.85em; color: #666; }}
+                    tr:hover {{ background: #f8f9fa; }}
                 </style>
             </head>
             <body>
@@ -514,7 +585,13 @@ def stats():
                 <div class="stat">Son 7 Gün: <strong>{last_7_days}</strong></div>
                 <div class="stat">Benzersiz IP: <strong>{unique_ips}</strong></div>
                 
-                <h2>Son 20 Ziyaret</h2>
+                <h2>📈 Saatlik Dağılım (Son 24 Saat)</h2>
+                <div class="chart-container">
+                    {hourly_chart}
+                    <div style='text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;'>Saat (00-23)</div>
+                </div>
+                
+                <h2>🕐 Son 20 Ziyaret</h2>
                 <table>
                     <tr><th>Zaman</th><th>IP</th><th>Sayfa</th></tr>
             """
