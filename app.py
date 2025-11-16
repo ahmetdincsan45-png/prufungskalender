@@ -16,6 +16,9 @@ from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = "prufungskalender_secret_key_2025_ahmet"  # Session için secret key
+app.config['SESSION_COOKIE_SECURE'] = False  # HTTP için (HTTPS olsa True olmalı)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app)
 
 # Email konfigürasyonu
@@ -498,8 +501,11 @@ def stats():
     # POST ile şifre kontrolü (güvenli)
     if request.method == "POST":
         password = request.form.get('p', '')
+        print(f"🔑 Şifre deneme: {password}")  # Debug
         if password == '45ee551':
             session['stats_authenticated'] = True
+            session.permanent = True
+            print(f"✅ Session oluşturuldu: {session.get('stats_authenticated')}")  # Debug
             return redirect(url_for('stats'))
         else:
             # Yanlış şifre
@@ -883,6 +889,7 @@ def stats():
     
     # Session kontrolü
     if not session.get('stats_authenticated'):
+        print(f"❌ Session yok: {session.get('stats_authenticated')}")  # Debug
         # Login formu göster
         return """
         <!DOCTYPE html>
