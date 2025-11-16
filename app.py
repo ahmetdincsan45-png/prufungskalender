@@ -578,43 +578,64 @@ def stats():
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Stats</title>
                 <style>
-                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; background: #f5f5f5; }}
-                    h1 {{ color: #333; }}
-                    h2 {{ color: #555; margin-top: 30px; }}
-                    .stat {{ background: white; padding: 15px 20px; margin: 10px 0; border-radius: 8px; 
-                             box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
-                    .stat strong {{ font-size: 1.3em; color: #007bff; }}
-                    .chart-container {{ background: white; padding: 20px; border-radius: 8px; 
-                                        box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 20px 0; }}
-                    table {{ width: 100%; border-collapse: collapse; margin-top: 20px; background: white; 
-                             border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
-                    th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }}
-                    th {{ background: #f8f9fa; font-weight: 600; color: #555; }}
-                    .small {{ font-size: 0.85em; color: #666; }}
+                    * {{ box-sizing: border-box; }}
+                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 15px; 
+                            max-width: 1000px; margin: 0 auto; background: #f5f5f5; }}
+                    h1 {{ color: #333; font-size: 1.5em; margin: 0 0 15px 0; }}
+                    h2 {{ color: #555; margin-top: 25px; font-size: 1.2em; }}
+                    .stat {{ background: white; padding: 12px 15px; margin: 8px 0; border-radius: 8px; 
+                             box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; 
+                             justify-content: space-between; align-items: center; }}
+                    .stat-label {{ font-size: 0.95em; color: #666; }}
+                    .stat-value {{ font-size: 1.5em; color: #007bff; font-weight: bold; }}
+                    .chart-container {{ background: white; padding: 15px; border-radius: 8px; 
+                                        box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 15px 0; 
+                                        overflow-x: auto; }}
+                    .chart-scroll {{ min-width: 600px; }}
+                    table {{ width: 100%; border-collapse: collapse; margin-top: 15px; background: white; 
+                             border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+                             font-size: 0.9em; }}
+                    th, td {{ padding: 10px 8px; text-align: left; border-bottom: 1px solid #f0f0f0; }}
+                    th {{ background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }}
+                    .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
+                    .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+                    @media (max-width: 600px) {{
+                        body {{ padding: 10px; }}
+                        h1 {{ font-size: 1.3em; }}
+                        h2 {{ font-size: 1.1em; margin-top: 20px; }}
+                        .stat {{ padding: 10px 12px; }}
+                        .stat-value {{ font-size: 1.3em; }}
+                        table {{ font-size: 0.8em; }}
+                        th, td {{ padding: 8px 6px; }}
+                    }}
                 </style>
             </head>
             <body>
                 <h1>📊 Ziyaretçi İstatistikleri</h1>
-                <div class="stat">Toplam Ziyaret: <strong>{total}</strong></div>
-                <div class="stat">Bugün: <strong>{today}</strong></div>
-                <div class="stat">Son 7 Gün: <strong>{last_7_days}</strong></div>
-                <div class="stat">Benzersiz IP: <strong>{unique_ips}</strong></div>
+                <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
+                <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
+                <div class="stat"><span class="stat-label">Son 7 Gün</span><span class="stat-value">{last_7_days}</span></div>
+                <div class="stat"><span class="stat-label">Benzersiz IP</span><span class="stat-value">{unique_ips}</span></div>
                 
                 <h2>📈 Saatlik Dağılım (Son 24 Saat)</h2>
                 <div class="chart-container">
-                    {hourly_chart}
-                    <div style='text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;'>Saat (00-23)</div>
+                    <div class="chart-scroll">
+                        {hourly_chart}
+                        <div style='text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;'>Saat (00-23)</div>
+                    </div>
                 </div>
                 
                 <h2>🕐 Son 20 Ziyaret</h2>
-                <table>
-                    <tr><th>Zaman</th><th>IP</th><th>Sayfa</th></tr>
+                <div class="table-container">
+                    <table>
+                        <tr><th>Zaman</th><th>IP</th><th>Sayfa</th></tr>
             """
             for r in recent:
                 html += f"<tr><td class='small'>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td></tr>"
             html += """
-                </table>
+                    </table>
+                </div>
             </body>
             </html>
             """
