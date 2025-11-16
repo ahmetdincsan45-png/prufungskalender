@@ -8,11 +8,19 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 import requests
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # -------------------- Flask --------------------
 
 app = Flask(__name__)
 CORS(app)
+
+# Email konfigürasyonu
+EMAIL_ADDRESS = "ahmetdincsan45@gmail.com"
+EMAIL_PASSWORD = "jdygziqeduesbplk"  # Gmail uygulama şifresi (boşluksuz)
+RECIPIENT_EMAIL = "ahmetdincsan45@gmail.com"
 
 # Favicon ve Apple Touch Icon rotaları
 @app.route('/favicon.ico')
@@ -710,6 +718,30 @@ def stats():
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
                     .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+                    .send-report-btn {{
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        padding: 15px 25px;
+                        border-radius: 50px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                        transition: transform 0.2s, box-shadow 0.3s;
+                        text-decoration: none;
+                        display: inline-block;
+                    }}
+                    .send-report-btn:hover {{
+                        transform: translateY(-3px);
+                        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+                    }}
+                    .send-report-btn:active {{
+                        transform: translateY(0);
+                    }}
                     @media (max-width: 600px) {{
                         body {{ padding: 10px; }}
                         h1 {{ font-size: 1.3em; }}
@@ -722,6 +754,7 @@ def stats():
                 </style>
             </head>
             <body>
+                <a href="/send-report?p=45ee551" class="send-report-btn">📧 Rapor Gönder</a>
                 <h1>📊 Ziyaretçi İstatistikleri</h1>
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
                 <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
@@ -752,6 +785,146 @@ def stats():
             return html
     except Exception as e:
         return f"Error: {e}", 500
+
+# -------------------- Email Raporu --------------------
+def send_weekly_report():
+    """Haftalık istatistik raporunu mail olarak gönder"""
+    try:
+        with get_db_connection() as conn:
+            # İstatistikleri topla
+            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
+            today = conn.execute(
+                "SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')"
+            ).fetchone()[0]
+            last_7_days = conn.execute(
+                "SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')"
+            ).fetchone()[0]
+            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
+            
+            # Son 7 günlük günlük detay
+            daily_stats = conn.execute("""
+                SELECT DATE(timestamp) as day, COUNT(*) as count
+                FROM visits
+                WHERE timestamp >= datetime('now', '-7 days')
+                GROUP BY day
+                ORDER BY day DESC
+            """).fetchall()
+            
+            daily_html = ""
+            for row in daily_stats:
+                daily_html += f"<tr><td>{row[0]}</td><td><strong>{row[1]}</strong> ziyaret</td></tr>"
+        
+        # HTML email içeriği
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; 
+                             border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                h1 {{ color: #667eea; border-bottom: 3px solid #667eea; padding-bottom: 10px; }}
+                .stat-box {{ background: #f8f9fa; padding: 15px; margin: 10px 0; 
+                            border-radius: 8px; border-left: 4px solid #667eea; }}
+                .stat-box strong {{ color: #667eea; font-size: 1.5em; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #eee; }}
+                th {{ background: #f8f9fa; color: #555; }}
+                .footer {{ margin-top: 30px; text-align: center; color: #999; font-size: 0.9em; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📊 Haftalık Ziyaretçi Raporu</h1>
+                <p>Merhaba! İşte son 7 günün istatistikleri:</p>
+                
+                <div class="stat-box">
+                    <div>Toplam Ziyaret</div>
+                    <strong>{total}</strong>
+                </div>
+                
+                <div class="stat-box">
+                    <div>Son 7 Gün</div>
+                    <strong>{last_7_days}</strong>
+                </div>
+                
+                <div class="stat-box">
+                    <div>Bugün</div>
+                    <strong>{today}</strong>
+                </div>
+                
+                <div class="stat-box">
+                    <div>Benzersiz Ziyaretçi</div>
+                    <strong>{unique_ips}</strong>
+                </div>
+                
+                <h2 style="color: #555; margin-top: 30px;">📅 Günlük Detay</h2>
+                <table>
+                    <tr><th>Tarih</th><th>Ziyaret</th></tr>
+                    {daily_html}
+                </table>
+                
+                <div class="footer">
+                    <p>Bu rapor otomatik olarak oluşturulmuştur.</p>
+                    <p>Prüfungskalender © {datetime.now().year}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Email oluştur
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'📊 Haftalık Rapor - {datetime.now().strftime("%d.%m.%Y")}'
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = RECIPIENT_EMAIL
+        
+        html_part = MIMEText(html_content, 'html', 'utf-8')
+        msg.attach(html_part)
+        
+        # Gmail SMTP ile gönder
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+        
+        return True
+    except Exception as e:
+        print(f"❌ Email gönderme hatası: {e}")
+        return False
+
+@app.route("/send-report")
+def send_report():
+    """Manuel rapor gönderme endpoint'i (stats sayfasından erişilebilir)"""
+    password = request.args.get('p', '')
+    if password != '45ee551':
+        return "Unauthorized", 401
+    
+    success = send_weekly_report()
+    if success:
+        return """
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="3;url=/stats?p=45ee551">
+            <style>
+                body { font-family: system-ui; display: flex; justify-content: center; 
+                       align-items: center; height: 100vh; background: #f5f5f5; }
+                .box { background: white; padding: 40px; border-radius: 12px; 
+                       box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+                .success { color: #28a745; font-size: 3em; }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <div class="success">✅</div>
+                <h2>Rapor Gönderildi!</h2>
+                <p>Email adresinizi kontrol edin.</p>
+                <p style="color: #999;">3 saniye içinde geri dönülüyor...</p>
+            </div>
+        </body>
+        </html>
+        """
+    else:
+        return "Email gönderme başarısız", 500
 
 # -------------------- Local çalıştırma --------------------
 if __name__ == "__main__":
