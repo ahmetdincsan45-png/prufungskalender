@@ -215,15 +215,24 @@
             }
         }
         
-        /* Başlık altındaki yatay çizginin sol kenarda aşağı dönmesini engelle */
-        /* FullCalendar grid dış çerçevesinin sol/sağ ve alt kenarını kaldırıyoruz. */
+        /* Başlık altındaki yatay çizgi: sol kenarda aşağı dönmesini engelle
+           ve ortada bir tık daha koyu, kenarlara doğru solan gradyan çizgi */
         .fc-theme-standard .fc-scrollgrid {
             border-left: 0 !important;
             border-right: 0 !important;
             border-bottom: 0 !important;
-            /* Üst çizgi aynı kalsın: */
-            border-top: 1px solid var(--fc-border-color) !important;
-            border-radius: 0 !important; /* Sol üst köşede 90° kırılım/ovalleşmeyi önle */
+            border-top: 0 !important; /* Üstteki düz border yerine gradyan kullanacağız */
+            border-radius: 0 !important;
+            position: relative;
+            /* İki katmanlı arka plan:
+               1) Tam genişlikte 1px çizgi: var(--fc-border-color)
+               2) Ortada daha koyu bir vurgu: siyahın %15 opaklığı, kenarlara doğru şeffaf */
+            background-image:
+                linear-gradient(to right, rgba(0,0,0,0), var(--fc-border-color), rgba(0,0,0,0)),
+                linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.15), rgba(0,0,0,0));
+            background-repeat: no-repeat, no-repeat;
+            background-size: 100% 1px, 30% 1px; /* ikinci katman merkezde daha dar */
+            background-position: left top, center top;
         }
 
         /* Sadece takvim bölümünü tam genişlik (full-bleed) yap, container padding'ini telafi et */
