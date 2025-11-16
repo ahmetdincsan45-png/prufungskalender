@@ -92,6 +92,15 @@ def init_db():
                     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS visits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    ip TEXT,
+                    user_agent TEXT,
+                    path TEXT
+                )
+            """)
             conn.commit()
         # Veri dizinlerini ve seed fallback'leri hazırla
         try:
@@ -108,6 +117,25 @@ def init_db():
 @app.before_request
 def ensure_inited():
     init_db()
+    # Her istekte ziyaret kaydet (bots hariç basit filtreleme)
+    if request.endpoint and not request.path.startswith('/static'):
+        try:
+            user_agent = request.headers.get('User-Agent', '')
+            # Bot kontrolü (basit)
+            bot_keywords = ['bot', 'crawler', 'spider', 'scraper']
+            is_bot = any(keyword in user_agent.lower() for keyword in bot_keywords)
+            if not is_bot:
+                ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                if ip:
+                    ip = ip.split(',')[0].strip()
+                with get_db_connection() as conn:
+                    conn.execute(
+                        "INSERT INTO visits (ip, user_agent, path) VALUES (?, ?, ?)",
+                        (ip, user_agent[:500], request.path)
+                    )
+                    conn.commit()
+        except Exception:
+            pass  # Sessizce devam et
 
 # -------------------- Routes --------------------
 @app.route("/")
@@ -438,6 +466,68 @@ def health():
         return jsonify({"ok": True, "db": DB_PATH, "journal_mode": mode})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/stats")
+def stats():
+    """Gizli istatistik sayfası - sadece sen göreceksin"""
+    try:
+        with get_db_connection() as conn:
+            # Toplam ziyaret sayısı
+            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
+            # Bugünkü ziyaretler
+            today = conn.execute(
+                "SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')"
+            ).fetchone()[0]
+            # Son 7 gün
+            last_7_days = conn.execute(
+                "SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')"
+            ).fetchone()[0]
+            # Benzersiz IP sayısı
+            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
+            # Son 20 ziyaret
+            recent = conn.execute(
+                "SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20"
+            ).fetchall()
+            
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Stats</title>
+                <style>
+                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }}
+                    h1 {{ color: #333; }}
+                    .stat {{ background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 8px; }}
+                    .stat strong {{ font-size: 1.2em; color: #007bff; }}
+                    table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                    th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
+                    th {{ background: #f8f9fa; font-weight: 600; }}
+                    .small {{ font-size: 0.85em; color: #666; }}
+                </style>
+            </head>
+            <body>
+                <h1>📊 Ziyaretçi İstatistikleri</h1>
+                <div class="stat">Toplam Ziyaret: <strong>{total}</strong></div>
+                <div class="stat">Bugün: <strong>{today}</strong></div>
+                <div class="stat">Son 7 Gün: <strong>{last_7_days}</strong></div>
+                <div class="stat">Benzersiz IP: <strong>{unique_ips}</strong></div>
+                
+                <h2>Son 20 Ziyaret</h2>
+                <table>
+                    <tr><th>Zaman</th><th>IP</th><th>Sayfa</th></tr>
+            """
+            for r in recent:
+                html += f"<tr><td class='small'>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td></tr>"
+            html += """
+                </table>
+            </body>
+            </html>
+            """
+            return html
+    except Exception as e:
+        return f"Error: {e}", 500
 
 # -------------------- Local çalıştırma --------------------
 if __name__ == "__main__":
