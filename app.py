@@ -1155,10 +1155,15 @@ def stats():
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
                     .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; }}
-                    .send-report-btn {{
+                    .fab-container {{
                         position: fixed;
                         bottom: 20px;
                         right: 20px;
+                        display: flex;
+                        gap: 12px;
+                        z-index: 1000;
+                    }}
+                    .send-report-btn {{
                         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                         color: white;
                         border: none;
@@ -1171,7 +1176,9 @@ def stats():
                         transition: transform 0.2s, box-shadow 0.3s;
                         text-decoration: none;
                         display: inline-block;
-                        z-index: 1000;
+                    }}
+                    .logout-btn {{
+                        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
                     }}
                     .send-report-btn:hover {{
                         transform: translateY(-3px);
@@ -1192,8 +1199,10 @@ def stats():
                 </style>
             </head>
             <body>
-                <a href="/send-report" class="send-report-btn">📧 Rapor Gönder</a>
-                <a href="/logout" class="send-report-btn" style="bottom: 80px; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">🚪 Çıkış</a>
+                <div class="fab-container">
+                    <a href="/logout" class="send-report-btn logout-btn">🚪 Çıkış</a>
+                    <a href="/send-report" class="send-report-btn">📧 Rapor Gönder</a>
+                </div>
                 <h1>📊 Ziyaretçi İstatistikleri</h1>
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
                 <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
