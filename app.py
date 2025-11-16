@@ -472,7 +472,7 @@ def stats():
     """Gizli istatistik sayfası - şifreyle korumalı"""
     # Basit şifre kontrolü (query parameter ile)
     password = request.args.get('p', '')
-    if password != 'admin2025':  # İstersen bu şifreyi değiştirebilirsin
+    if password != '45ee551':  # İstersen bu şifreyi değiştirebilirsin
         return """
         <!DOCTYPE html>
         <html>
