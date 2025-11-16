@@ -723,6 +723,7 @@ def stats():
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     overflow: auto;
                     padding: 20px;
+                    padding-bottom: 120px; /* floating butonlar için boşluk */
                 }
                 .container {
                     width: 100%;
@@ -912,6 +913,7 @@ def stats():
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     overflow: auto;
                     padding: 20px;
+                    padding-bottom: 120px; /* floating butonlar için boşluk */
                 }
                 .container {
                     width: 100%;
@@ -1152,7 +1154,7 @@ def stats():
                     th {{ background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }}
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
-                    .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+                    .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; }}
                     .send-report-btn {{
                         position: fixed;
                         bottom: 20px;
@@ -1169,6 +1171,7 @@ def stats():
                         transition: transform 0.2s, box-shadow 0.3s;
                         text-decoration: none;
                         display: inline-block;
+                        z-index: 1000;
                     }}
                     .send-report-btn:hover {{
                         transform: translateY(-3px);
