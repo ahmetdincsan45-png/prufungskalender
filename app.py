@@ -511,9 +511,17 @@ def stats():
                     display: flex; 
                     justify-content: center; 
                     align-items: center; 
-                    height: 100vh; 
+                    min-height: 100vh; 
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    overflow: hidden;
+                    overflow: auto;
+                    padding: 20px;
+                }
+                .container {
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
                 }
                 @keyframes fadeInUp {
                     from { opacity: 0; transform: translateY(30px); }
@@ -527,6 +535,18 @@ def stats():
                     animation: fadeInUp 0.6s ease-out;
                     backdrop-filter: blur(10px);
                     min-width: 350px;
+                    max-width: 400px;
+                    width: 100%;
+                    transition: transform 0.3s ease;
+                }
+                .login-box.keyboard-open {
+                    transform: translateY(-80px);
+                }
+                @media (max-width: 600px) {
+                    .login-box {
+                        min-width: unset;
+                        padding: 40px 30px;
+                    }
                 }
                 h2 { 
                     text-align: center; 
@@ -607,18 +627,20 @@ def stats():
             </style>
         </head>
         <body>
-            <div class="login-box">
-                <h2>🔒 Stats</h2>
-                <form method="get" id="loginForm">
-                    <div class="input-group">
-                        <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
-                        <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
-                    </div>
-                    <button type="submit" class="submit-btn" id="submitBtn">
-                        <span class="btn-text">Giriş</span>
-                        <div class="spinner"></div>
-                    </button>
-                </form>
+            <div class="container">
+                <div class="login-box" id="loginBox">
+                    <h2>🔒 Stats</h2>
+                    <form method="get" id="loginForm">
+                        <div class="input-group">
+                            <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                            <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                        </div>
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            <span class="btn-text">Giriş</span>
+                            <div class="spinner"></div>
+                        </button>
+                    </form>
+                </div>
             </div>
             <script>
                 function togglePassword() {
@@ -632,6 +654,24 @@ def stats():
                         btn.textContent = '👁️';
                     }
                 }
+                
+                // Mobil klavye açıldığında login kutusunu yukarı kaydır
+                const loginBox = document.getElementById('loginBox');
+                const passwordInput = document.getElementById('password');
+                
+                passwordInput.addEventListener('focus', function() {
+                    // iOS ve Android için klavye tespit et
+                    setTimeout(function() {
+                        loginBox.classList.add('keyboard-open');
+                        // Scroll to input için ekstra
+                        passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                });
+                
+                passwordInput.addEventListener('blur', function() {
+                    loginBox.classList.remove('keyboard-open');
+                });
+                
                 document.getElementById('loginForm').addEventListener('submit', function() {
                     document.getElementById('submitBtn').classList.add('loading');
                 });
