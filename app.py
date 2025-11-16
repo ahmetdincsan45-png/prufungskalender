@@ -497,27 +497,137 @@ def stats():
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Giriş</title>
             <style>
-                body { font-family: system-ui, -apple-system, sans-serif; display: flex; 
-                       justify-content: center; align-items: center; height: 100vh; 
-                       margin: 0; background: #f5f5f5; }
-                .login-box { background: white; padding: 40px; border-radius: 12px; 
-                             box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                input { padding: 12px; font-size: 16px; border: 1px solid #ddd; 
-                        border-radius: 6px; width: 250px; }
-                button { padding: 12px 24px; font-size: 16px; background: #007bff; 
-                         color: white; border: none; border-radius: 6px; cursor: pointer; 
-                         margin-left: 10px; }
-                button:hover { background: #0056b3; }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: system-ui, -apple-system, sans-serif; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    height: 100vh; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    overflow: hidden;
+                }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .login-box { 
+                    background: rgba(255, 255, 255, 0.95); 
+                    padding: 50px 40px; 
+                    border-radius: 20px; 
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    animation: fadeInUp 0.6s ease-out;
+                    backdrop-filter: blur(10px);
+                    min-width: 350px;
+                }
+                h2 { 
+                    text-align: center; 
+                    color: #333; 
+                    margin-bottom: 30px;
+                    font-size: 1.8em;
+                }
+                .input-group {
+                    position: relative;
+                    margin-bottom: 25px;
+                }
+                input { 
+                    padding: 14px 45px 14px 14px; 
+                    font-size: 16px; 
+                    border: 2px solid #e0e0e0; 
+                    border-radius: 10px; 
+                    width: 100%;
+                    transition: all 0.3s ease;
+                    background: white;
+                }
+                input:focus {
+                    outline: none;
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+                .toggle-password {
+                    position: absolute;
+                    right: 12px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 20px;
+                    padding: 5px;
+                    color: #666;
+                    transition: color 0.3s;
+                }
+                .toggle-password:hover { color: #667eea; }
+                button.submit-btn { 
+                    padding: 14px 24px; 
+                    font-size: 16px; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; 
+                    border: none; 
+                    border-radius: 10px; 
+                    cursor: pointer; 
+                    width: 100%;
+                    font-weight: 600;
+                    transition: transform 0.2s, box-shadow 0.3s;
+                    position: relative;
+                }
+                button.submit-btn:hover { 
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+                }
+                button.submit-btn:active {
+                    transform: translateY(0);
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+                .spinner {
+                    display: none;
+                    width: 20px;
+                    height: 20px;
+                    border: 3px solid rgba(255,255,255,0.3);
+                    border-top-color: white;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                }
+                .loading .spinner { display: block; }
+                .loading .btn-text { opacity: 0; }
             </style>
         </head>
         <body>
             <div class="login-box">
                 <h2>🔒 Stats</h2>
-                <form method="get">
-                    <input type="password" name="p" placeholder="Şifre" autofocus required>
-                    <button type="submit">Giriş</button>
+                <form method="get" id="loginForm">
+                    <div class="input-group">
+                        <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                        <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                    </div>
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span class="btn-text">Giriş</span>
+                        <div class="spinner"></div>
+                    </button>
                 </form>
             </div>
+            <script>
+                function togglePassword() {
+                    const input = document.getElementById('password');
+                    const btn = document.querySelector('.toggle-password');
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        btn.textContent = '🙈';
+                    } else {
+                        input.type = 'password';
+                        btn.textContent = '👁️';
+                    }
+                }
+                document.getElementById('loginForm').addEventListener('submit', function() {
+                    document.getElementById('submitBtn').classList.add('loading');
+                });
+            </script>
         </body>
         </html>
         """, 401
