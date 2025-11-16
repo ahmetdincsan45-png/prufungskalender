@@ -27,6 +27,24 @@
             line-height: 1;
             display: flex;
             align-items: center;
+            padding-bottom: 8px;
+            position: relative;
+        }
+        /* "November 2025" başlığının hemen altına gradyan çizgi */
+        .fc .fc-toolbar-title::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100vw; /* Ekran genişliği kadar */
+            height: 1px;
+            background-image:
+                linear-gradient(to right, rgba(221,221,221,0.3), rgba(221,221,221,1), rgba(221,221,221,0.3)),
+                linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.15), rgba(0,0,0,0));
+            background-repeat: no-repeat, no-repeat;
+            background-size: 100% 1px, 30% 1px;
+            background-position: center bottom, center bottom;
         }
         /* Takvim başlık (toolbar) üst/alt boşluklarını küçült */
         .fc .fc-toolbar.fc-header-toolbar {
@@ -215,34 +233,13 @@
             }
         }
         
-        /* Başlık altındaki yatay çizgi: sol kenarda aşağı dönmesini engelle
-           ve ortada bir tık daha koyu, kenarlara doğru solan gradyan çizgi */
+        /* Grid kenarlarını temizle */
         .fc-theme-standard .fc-scrollgrid {
             border-left: 0 !important;
             border-right: 0 !important;
             border-bottom: 0 !important;
             border-top: 0 !important;
             border-radius: 0 !important;
-        }
-        /* Başlık satırının (Mo, Di, Mi...) altına gradyan çizgi ekle */
-        .fc-theme-standard .fc-col-header {
-            position: relative;
-        }
-        .fc-theme-standard .fc-col-header::after {
-            content: "";
-            position: absolute;
-            bottom: -1px; /* thead'in hemen altına */
-            left: 0;
-            right: 0;
-            height: 1px;
-            z-index: 3;
-            pointer-events: none;
-            background-image:
-                linear-gradient(to right, rgba(221,221,221,0.3), rgba(221,221,221,1), rgba(221,221,221,0.3)),
-                linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.15), rgba(0,0,0,0));
-            background-repeat: no-repeat, no-repeat;
-            background-size: 100% 1px, 30% 1px;
-            background-position: left bottom, center bottom;
         }
 
         /* Sadece takvim bölümünü tam genişlik (full-bleed) yap, container padding'ini telafi et */
