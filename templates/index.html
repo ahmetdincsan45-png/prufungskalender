@@ -226,9 +226,19 @@
             border-radius: 0 !important; /* Sol üst köşede 90° kırılım/ovalleşmeyi önle */
         }
 
+        /* Sadece takvim bölümünü tam genişlik (full-bleed) yap, container padding'ini telafi et */
+        .calendar-bleed {
+            margin-left: -10px;  /* .container-fluid padding: 10px */
+            margin-right: -10px;
+        }
+
         @media (max-width: 576px) {
             .container-fluid {
                 padding: 5px;
+            }
+            .calendar-bleed {
+                margin-left: -5px;   /* mobilde container padding 5px */
+                margin-right: -5px;
             }
             /* Nächste Prüfung satırını mobilde ortala */
             .next-exam-info {
@@ -315,7 +325,7 @@
                 </div>
                 
                 <!-- Takvim -->
-                <div id="calendar"></div>
+                <div id="calendar" class="calendar-bleed"></div>
             </div>
         </div>
     </div>
