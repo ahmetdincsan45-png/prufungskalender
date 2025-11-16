@@ -120,14 +120,18 @@ def ensure_inited():
     # Her istekte ziyaret kaydet (bots hariç basit filtreleme)
     if request.endpoint and not request.path.startswith('/static'):
         try:
+            # Kendi IP'ni filtrele
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            if ip:
+                ip = ip.split(',')[0].strip()
+            if ip == '217.233.108.177':
+                return  # Kendi ziyaretlerini sayma
+            
             user_agent = request.headers.get('User-Agent', '')
             # Bot kontrolü (basit)
             bot_keywords = ['bot', 'crawler', 'spider', 'scraper']
             is_bot = any(keyword in user_agent.lower() for keyword in bot_keywords)
             if not is_bot:
-                ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-                if ip:
-                    ip = ip.split(',')[0].strip()
                 with get_db_connection() as conn:
                     conn.execute(
                         "INSERT INTO visits (ip, user_agent, path) VALUES (?, ?, ?)",
