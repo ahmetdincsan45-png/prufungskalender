@@ -215,6 +215,17 @@
             }
         }
         
+        /* Başlık altındaki yatay çizginin sol kenarda aşağı dönmesini engelle */
+        /* FullCalendar grid dış çerçevesinin sol/sağ ve alt kenarını kaldırıyoruz. */
+        .fc-theme-standard .fc-scrollgrid {
+            border-left: 0 !important;
+            border-right: 0 !important;
+            border-bottom: 0 !important;
+            /* Üst çizgi aynı kalsın: */
+            border-top: 1px solid var(--fc-border-color) !important;
+            border-radius: 0 !important; /* Sol üst köşede 90° kırılım/ovalleşmeyi önle */
+        }
+
         @media (max-width: 576px) {
             .container-fluid {
                 padding: 5px;
