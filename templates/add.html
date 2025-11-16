@@ -157,6 +157,13 @@
             var dateInput = document.getElementById('date');
             dateInput.value = formattedDate;
             dateInput.setAttribute('min', formattedDate);
+            
+            // Mobil tarayıcılar için: her focus'ta min'i güncelle
+            dateInput.addEventListener('focus', function() {
+                var now = new Date();
+                var currentMin = now.toISOString().split('T')[0];
+                this.setAttribute('min', currentMin);
+            });
 
             // Altı sabit ders
             var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion'];
