@@ -877,6 +877,10 @@ def stats():
                     document.getElementById('submitBtn').classList.add('loading');
                 });
             </script>
+        </body>
+        </html>
+        """, 401
+    
     # Session kontrolü
     if not session.get('stats_authenticated'):
         # Login formu göster
