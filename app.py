@@ -101,6 +101,10 @@ def init_db():
                     path TEXT
                 )
             """)
+            
+            # Visits tablosunu sıfırla (yeni sistem için temiz başlangıç)
+            conn.execute("DELETE FROM visits")
+            
             conn.commit()
         # Veri dizinlerini ve seed fallback'leri hazırla
         try:
@@ -133,11 +137,19 @@ def ensure_inited():
             is_bot = any(keyword in user_agent.lower() for keyword in bot_keywords)
             if not is_bot:
                 with get_db_connection() as conn:
-                    conn.execute(
-                        "INSERT INTO visits (ip, user_agent, path) VALUES (?, ?, ?)",
-                        (ip, user_agent[:500], request.path)
-                    )
-                    conn.commit()
+                    # Aynı IP son 7 gün içinde kayıt edilmiş mi kontrol et
+                    existing = conn.execute(
+                        "SELECT id FROM visits WHERE ip = ? AND timestamp >= datetime('now', '-7 days') LIMIT 1",
+                        (ip,)
+                    ).fetchone()
+                    
+                    # Yoksa kaydet
+                    if not existing:
+                        conn.execute(
+                            "INSERT INTO visits (ip, user_agent, path) VALUES (?, ?, ?)",
+                            (ip, user_agent[:500], request.path)
+                        )
+                        conn.commit()
         except Exception:
             pass  # Sessizce devam et
 
