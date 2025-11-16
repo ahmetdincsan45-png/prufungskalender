@@ -11,6 +11,7 @@ import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import hashlib
 
 # -------------------- Flask --------------------
 
@@ -501,12 +502,12 @@ def stats():
     # POST ile şifre kontrolü (güvenli)
     if request.method == "POST":
         password = request.form.get('p', '')
-        print(f"🔑 Şifre deneme: {password}")  # Debug
         if password == '45ee551':
-            session['stats_authenticated'] = True
-            session.permanent = True
-            print(f"✅ Session oluşturuldu: {session.get('stats_authenticated')}")  # Debug
-            return redirect(url_for('stats'))
+            # Cookie ile auth token oluştur
+            auth_token = hashlib.sha256(f"{password}:prufungskalender".encode()).hexdigest()
+            response = redirect(url_for('stats'))
+            response.set_cookie('stats_auth', auth_token, max_age=86400)  # 24 saat
+            return response
         else:
             # Yanlış şifre
             return """
@@ -887,9 +888,11 @@ def stats():
         </html>
         """, 401
     
-    # Session kontrolü
-    if not session.get('stats_authenticated'):
-        print(f"❌ Session yok: {session.get('stats_authenticated')}")  # Debug
+    # Cookie kontrolü
+    auth_token = request.cookies.get('stats_auth')
+    expected_token = hashlib.sha256("45ee551:prufungskalender".encode()).hexdigest()
+    
+    if auth_token != expected_token:
         # Login formu göster
         return """
         <!DOCTYPE html>
@@ -1327,7 +1330,11 @@ def send_weekly_report():
 @app.route("/send-report")
 def send_report():
     """Manuel rapor gönderme endpoint'i (stats sayfasından erişilebilir)"""
-    if not session.get('stats_authenticated'):
+    # Cookie kontrolü
+    auth_token = request.cookies.get('stats_auth')
+    expected_token = hashlib.sha256("45ee551:prufungskalender".encode()).hexdigest()
+    
+    if auth_token != expected_token:
         return redirect(url_for('stats'))
     
     success = send_weekly_report()
@@ -1361,8 +1368,9 @@ def send_report():
 @app.route("/logout")
 def logout():
     """Stats sayfasından çıkış yap"""
-    session.pop('stats_authenticated', None)
-    return redirect(url_for('stats'))
+    response = redirect(url_for('stats'))
+    response.set_cookie('stats_auth', '', max_age=0)  # Cookie'yi sil
+    return response
 
 # -------------------- Local çalıştırma --------------------
 if __name__ == "__main__":
