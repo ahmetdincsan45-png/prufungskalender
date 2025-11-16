@@ -4,7 +4,7 @@ import sqlite3
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
 import requests
 import json
@@ -15,6 +15,7 @@ from email.mime.multipart import MIMEMultipart
 # -------------------- Flask --------------------
 
 app = Flask(__name__)
+app.secret_key = "prufungskalender_secret_key_2025_ahmet"  # Session için secret key
 CORS(app)
 
 # Email konfigürasyonu
@@ -491,12 +492,212 @@ def health():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route("/stats")
+@app.route("/stats", methods=["GET", "POST"])
 def stats():
     """Gizli istatistik sayfası - şifreyle korumalı"""
-    # Basit şifre kontrolü (query parameter ile)
-    password = request.args.get('p', '')
-    if password != '45ee551':  # İstersen bu şifreyi değiştirebilirsin
+    # POST ile şifre kontrolü (güvenli)
+    if request.method == "POST":
+        password = request.form.get('p', '')
+        if password == '45ee551':
+            session['stats_authenticated'] = True
+            return redirect(url_for('stats'))
+        else:
+            # Yanlış şifre
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Giriş</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { 
+                        font-family: system-ui, -apple-system, sans-serif; 
+                        display: flex; 
+                        justify-content: center; 
+                        align-items: center; 
+                        min-height: 100vh; 
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        overflow: auto;
+                        padding: 20px;
+                    }
+                    .container {
+                        width: 100%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                    }
+                    @keyframes fadeInUp {
+                        from { opacity: 0; transform: translateY(30px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes shake {
+                        0%, 100% { transform: translateX(0); }
+                        25% { transform: translateX(-10px); }
+                        75% { transform: translateX(10px); }
+                    }
+                    .login-box { 
+                        background: rgba(255, 255, 255, 0.95); 
+                        padding: 50px 40px; 
+                        border-radius: 20px; 
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                        animation: fadeInUp 0.6s ease-out, shake 0.5s ease-out;
+                        backdrop-filter: blur(10px);
+                        min-width: 350px;
+                        max-width: 400px;
+                        width: 100%;
+                        transition: transform 0.3s ease;
+                    }
+                    .login-box.keyboard-open {
+                        transform: translateY(-80px);
+                    }
+                    @media (max-width: 600px) {
+                        .login-box {
+                            min-width: unset;
+                            padding: 40px 30px;
+                        }
+                    }
+                    h2 { 
+                        text-align: center; 
+                        color: #333; 
+                        margin-bottom: 10px;
+                        font-size: 1.8em;
+                    }
+                    .error {
+                        color: #dc3545;
+                        text-align: center;
+                        margin-bottom: 20px;
+                        font-size: 0.9em;
+                        font-weight: 500;
+                    }
+                    .input-group {
+                        position: relative;
+                        margin-bottom: 25px;
+                    }
+                    input { 
+                        padding: 14px 45px 14px 14px; 
+                        font-size: 16px; 
+                        border: 2px solid #dc3545; 
+                        border-radius: 10px; 
+                        width: 100%;
+                        transition: all 0.3s ease;
+                        background: white;
+                    }
+                    input:focus {
+                        outline: none;
+                        border-color: #dc3545;
+                        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+                    }
+                    .toggle-password {
+                        position: absolute;
+                        right: 12px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        font-size: 20px;
+                        padding: 5px;
+                        color: #666;
+                        transition: color 0.3s;
+                    }
+                    .toggle-password:hover { color: #667eea; }
+                    button.submit-btn { 
+                        padding: 14px 24px; 
+                        font-size: 16px; 
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white; 
+                        border: none; 
+                        border-radius: 10px; 
+                        cursor: pointer; 
+                        width: 100%;
+                        font-weight: 600;
+                        transition: transform 0.2s, box-shadow 0.3s;
+                        position: relative;
+                    }
+                    button.submit-btn:hover { 
+                        transform: translateY(-2px);
+                        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+                    }
+                    button.submit-btn:active {
+                        transform: translateY(0);
+                    }
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                    .spinner {
+                        display: none;
+                        width: 20px;
+                        height: 20px;
+                        border: 3px solid rgba(255,255,255,0.3);
+                        border-top-color: white;
+                        border-radius: 50%;
+                        animation: spin 0.8s linear infinite;
+                        position: absolute;
+                        left: 50%;
+                        top: 50%;
+                        transform: translate(-50%, -50%);
+                    }
+                    .loading .spinner { display: block; }
+                    .loading .btn-text { opacity: 0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="login-box" id="loginBox">
+                        <h2>🔒 Stats</h2>
+                        <div class="error">❌ Yanlış şifre!</div>
+                        <form method="post" id="loginForm">
+                            <div class="input-group">
+                                <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                                <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                            </div>
+                            <button type="submit" class="submit-btn" id="submitBtn">
+                                <span class="btn-text">Giriş</span>
+                                <div class="spinner"></div>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <script>
+                    function togglePassword() {
+                        const input = document.getElementById('password');
+                        const btn = document.querySelector('.toggle-password');
+                        if (input.type === 'password') {
+                            input.type = 'text';
+                            btn.textContent = '🙈';
+                        } else {
+                            input.type = 'password';
+                            btn.textContent = '👁️';
+                        }
+                    }
+                    
+                    const loginBox = document.getElementById('loginBox');
+                    const passwordInput = document.getElementById('password');
+                    
+                    passwordInput.addEventListener('focus', function() {
+                        setTimeout(function() {
+                            loginBox.classList.add('keyboard-open');
+                            passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300);
+                    });
+                    
+                    passwordInput.addEventListener('blur', function() {
+                        loginBox.classList.remove('keyboard-open');
+                    });
+                    
+                    document.getElementById('loginForm').addEventListener('submit', function() {
+                        document.getElementById('submitBtn').classList.add('loading');
+                    });
+                </script>
+            </body>
+            </html>
+            """, 401
+    
+    # Session kontrolü
+    if not session.get('stats_authenticated'):
         return """
         <!DOCTYPE html>
         <html>
@@ -676,10 +877,190 @@ def stats():
                     document.getElementById('submitBtn').classList.add('loading');
                 });
             </script>
+    # Session kontrolü
+    if not session.get('stats_authenticated'):
+        # Login formu göster
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Giriş</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: system-ui, -apple-system, sans-serif; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    min-height: 100vh; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    overflow: auto;
+                    padding: 20px;
+                }
+                .container {
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .login-box { 
+                    background: rgba(255, 255, 255, 0.95); 
+                    padding: 50px 40px; 
+                    border-radius: 20px; 
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    animation: fadeInUp 0.6s ease-out;
+                    backdrop-filter: blur(10px);
+                    min-width: 350px;
+                    max-width: 400px;
+                    width: 100%;
+                    transition: transform 0.3s ease;
+                }
+                .login-box.keyboard-open {
+                    transform: translateY(-80px);
+                }
+                @media (max-width: 600px) {
+                    .login-box {
+                        min-width: unset;
+                        padding: 40px 30px;
+                    }
+                }
+                h2 { 
+                    text-align: center; 
+                    color: #333; 
+                    margin-bottom: 30px;
+                    font-size: 1.8em;
+                }
+                .input-group {
+                    position: relative;
+                    margin-bottom: 25px;
+                }
+                input { 
+                    padding: 14px 45px 14px 14px; 
+                    font-size: 16px; 
+                    border: 2px solid #e0e0e0; 
+                    border-radius: 10px; 
+                    width: 100%;
+                    transition: all 0.3s ease;
+                    background: white;
+                }
+                input:focus {
+                    outline: none;
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+                .toggle-password {
+                    position: absolute;
+                    right: 12px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 20px;
+                    padding: 5px;
+                    color: #666;
+                    transition: color 0.3s;
+                }
+                .toggle-password:hover { color: #667eea; }
+                button.submit-btn { 
+                    padding: 14px 24px; 
+                    font-size: 16px; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; 
+                    border: none; 
+                    border-radius: 10px; 
+                    cursor: pointer; 
+                    width: 100%;
+                    font-weight: 600;
+                    transition: transform 0.2s, box-shadow 0.3s;
+                    position: relative;
+                }
+                button.submit-btn:hover { 
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+                }
+                button.submit-btn:active {
+                    transform: translateY(0);
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+                .spinner {
+                    display: none;
+                    width: 20px;
+                    height: 20px;
+                    border: 3px solid rgba(255,255,255,0.3);
+                    border-top-color: white;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                }
+                .loading .spinner { display: block; }
+                .loading .btn-text { opacity: 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="login-box" id="loginBox">
+                    <h2>🔒 Stats</h2>
+                    <form method="post" id="loginForm">
+                        <div class="input-group">
+                            <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                            <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                        </div>
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            <span class="btn-text">Giriş</span>
+                            <div class="spinner"></div>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function togglePassword() {
+                    const input = document.getElementById('password');
+                    const btn = document.querySelector('.toggle-password');
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        btn.textContent = '🙈';
+                    } else {
+                        input.type = 'password';
+                        btn.textContent = '👁️';
+                    }
+                }
+                
+                const loginBox = document.getElementById('loginBox');
+                const passwordInput = document.getElementById('password');
+                
+                passwordInput.addEventListener('focus', function() {
+                    setTimeout(function() {
+                        loginBox.classList.add('keyboard-open');
+                        passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                });
+                
+                passwordInput.addEventListener('blur', function() {
+                    loginBox.classList.remove('keyboard-open');
+                });
+                
+                document.getElementById('loginForm').addEventListener('submit', function() {
+                    document.getElementById('submitBtn').classList.add('loading');
+                });
+            </script>
         </body>
         </html>
         """, 401
     
+    # Authenticated - Stats sayfasını göster
     try:
         with get_db_connection() as conn:
             # Toplam ziyaret sayısı
@@ -794,7 +1175,8 @@ def stats():
                 </style>
             </head>
             <body>
-                <a href="/send-report?p=45ee551" class="send-report-btn">📧 Rapor Gönder</a>
+                <a href="/send-report" class="send-report-btn">📧 Rapor Gönder</a>
+                <a href="/logout" class="send-report-btn" style="bottom: 80px; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">🚪 Çıkış</a>
                 <h1>📊 Ziyaretçi İstatistikleri</h1>
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
                 <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
@@ -934,9 +1316,8 @@ def send_weekly_report():
 @app.route("/send-report")
 def send_report():
     """Manuel rapor gönderme endpoint'i (stats sayfasından erişilebilir)"""
-    password = request.args.get('p', '')
-    if password != '45ee551':
-        return "Unauthorized", 401
+    if not session.get('stats_authenticated'):
+        return redirect(url_for('stats'))
     
     success = send_weekly_report()
     if success:
@@ -944,7 +1325,7 @@ def send_report():
         <html>
         <head>
             <meta charset="UTF-8">
-            <meta http-equiv="refresh" content="3;url=/stats?p=45ee551">
+            <meta http-equiv="refresh" content="3;url=/stats">
             <style>
                 body { font-family: system-ui; display: flex; justify-content: center; 
                        align-items: center; height: 100vh; background: #f5f5f5; }
@@ -965,6 +1346,12 @@ def send_report():
         """
     else:
         return "Email gönderme başarısız", 500
+
+@app.route("/logout")
+def logout():
+    """Stats sayfasından çıkış yap"""
+    session.pop('stats_authenticated', None)
+    return redirect(url_for('stats'))
 
 # -------------------- Local çalıştırma --------------------
 if __name__ == "__main__":
