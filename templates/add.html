@@ -164,6 +164,24 @@
                 var currentMin = now.toISOString().split('T')[0];
                 this.setAttribute('min', currentMin);
             });
+            
+            // Mobil tarayıcılar için ek kontrol: geçmiş tarih seçilirse otomatik bugüne döndür
+            dateInput.addEventListener('change', function() {
+                var selectedDate = this.value;
+                var now = new Date();
+                var todayStr = now.toISOString().split('T')[0];
+                if (selectedDate < todayStr) {
+                    this.value = todayStr;
+                }
+            });
+            dateInput.addEventListener('input', function() {
+                var selectedDate = this.value;
+                var now = new Date();
+                var todayStr = now.toISOString().split('T')[0];
+                if (selectedDate < todayStr) {
+                    this.value = todayStr;
+                }
+            });
 
             // Altı sabit ders
             var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion'];
