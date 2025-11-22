@@ -884,6 +884,30 @@ def stats():
                 document.getElementById('loginForm').addEventListener('submit', function() {
                     document.getElementById('submitBtn').classList.add('loading');
                 });
+                // İlk klavye açılışında bile kutuyu yukarı kaydırma iyileştirmesi
+                (function initKeyboardAssist(){
+                    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (!isMobile) return; // Masaüstünde gerek yok
+                    let elevated = false;
+                    function elevate(){
+                        if (!elevated){
+                            loginBox.classList.add('keyboard-open');
+                            elevated = true;
+                        }
+                        setTimeout(()=>passwordInput.scrollIntoView({behavior:'smooth', block:'center'}),50);
+                    }
+                    passwordInput.addEventListener('focus', elevate, { once: false });
+                    passwordInput.addEventListener('touchstart', elevate, { once: false });
+                    if (window.visualViewport){
+                        const initialVH = window.visualViewport.height;
+                        window.visualViewport.addEventListener('resize', ()=>{
+                            // Klavye açıldığında yükseklik küçülür
+                            if (window.visualViewport.height < initialVH - 100){
+                                elevate();
+                            }
+                        });
+                    }
+                })();
             </script>
         </body>
         </html>
@@ -1071,6 +1095,29 @@ def stats():
                 document.getElementById('loginForm').addEventListener('submit', function() {
                     document.getElementById('submitBtn').classList.add('loading');
                 });
+                // İlk klavye açılışında bile kutuyu yukarı kaydırma iyileştirmesi
+                (function initKeyboardAssist(){
+                    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (!isMobile) return;
+                    let elevated = false;
+                    function elevate(){
+                        if (!elevated){
+                            loginBox.classList.add('keyboard-open');
+                            elevated = true;
+                        }
+                        setTimeout(()=>passwordInput.scrollIntoView({behavior:'smooth', block:'center'}),50);
+                    }
+                    passwordInput.addEventListener('focus', elevate);
+                    passwordInput.addEventListener('touchstart', elevate);
+                    if (window.visualViewport){
+                        const initialVH = window.visualViewport.height;
+                        window.visualViewport.addEventListener('resize', ()=>{
+                            if (window.visualViewport.height < initialVH - 100){
+                                elevate();
+                            }
+                        });
+                    }
+                })();
             </script>
         </body>
         </html>
