@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Prüfung hinzufügen - Prüfungskalender</title>
     
     <!-- Bootstrap 5 -->
@@ -10,6 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     
     <style>
+        html, body { touch-action: manipulation; }
         .form-container {
             max-width: 600px;
             margin: 0 auto;
@@ -162,6 +163,16 @@
             </div>
     
     <script>
+        (function(){
+            var lastTouchEnd = 0;
+            document.addEventListener('touchend', function(e){
+                var now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, {passive:false});
+        })();
         document.addEventListener('DOMContentLoaded', function() {
             // Tarih inputu boş başlasın; sadece min (bugün) ayarlanır
             var today = new Date();

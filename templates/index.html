@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Prüfungskalender</title>
     <link rel="icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -293,6 +293,10 @@
             }
         }
     </style>
+    <style>
+        /* Double-tap zoomu azaltmak için dokunma optimizasyonu */
+        html, body { touch-action: manipulation; }
+    </style>
 </head>
 <body>
     <div class="container-fluid mt-4">
@@ -360,6 +364,17 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/de.global.min.js"></script>
     
     <script>
+        // Double-tap zoom engelleme (iOS/Safari uyumlu)
+        (function(){
+            var lastTouchEnd = 0;
+            document.addEventListener('touchend', function(e){
+                var now = Date.now();
+                if (now - lastTouchEnd <= 350) {
+                    e.preventDefault(); // ikinci hızlı dokunuşun zoom yapmasını engelle
+                }
+                lastTouchEnd = now;
+            }, {passive:false});
+        })();
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             var todayBtn = document.getElementById('todayBtn');
