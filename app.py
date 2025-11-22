@@ -12,6 +12,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # -------------------- Flask --------------------
 
@@ -114,9 +115,25 @@ def init_db():
                     path TEXT
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS admin_credentials (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             
             # Visits tablosunu sıfırla (yeni sistem için temiz başlangıç)
             conn.execute("DELETE FROM visits")
+
+            # Admin kaydı yoksa seed
+            existing_admin = conn.execute("SELECT id FROM admin_credentials LIMIT 1").fetchone()
+            if not existing_admin:
+                default_user = 'Ahmet'
+                default_pass = '45ee551'
+                pwd_hash = generate_password_hash(default_pass, method='pbkdf2:sha256', salt_length=16)
+                conn.execute("INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)", (default_user, pwd_hash))
             
             conn.commit()
         # Veri dizinlerini ve seed fallback'leri hazırla
@@ -498,19 +515,26 @@ def health():
 
 @app.route("/stats", methods=["GET", "POST"])
 def stats():
-    """Gizli istatistik sayfası - şifreyle korumalı"""
-    # POST ile şifre kontrolü (güvenli)
-    if request.method == "POST":
-        password = request.form.get('p', '')
-        if password == '45ee551':
-            # Cookie ile auth token oluştur
-            auth_token = hashlib.sha256(f"{password}:prufungskalender".encode()).hexdigest()
-            response = redirect(url_for('stats'))
-            response.set_cookie('stats_auth', auth_token, max_age=86400)  # 24 saat
-            return response
-        else:
-            # Yanlış şifre
-            return """
+    """İstatistikler - username + parola ile korumalı"""
+    def get_admin():
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT username, password_hash FROM admin_credentials LIMIT 1").fetchone()
+        return (row['username'], row['password_hash']) if row else (None, None)
+    def generate_token(pwd_hash):
+        return hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest()
+
+    # Login denemesi
+    if request.method == "POST" and request.form.get('login_attempt') == '1':
+        in_user = (request.form.get('username') or '').strip()
+        in_pass = (request.form.get('password') or '').strip()
+        admin_user, admin_hash = get_admin()
+        if admin_user and in_user == admin_user and check_password_hash(admin_hash, in_pass):
+            token = generate_token(admin_hash)
+            resp = redirect(url_for('stats'))
+            resp.set_cookie('stats_auth', token, max_age=86400, httponly=True)
+            return resp
+        # Hatalı giriş
+        return """
             <!DOCTYPE html>
             <html>
             <head>
@@ -655,10 +679,14 @@ def stats():
                 <div class="container">
                     <div class="login-box" id="loginBox">
                         <h2>🔒 Stats</h2>
-                        <div class="error">❌ Yanlış şifre!</div>
+                        <div class="error">❌ Yanlış kullanıcı adı veya şifre!</div>
                         <form method="post" id="loginForm">
+                            <input type="hidden" name="login_attempt" value="1" />
                             <div class="input-group">
-                                <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                                <input type="text" name="username" id="username" placeholder="Kullanıcı Adı" required autocomplete="username">
+                            </div>
+                            <div class="input-group">
+                                <input type="password" name="password" id="password" placeholder="Şifre" required autocomplete="current-password">
                                 <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
                             </div>
                             <button type="submit" class="submit-btn" id="submitBtn">
@@ -666,6 +694,28 @@ def stats():
                                 <div class="spinner"></div>
                             </button>
                         </form>
+                        <button class="change-toggle" id="changeToggle" style="margin-top:18px;background:none;border:none;color:#667eea;cursor:pointer;font-weight:600">Bilgileri Değiştir ▾</button>
+                        <div id="changePanel" style="display:none;margin-top:15px;animation:fadeInUp 0.4s ease-out">
+                            <form method="post" action="/stats/update-credentials" id="changeForm">
+                                <div class="input-group">
+                                    <input type="password" name="current_password" placeholder="Mevcut Şifre" required autocomplete="current-password">
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" name="new_username" placeholder="Yeni Kullanıcı Adı (opsiyonel)" autocomplete="username">
+                                </div>
+                                <div class="input-group">
+                                    <input type="password" name="new_password" placeholder="Yeni Şifre (opsiyonel)" autocomplete="new-password">
+                                </div>
+                                <div class="input-group">
+                                    <input type="password" name="new_password_repeat" placeholder="Yeni Şifre Tekrar" autocomplete="new-password">
+                                </div>
+                                <button type="submit" class="submit-btn" style="margin-top:5px">
+                                    <span class="btn-text">Kaydet</span>
+                                    <div class="spinner"></div>
+                                </button>
+                                <div style="font-size:0.75em;color:#666;margin-top:6px">En az 8 karakter, harf + rakam önerilir.</div>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <script>
@@ -684,19 +734,30 @@ def stats():
                     const loginBox = document.getElementById('loginBox');
                     const passwordInput = document.getElementById('password');
                     
+                    let userInteracted = false;
+                    ['touchstart','mousedown','click'].forEach(ev => {
+                        window.addEventListener(ev, () => { userInteracted = true; }, { once: true });
+                    });
                     passwordInput.addEventListener('focus', function() {
+                        if (!userInteracted) return;
                         setTimeout(function() {
                             loginBox.classList.add('keyboard-open');
                             passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 300);
+                        }, 50);
                     });
-                    
                     passwordInput.addEventListener('blur', function() {
                         loginBox.classList.remove('keyboard-open');
                     });
                     
                     document.getElementById('loginForm').addEventListener('submit', function() {
                         document.getElementById('submitBtn').classList.add('loading');
+                    });
+                    const changeToggle = document.getElementById('changeToggle');
+                    const changePanel = document.getElementById('changePanel');
+                    changeToggle.addEventListener('click', ()=>{
+                        const open = changePanel.style.display === 'block';
+                        changePanel.style.display = open ? 'none' : 'block';
+                        changeToggle.textContent = open ? 'Bilgileri Değiştir ▾' : 'Bilgileri Gizle ▴';
                     });
                 </script>
             </body>
@@ -914,11 +975,10 @@ def stats():
         """, 401
     
     # Cookie kontrolü
-    auth_token = request.cookies.get('stats_auth')
-    expected_token = hashlib.sha256("45ee551:prufungskalender".encode()).hexdigest()
-    
-    if auth_token != expected_token:
-        # Login formu göster
+    admin_user, admin_hash = get_admin()
+    token = request.cookies.get('stats_auth')
+    expected = generate_token(admin_hash) if admin_hash else None
+    if token != expected:
         return """
         <!DOCTYPE html>
         <html>
@@ -1054,8 +1114,12 @@ def stats():
                 <div class="login-box" id="loginBox">
                     <h2>🔒 Stats</h2>
                     <form method="post" id="loginForm">
+                        <input type="hidden" name="login_attempt" value="1" />
                         <div class="input-group">
-                            <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                            <input type="text" name="username" id="username" placeholder="Kullanıcı Adı" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <input type="password" name="password" id="password" placeholder="Şifre" required autocomplete="current-password">
                             <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
                         </div>
                         <button type="submit" class="submit-btn" id="submitBtn">
@@ -1063,6 +1127,28 @@ def stats():
                             <div class="spinner"></div>
                         </button>
                     </form>
+                    <button class="change-toggle" id="changeToggle" style="margin-top:18px;background:none;border:none;color:#667eea;cursor:pointer;font-weight:600">Bilgileri Değiştir ▾</button>
+                    <div id="changePanel" style="display:none;margin-top:15px;animation:fadeInUp 0.4s ease-out">
+                        <form method="post" action="/stats/update-credentials" id="changeForm">
+                            <div class="input-group">
+                                <input type="password" name="current_password" placeholder="Mevcut Şifre" required autocomplete="current-password">
+                            </div>
+                            <div class="input-group">
+                                <input type="text" name="new_username" placeholder="Yeni Kullanıcı Adı (opsiyonel)" autocomplete="username">
+                            </div>
+                            <div class="input-group">
+                                <input type="password" name="new_password" placeholder="Yeni Şifre (opsiyonel)" autocomplete="new-password">
+                            </div>
+                            <div class="input-group">
+                                <input type="password" name="new_password_repeat" placeholder="Yeni Şifre Tekrar" autocomplete="new-password">
+                            </div>
+                            <button type="submit" class="submit-btn" style="margin-top:5px">
+                                <span class="btn-text">Kaydet</span>
+                                <div class="spinner"></div>
+                            </button>
+                            <div style="font-size:0.75em;color:#666;margin-top:6px">En az 8 karakter, harf + rakam önerilir.</div>
+                        </form>
+                    </div>
                 </div>
             </div>
             <script>
@@ -1081,11 +1167,16 @@ def stats():
                 const loginBox = document.getElementById('loginBox');
                 const passwordInput = document.getElementById('password');
                 
+                let userInteracted = false;
+                ['touchstart','mousedown','click'].forEach(ev => {
+                    window.addEventListener(ev, () => { userInteracted = true; }, { once: true });
+                });
                 passwordInput.addEventListener('focus', function() {
+                    if (!userInteracted) return;
                     setTimeout(function() {
                         loginBox.classList.add('keyboard-open');
                         passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
+                    }, 50);
                 });
                 
                 passwordInput.addEventListener('blur', function() {
@@ -1095,29 +1186,13 @@ def stats():
                 document.getElementById('loginForm').addEventListener('submit', function() {
                     document.getElementById('submitBtn').classList.add('loading');
                 });
-                // İlk klavye açılışında bile kutuyu yukarı kaydırma iyileştirmesi
-                (function initKeyboardAssist(){
-                    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                    if (!isMobile) return;
-                    let elevated = false;
-                    function elevate(){
-                        if (!elevated){
-                            loginBox.classList.add('keyboard-open');
-                            elevated = true;
-                        }
-                        setTimeout(()=>passwordInput.scrollIntoView({behavior:'smooth', block:'center'}),50);
-                    }
-                    passwordInput.addEventListener('focus', elevate);
-                    passwordInput.addEventListener('touchstart', elevate);
-                    if (window.visualViewport){
-                        const initialVH = window.visualViewport.height;
-                        window.visualViewport.addEventListener('resize', ()=>{
-                            if (window.visualViewport.height < initialVH - 100){
-                                elevate();
-                            }
-                        });
-                    }
-                })();
+                const changeToggle = document.getElementById('changeToggle');
+                const changePanel = document.getElementById('changePanel');
+                changeToggle.addEventListener('click', ()=>{
+                    const open = changePanel.style.display === 'block';
+                    changePanel.style.display = open ? 'none' : 'block';
+                    changeToggle.textContent = open ? 'Bilgileri Değiştir ▾' : 'Bilgileri Gizle ▴';
+                });
             </script>
         </body>
         </html>
@@ -1280,6 +1355,44 @@ def stats():
             return html
     except Exception as e:
         return f"Error: {e}", 500
+
+@app.route('/stats/update-credentials', methods=['POST'])
+def update_credentials():
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT id, username, password_hash FROM admin_credentials LIMIT 1").fetchone()
+    if not row:
+        return redirect(url_for('stats'))
+    current_password = (request.form.get('current_password') or '').strip()
+    new_username = (request.form.get('new_username') or '').strip()
+    new_password = (request.form.get('new_password') or '').strip()
+    new_repeat = (request.form.get('new_password_repeat') or '').strip()
+    if not check_password_hash(row['password_hash'], current_password):
+        return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Mevcut şifre hatalı</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
+    updates = {}
+    if new_username:
+        import re
+        if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
+            return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Geçersiz kullanıcı adı</h3><p>3-32 karakter; harf, rakam, altçizgi.</p><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
+        updates['username'] = new_username
+    if new_password:
+        if len(new_password) < 8:
+            return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Şifre çok kısa</h3><p>En az 8 karakter.</p><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
+        if new_password != new_repeat:
+            return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Şifreler uyuşmuyor</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
+        updates['password_hash'] = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
+    if not updates:
+        return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Değişiklik yok</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
+    set_clause = ', '.join(f"{k}=?" for k in updates.keys()) + ', updated_at=CURRENT_TIMESTAMP'
+    vals = list(updates.values()) + [row['id']]
+    with get_db_connection() as conn:
+        conn.execute(f"UPDATE admin_credentials SET {set_clause} WHERE id=?", vals)
+        conn.commit()
+        new_row = conn.execute("SELECT password_hash FROM admin_credentials WHERE id=?", (row['id'],)).fetchone()
+    new_hash = new_row['password_hash'] if new_row else row['password_hash']
+    token = hashlib.sha256(f"{new_hash}:prufungskalender".encode()).hexdigest()
+    resp = redirect(url_for('stats'))
+    resp.set_cookie('stats_auth', token, max_age=86400, httponly=True)
+    return resp
 
 # -------------------- Email Raporu --------------------
 def send_weekly_report():
