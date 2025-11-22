@@ -40,9 +40,10 @@
             55% { transform: scale(1.035); }
             100% { transform: scale(1); }
         }
-        /* Modal açılış hızlandırma (Bootstrap override) */
-        .modal.fade .modal-dialog { transition: transform var(--fast) var(--ease-out), opacity var(--fast) var(--ease-out); }
-        .modal.fade:not(.show) .modal-dialog { transform: translate(0,-6px); }
+        /* Sadece ders seçimi modalı için animasyonları tamamen kaldır (anında aç/kapan) */
+        #subjectPickerModal.modal.fade .modal-dialog { transition: none !important; transform: none !important; }
+        #subjectPickerModal.modal.fade { transition: none !important; }
+        #subjectPickerModal.show .modal-dialog { transform: none !important; }
         @media (prefers-reduced-motion: reduce) {
             .submit-transition, .modal.fade .modal-dialog { transition: none !important; animation: none !important; }
         }
@@ -241,14 +242,13 @@
             var modalEl = document.getElementById('subjectPickerModal');
             var subjectModal = new bootstrap.Modal(modalEl);
             var subjectList = document.getElementById('subjectList');
-            function renderList() {
-                subjectList.innerHTML = '';
-                SUBJECT_POOL.slice().sort(function(a,b){
-                    return a.localeCompare(b, 'de');
-                }).forEach(function(s){
+            // Listeyi sadece bir kere üret (açılışta hazır olsun, bekleme yok)
+            (function initSubjectList(){
+                var frag = document.createDocumentFragment();
+                SUBJECT_POOL.slice().sort(function(a,b){ return a.localeCompare(b,'de'); }).forEach(function(s){
                     var item = document.createElement('button');
                     item.type = 'button';
-                    item.className = 'list-group-item list-group-item-action';
+                    item.className = 'list-group-item list-group-item-action py-2';
                     item.style.fontWeight = '500';
                     item.style.textAlign = 'center';
                     item.textContent = s;
@@ -256,15 +256,17 @@
                         subjectsInput.value = s;
                         selectedSingle.textContent = s;
                         selectedSingle.classList.remove('d-none');
+                        // Modalı anında kapat (animasyonsuz)
                         subjectModal.hide();
                         updateSubmitState();
                     });
-                    subjectList.appendChild(item);
+                    frag.appendChild(item);
                 });
-            }
+                subjectList.innerHTML = '';
+                subjectList.appendChild(frag);
+            })();
 
             openBtn.addEventListener('click', function(){
-                renderList();
                 subjectModal.show();
             });
 
