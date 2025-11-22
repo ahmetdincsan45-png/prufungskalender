@@ -110,6 +110,9 @@
                             </label>
                             <input type="date" class="form-control" id="date" name="date" required>
                             <div class="form-text">Wählen Sie das Datum der Prüfung aus. Nur heutige oder zukünftige Termine sind zulässig.</div>
+                            <div id="dateWarning" class="alert alert-danger mt-2 py-2 px-3 d-none" style="font-size:0.85rem">
+                                Geçmiş tarih seçilemez. Lütfen ileri bir gün seçin.
+                            </div>
                         </div>
                         
 
@@ -168,26 +171,28 @@
             });
             
             // Mobil tarayıcılar için ek kontrol: geçmiş tarih seçilirse otomatik bugüne döndür
-            dateInput.addEventListener('change', function() {
-                var selectedDate = this.value;
-                if (!selectedDate) return; // boşken müdahale etme
+            var dateWarning = document.getElementById('dateWarning');
+            function handleDateInput() {
+                var selectedDate = dateInput.value;
+                if (!selectedDate) {
+                    if (submitBtn) submitBtn.disabled = true;
+                    dateWarning.classList.add('d-none');
+                    return;
+                }
                 var now = new Date();
                 var todayStr = now.toISOString().split('T')[0];
                 if (selectedDate < todayStr) {
-                    this.value = todayStr;
+                    // Geçmiş tarih: alanı temizle, uyarıyı göster
+                    dateInput.value = '';
+                    dateWarning.classList.remove('d-none');
+                    if (submitBtn) submitBtn.disabled = true;
+                } else {
+                    dateWarning.classList.add('d-none');
+                    if (submitBtn) submitBtn.disabled = false;
                 }
-                if (submitBtn && this.value) submitBtn.disabled = false;
-            });
-            dateInput.addEventListener('input', function() {
-                var selectedDate = this.value;
-                if (!selectedDate) return;
-                var now = new Date();
-                var todayStr = now.toISOString().split('T')[0];
-                if (selectedDate < todayStr) {
-                    this.value = todayStr;
-                }
-                if (submitBtn && this.value) submitBtn.disabled = false;
-            });
+            }
+            dateInput.addEventListener('change', handleDateInput);
+            dateInput.addEventListener('input', handleDateInput);
 
             // Altı sabit ders
             var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion'];
