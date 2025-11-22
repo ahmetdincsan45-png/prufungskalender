@@ -28,6 +28,15 @@
             margin-bottom: 20px;
             color: #856404;
         }
+        /* Dinamik submit butonu animasyon ve durum stilleri */
+        .submit-transition { transition: opacity .25s ease, transform .35s ease, box-shadow .4s ease; }
+        .submit-disabled { opacity: .55; pointer-events: none; }
+        .submit-enabled { opacity: 1; animation: popEnable .45s ease; }
+        @keyframes popEnable {
+            0% { transform: scale(.94); box-shadow: 0 0 0 0 rgba(40,167,69,0); }
+            60% { transform: scale(1.03); box-shadow: 0 0 0 12px rgba(40,167,69,.15); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(40,167,69,0); }
+        }
         
         /* Mobil responsive düzenlemeler */
         @media (max-width: 768px) {
@@ -161,7 +170,10 @@
             dateInput.setAttribute('min', formattedDate);
             // Submit butonunu tarih seçilene kadar devre dışı bırak
             var submitBtn = document.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn) {
+                submitBtn.classList.add('submit-transition','submit-disabled');
+                submitBtn.disabled = true;
+            }
             
             // Mobil tarayıcılar için: her focus'ta min'i güncelle
             dateInput.addEventListener('focus', function() {
@@ -177,6 +189,7 @@
                 if (!selectedDate) {
                     if (submitBtn) submitBtn.disabled = true;
                     dateWarning.classList.add('d-none');
+                    updateSubmitState();
                     return;
                 }
                 var now = new Date();
@@ -186,9 +199,14 @@
                     dateInput.value = '';
                     dateWarning.classList.remove('d-none');
                     if (submitBtn) submitBtn.disabled = true;
+                    updateSubmitState();
+                    // Mobilde uyarıya otomatik kaydır
+                    if (window.innerWidth <= 768) {
+                        setTimeout(function(){ dateWarning.scrollIntoView({behavior:'smooth', block:'center'}); }, 50);
+                    }
                 } else {
                     dateWarning.classList.add('d-none');
-                    if (submitBtn) submitBtn.disabled = false;
+                    updateSubmitState();
                 }
             }
             dateInput.addEventListener('change', handleDateInput);
@@ -219,6 +237,7 @@
                         selectedSingle.textContent = s;
                         selectedSingle.classList.remove('d-none');
                         subjectModal.hide();
+                        updateSubmitState();
                     });
                     subjectList.appendChild(item);
                 });
@@ -231,6 +250,21 @@
 
             // Form doğrulama (tek seçim + geçmiş tarih kontrolü)
             var form = document.querySelector('form');
+            function updateSubmitState() {
+                if (!submitBtn) return;
+                var subjects = (subjectsInput.value || '').trim();
+                var dateVal = dateInput.value.trim();
+                var now = new Date();
+                var todayStr = now.toISOString().split('T')[0];
+                var dateValid = dateVal && dateVal >= todayStr;
+                var subjectsValid = !!subjects;
+                // Buraya ileride ek kurallar (ör: haftalık limit) entegre edilebilir
+                var allValid = dateValid && subjectsValid && dateWarning.classList.contains('d-none');
+                submitBtn.disabled = !allValid;
+                submitBtn.classList.toggle('submit-enabled', allValid);
+                submitBtn.classList.toggle('submit-disabled', !allValid);
+            }
+
             form.addEventListener('submit', function(e) {
                 var subjects = (subjectsInput.value || '').trim();
                 var date = document.getElementById('date').value.trim();
@@ -249,6 +283,8 @@
                     return;
                 }
             });
+            // İlk durumda güncelle
+            updateSubmitState();
         });
     </script>
 </body>
