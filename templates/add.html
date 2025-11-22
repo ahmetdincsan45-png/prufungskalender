@@ -151,12 +151,14 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Bugünkü tarihi varsayılan olarak ayarla ve min attribute ekle
+            // Tarih inputu boş başlasın; sadece min (bugün) ayarlanır
             var today = new Date();
             var formattedDate = today.toISOString().split('T')[0];
             var dateInput = document.getElementById('date');
-            dateInput.value = formattedDate;
             dateInput.setAttribute('min', formattedDate);
+            // Submit butonunu tarih seçilene kadar devre dışı bırak
+            var submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
             
             // Mobil tarayıcılar için: her focus'ta min'i güncelle
             dateInput.addEventListener('focus', function() {
@@ -168,19 +170,23 @@
             // Mobil tarayıcılar için ek kontrol: geçmiş tarih seçilirse otomatik bugüne döndür
             dateInput.addEventListener('change', function() {
                 var selectedDate = this.value;
+                if (!selectedDate) return; // boşken müdahale etme
                 var now = new Date();
                 var todayStr = now.toISOString().split('T')[0];
                 if (selectedDate < todayStr) {
                     this.value = todayStr;
                 }
+                if (submitBtn && this.value) submitBtn.disabled = false;
             });
             dateInput.addEventListener('input', function() {
                 var selectedDate = this.value;
+                if (!selectedDate) return;
                 var now = new Date();
                 var todayStr = now.toISOString().split('T')[0];
                 if (selectedDate < todayStr) {
                     this.value = todayStr;
                 }
+                if (submitBtn && this.value) submitBtn.disabled = false;
             });
 
             // Altı sabit ders
