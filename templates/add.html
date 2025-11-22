@@ -11,6 +11,7 @@
     
     <style>
         html, body { touch-action: manipulation; }
+        :root { --fast: 140ms; --ease-out: cubic-bezier(.25,.9,.35,1); }
         .form-container {
             max-width: 600px;
             margin: 0 auto;
@@ -30,13 +31,20 @@
             color: #856404;
         }
         /* Dinamik submit butonu animasyon ve durum stilleri */
-        .submit-transition { transition: opacity .25s ease, transform .35s ease, box-shadow .4s ease; }
-        .submit-disabled { opacity: .55; pointer-events: none; }
-        .submit-enabled { opacity: 1; animation: popEnable .45s ease; }
+        /* Daha hızlı, hafif animasyon (kısa sürede geri bildirim) */
+        .submit-transition { transition: opacity var(--fast) var(--ease-out), transform var(--fast) var(--ease-out); will-change: opacity, transform; }
+        .submit-disabled { opacity: .50; pointer-events: none; transform: scale(.98); }
+        .submit-enabled { opacity: 1; animation: popEnable .30s var(--ease-out); }
         @keyframes popEnable {
-            0% { transform: scale(.94); box-shadow: 0 0 0 0 rgba(40,167,69,0); }
-            60% { transform: scale(1.03); box-shadow: 0 0 0 12px rgba(40,167,69,.15); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(40,167,69,0); }
+            0% { transform: scale(.94); }
+            55% { transform: scale(1.035); }
+            100% { transform: scale(1); }
+        }
+        /* Modal açılış hızlandırma (Bootstrap override) */
+        .modal.fade .modal-dialog { transition: transform var(--fast) var(--ease-out), opacity var(--fast) var(--ease-out); }
+        .modal.fade:not(.show) .modal-dialog { transform: translate(0,-6px); }
+        @media (prefers-reduced-motion: reduce) {
+            .submit-transition, .modal.fade .modal-dialog { transition: none !important; animation: none !important; }
         }
         
         /* Mobil responsive düzenlemeler */
@@ -213,7 +221,8 @@
                     updateSubmitState();
                     // Mobilde uyarıya otomatik kaydır
                     if (window.innerWidth <= 768) {
-                        setTimeout(function(){ dateWarning.scrollIntoView({behavior:'smooth', block:'center'}); }, 50);
+                        // Daha hızlı kaydırma (smooth yine var ama kısa gecikme yok)
+                        dateWarning.scrollIntoView({behavior:'smooth', block:'center'});
                     }
                 } else {
                     dateWarning.classList.add('d-none');
