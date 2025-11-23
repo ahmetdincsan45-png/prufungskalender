@@ -125,13 +125,14 @@
 
                         
                         <div class="mb-3">
-                            <label for="date" class="form-label fw-bold">
+                            <label for="date_display" class="form-label fw-bold">
                                 <i class="bi bi-calendar"></i> Prüfungsdatum *
                             </label>
-                            <input type="date" class="form-control" id="date" name="date" required>
-                            <div class="form-text">Wählen Sie das Datum der Prüfung aus. Nur heutige oder zukünftige Termine sind zulässig.</div>
+                            <input type="text" class="form-control" id="date_display" placeholder="TT.MM.JJJJ" autocomplete="off" required>
+                            <input type="hidden" id="date" name="date" required>
+                            <div class="form-text">Nur heutige oder zukünftige Termine (Format: TT.MM.JJJJ).</div>
                             <div id="dateWarning" class="alert alert-danger mt-2 py-2 px-3 d-none" style="font-size:0.85rem">
-                                Geçmiş tarih seçilemez. Lütfen ileri bir gün seçin.
+                                Ungültiges Datum. Bitte ein zukünftiges Datum wählen.
                             </div>
                         </div>
                         
@@ -153,6 +154,10 @@
 
         <!-- Bootstrap 5 JS -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Flatpickr Alman locale -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/de.js"></script>
 
         <!-- Fach seçici modalı -->
             <div class="modal" id="subjectPickerModal" tabindex="-1" aria-labelledby="subjectPickerLabel" aria-hidden="true">
@@ -184,11 +189,8 @@
             }, {passive:false});
         })();
         document.addEventListener('DOMContentLoaded', function() {
-            // Tarih inputu boş başlasın; sadece min (bugün) ayarlanır
-            var today = new Date();
-            var formattedDate = today.toISOString().split('T')[0];
-            var dateInput = document.getElementById('date');
-            dateInput.setAttribute('min', formattedDate);
+            var dateHidden = document.getElementById('date');
+            var dateDisplay = document.getElementById('date_display');
             // Submit butonunu tarih seçilene kadar devre dışı bırak
             var submitBtn = document.querySelector('button[type="submit"]');
             if (submitBtn) {
@@ -196,43 +198,25 @@
                 submitBtn.disabled = true;
             }
             
-            // Mobil tarayıcılar için: her focus'ta min'i güncelle
-            dateInput.addEventListener('focus', function() {
-                var now = new Date();
-                var currentMin = now.toISOString().split('T')[0];
-                this.setAttribute('min', currentMin);
-            });
-            
-            // Mobil tarayıcılar için ek kontrol: geçmiş tarih seçilirse otomatik bugüne döndür
             var dateWarning = document.getElementById('dateWarning');
-            function handleDateInput() {
-                var selectedDate = dateInput.value;
-                if (!selectedDate) {
-                    if (submitBtn) submitBtn.disabled = true;
-                    dateWarning.classList.add('d-none');
-                    updateSubmitState();
-                    return;
-                }
-                var now = new Date();
-                var todayStr = now.toISOString().split('T')[0];
-                if (selectedDate < todayStr) {
-                    // Geçmiş tarih: alanı temizle, uyarıyı göster
-                    dateInput.value = '';
-                    dateWarning.classList.remove('d-none');
-                    if (submitBtn) submitBtn.disabled = true;
-                    updateSubmitState();
-                    // Mobilde uyarıya otomatik kaydır
-                    if (window.innerWidth <= 768) {
-                        // Daha hızlı kaydırma (smooth yine var ama kısa gecikme yok)
-                        dateWarning.scrollIntoView({behavior:'smooth', block:'center'});
+            // Flatpickr entegrasyonu (Almanca, min bugün)
+            flatpickr(dateDisplay, {
+                dateFormat: 'd.m.Y',
+                locale: flatpickr.l10ns.de,
+                minDate: 'today',
+                disableMobile: true,
+                allowInput: false,
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length) {
+                        var iso = selectedDates[0].toISOString().split('T')[0];
+                        dateHidden.value = iso;
+                        dateWarning.classList.add('d-none');
+                    } else {
+                        dateHidden.value = '';
                     }
-                } else {
-                    dateWarning.classList.add('d-none');
                     updateSubmitState();
                 }
-            }
-            dateInput.addEventListener('change', handleDateInput);
-            dateInput.addEventListener('input', handleDateInput);
+            });
 
             // Altı sabit ders
             var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion'];
@@ -276,7 +260,7 @@
             function updateSubmitState() {
                 if (!submitBtn) return;
                 var subjects = (subjectsInput.value || '').trim();
-                var dateVal = dateInput.value.trim();
+                var dateVal = dateHidden.value.trim();
                 var now = new Date();
                 var todayStr = now.toISOString().split('T')[0];
                 var dateValid = dateVal && dateVal >= todayStr;
@@ -290,7 +274,7 @@
 
             form.addEventListener('submit', function(e) {
                 var subjects = (subjectsInput.value || '').trim();
-                var date = document.getElementById('date').value.trim();
+                var date = dateHidden.value.trim();
                 if (!subjects || !date) {
                     e.preventDefault();
                     alert('Bitte ein Fach und ein Datum auswählen!');
