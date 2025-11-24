@@ -208,7 +208,8 @@
                 allowInput: false,
                 onChange: function(selectedDates, dateStr, instance) {
                     if (selectedDates.length) {
-                        var iso = selectedDates[0].toISOString().split('T')[0];
+                        // UTC kaymasını önlemek için yerel format kullan
+                        var iso = instance.formatDate(selectedDates[0], 'Y-m-d');
                         dateHidden.value = iso;
                         dateWarning.classList.add('d-none');
                     } else {
