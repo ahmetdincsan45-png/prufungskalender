@@ -4,6 +4,10 @@ import sqlite3
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # Python <3.9 veya ortamda yoksa
+    ZoneInfo = None
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
 import requests
@@ -187,12 +191,17 @@ def ensure_inited():
 @app.route("/")
 def index():
     try:
+        # Avrupa/Berlin saatine göre 18:00 eşik kuralı
+        now = datetime.now(ZoneInfo('Europe/Berlin')) if ZoneInfo else datetime.now()
+        today = now.strftime('%Y-%m-%d')
+        after_cutoff = now.hour >= 18
+        query = (
+            "SELECT * FROM exams WHERE date > ? ORDER BY date, id LIMIT 1"
+            if after_cutoff
+            else "SELECT * FROM exams WHERE date >= ? ORDER BY date, id LIMIT 1"
+        )
         with get_db_connection() as conn:
-            today = datetime.now().strftime('%Y-%m-%d')
-            next_exam = conn.execute(
-                "SELECT * FROM exams WHERE date >= ? ORDER BY date LIMIT 1",
-                (today,)
-            ).fetchone()
+            next_exam = conn.execute(query, (today,)).fetchone()
         return render_template("index.html", next_exam=next_exam)
     except Exception as e:
         print("❌ Index error:", e)
