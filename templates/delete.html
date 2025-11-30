@@ -251,18 +251,21 @@
         let selectedExamId = null;
         
         function selectExam(examId) {
+            const el = document.querySelector(`[data-exam-id="${examId}"]`);
+            if (!el) return;
+            // Geçmiş sınavsa hiçbir işlem yapma
+            if (el.classList.contains('past')) {
+                return;
+            }
             // Önceki seçimi kaldır
             document.querySelectorAll('.exam-item').forEach(item => {
                 item.classList.remove('selected');
             });
-            
-            // Yeni seçimi işaretle
-            document.querySelector(`[data-exam-id="${examId}"]`).classList.add('selected');
-            
+            // Yalnız gelecekteki sınavı seç
+            el.classList.add('selected');
             // Hidden input'a ID'yi kaydet
             document.getElementById('exam_id').value = examId;
             selectedExamId = examId;
-            
             // Delete butonunu aktifleştir
             document.getElementById('deleteBtn').disabled = false;
         }
