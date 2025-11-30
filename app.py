@@ -479,12 +479,19 @@ def delete_exam():
         if request.method == "POST":
             exam_id = (request.form.get("exam_id") or "").strip()
             if exam_id:
+                # Yalnız gelecekteki sınavları kullanıcı sayfasından silelim
                 with get_db_connection() as conn:
-                    conn.execute("DELETE FROM exams WHERE id = ?", (exam_id,))
-                    conn.commit()
+                    row = conn.execute("SELECT date FROM exams WHERE id = ?", (exam_id,)).fetchone()
+                    if row:
+                        today_str = datetime.now().strftime('%Y-%m-%d')
+                        if row['date'] >= today_str:
+                            conn.execute("DELETE FROM exams WHERE id = ?", (exam_id,))
+                            conn.commit()
                 return redirect(url_for("delete_exam"))
         with get_db_connection() as conn:
-            rows = conn.execute("SELECT * FROM exams ORDER BY date").fetchall()
+            # Yalnız gelecekteki sınavları listele
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            rows = conn.execute("SELECT * FROM exams WHERE date >= ? ORDER BY date", (today_str,)).fetchall()
         # Her satıra biçimlenmiş tarih ekle
         exams = []
         today_str = datetime.now().strftime('%Y-%m-%d')
@@ -510,6 +517,65 @@ def delete_exam():
     except Exception as e:
         print("❌ Delete exam error:", e)
         return render_template("delete.html", exams=[], error=str(e))
+
+@app.route("/stats/delete-past", methods=["GET", "POST"])
+def stats_delete_past():
+    """Geçmiş sınavları yalnız stats yetkisi ile silebilme sayfası"""
+    # Stats ile aynı cookie doğrulaması
+    def get_admin():
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT username, password_hash FROM admin_credentials LIMIT 1").fetchone()
+        return (row['username'], row['password_hash']) if row else (None, None)
+    def generate_token(pwd_hash):
+        return hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest()
+    admin_user, admin_hash = get_admin()
+    expected = generate_token(admin_hash) if admin_hash else None
+    token = request.cookies.get('stats_auth')
+    if token != expected:
+        return redirect(url_for('stats'))
+    try:
+        if request.method == 'POST':
+            exam_id = (request.form.get('exam_id') or '').strip()
+            if exam_id:
+                with get_db_connection() as conn:
+                    conn.execute("DELETE FROM exams WHERE id = ?", (exam_id,))
+                    conn.commit()
+            return redirect(url_for('stats_delete_past'))
+        with get_db_connection() as conn:
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            rows = conn.execute("SELECT * FROM exams WHERE date < ? ORDER BY date DESC", (today_str,)).fetchall()
+        # Basit liste HTML
+        items = "".join([
+            f"<tr><td>{r['id']}</td><td>{r['subject']}</td><td>{r['date']}</td>"
+            f"<td><form method='post' style='display:inline'>"
+            f"<input type='hidden' name='exam_id' value='{r['id']}'/>"
+            f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
+            f"</form></td></tr>" for r in rows
+        ])
+        return f"""
+        <!DOCTYPE html>
+        <html><head><meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Geçmiş Sınavlar</title>
+        <style>
+            body {{ font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f5f5f5; }}
+            h1 {{ font-size: 1.3em; margin: 0 0 12px 0; }}
+            table {{ width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.1); }}
+            th, td {{ padding: 8px; border-bottom: 1px solid #eee; text-align: left; font-size: .95em; }}
+            th {{ background: #f8f9fa; }}
+            a.back {{ display:inline-block; margin-bottom:10px; text-decoration:none; color:#667eea; font-weight:600; }}
+        </style>
+        </head><body>
+            <a class='back' href='/stats'>← Stats</a>
+            <h1>⌛ Geçmiş Sınavlar (Silme)</h1>
+            <table>
+                <tr><th>ID</th><th>Fach</th><th>Datum</th><th>Aktion</th></tr>
+                {items}
+            </table>
+        </body></html>
+        """
+    except Exception as e:
+        return f"Error: {e}", 500
 
 # Sağlık kontrolü (log ve yol teyidi için)
 @app.route("/health")
