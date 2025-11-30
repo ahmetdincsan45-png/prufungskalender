@@ -1296,33 +1296,7 @@ def stats():
             # Benzersiz IP sayısı
             unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
             
-            # Saatlik dağılım (son 24 saat)
-            hourly = conn.execute("""
-                SELECT strftime('%H', timestamp) as hour, COUNT(*) as count
-                FROM visits
-                WHERE timestamp >= datetime('now', '-24 hours')
-                GROUP BY hour
-                ORDER BY hour
-            """).fetchall()
-            
-            # Saatlik dağılım grafiği için HTML
-            hourly_chart = "<div style='display: flex; align-items: flex-end; gap: 4px; height: 150px; margin: 20px 0;'>"
-            hourly_data = {str(h[0]).zfill(2): h[1] for h in hourly}
-            max_count = max(hourly_data.values()) if hourly_data else 1
-            
-            for hour in range(24):
-                h_str = str(hour).zfill(2)
-                count = hourly_data.get(h_str, 0)
-                height_pct = (count / max_count * 100) if max_count > 0 else 0
-                hourly_chart += f"""
-                <div style='flex: 1; display: flex; flex-direction: column; align-items: center;'>
-                    <div style='font-size: 0.7em; color: #666; margin-bottom: 4px;'>{count}</div>
-                    <div style='width: 100%; background: #007bff; border-radius: 4px 4px 0 0; 
-                                height: {height_pct}%; min-height: 2px;'></div>
-                    <div style='font-size: 0.7em; color: #666; margin-top: 4px;'>{h_str}</div>
-                </div>
-                """
-            hourly_chart += "</div>"
+            # Saatlik dağılım kaldırıldı (kullanıcı talebi)
             
             # Son 20 ziyaret
             recent = conn.execute(
@@ -1448,13 +1422,7 @@ def stats():
                 <div class="stat"><span class="stat-label">Son 7 Gün</span><span class="stat-value">{last_7_days}</span></div>
                 <div class="stat"><span class="stat-label">Benzersiz IP</span><span class="stat-value">{unique_ips}</span></div>
                 
-                <h2>📈 Saatlik Dağılım (Son 24 Saat)</h2>
-                <div class="chart-container">
-                    <div class="chart-scroll">
-                        {hourly_chart}
-                        <div style='text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;'>Saat (00-23)</div>
-                    </div>
-                </div>
+                
                 
                 <h2>🕐 Son 20 Ziyaret</h2>
                 <div class="table-container">
@@ -1633,11 +1601,16 @@ def send_weekly_report():
 @app.route("/send-report")
 def send_report():
     """Manuel rapor gönderme endpoint'i (stats sayfasından erişilebilir)"""
-    # Cookie kontrolü
-    auth_token = request.cookies.get('stats_auth')
-    expected_token = hashlib.sha256("45ee551:prufungskalender".encode()).hexdigest()
-    
-    if auth_token != expected_token:
+    # Cookie kontrolü - stats ile aynı mantık
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT password_hash FROM admin_credentials LIMIT 1").fetchone()
+        pwd_hash = row['password_hash'] if row else None
+        expected_token = hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest() if pwd_hash else None
+        auth_token = request.cookies.get('stats_auth')
+        if (not expected_token) or (auth_token != expected_token):
+            return redirect(url_for('stats'))
+    except Exception:
         return redirect(url_for('stats'))
     
     success = send_weekly_report()
