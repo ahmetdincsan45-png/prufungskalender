@@ -34,11 +34,10 @@
             padding: 15px;
             margin-bottom: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: none; /* hız için animasyon kapalı */
         }
         .exam-item:hover {
-            background-color: #f8f9fa;
-            border-color: #dc3545;
+            background-color: #f8f9fa; /* hafif geri bildirim, border değişmesin */
         }
         .exam-item.selected {
             background-color: #f8d7da;
@@ -98,9 +97,7 @@
                 padding: 10px;
                 font-size: 0.9rem;
             }
-            .exam-item {
-                padding: 10px;
-            }
+            .exam-item { padding: 10px; }
             .exam-item .row {
                 text-align: left;
             }
@@ -113,6 +110,11 @@
                 padding: 10px 15px;
                 font-size: 0.9rem;
             }
+        }
+
+        /* Hareket azaltımı olan cihazlarda tüm animasyonları kapat */
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; animation: none !important; }
         }
         
         @media (max-width: 576px) {

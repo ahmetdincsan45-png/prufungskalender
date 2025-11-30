@@ -110,6 +110,11 @@ def init_db():
                     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            # Sorguların hızlanması için tarih alanına indeks
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_exams_date ON exams(date)")
+            except Exception:
+                pass
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS visits (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
