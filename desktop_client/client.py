@@ -1,4 +1,4 @@
-import requests, json, sys
+import requests, json, sys, time
 from pathlib import Path
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
@@ -13,6 +13,25 @@ if not BASE:
     sys.exit(1)
 
 
+session = requests.Session()
+
+COOKIE_FILE = Path(__file__).parent / ".session_cookie.json"
+
+def save_cookies():
+    data = { 'cookies': session.cookies.get_dict() }
+    COOKIE_FILE.write_text(json.dumps(data), encoding='utf-8')
+
+def load_cookies():
+    if COOKIE_FILE.exists():
+        try:
+            data = json.loads(COOKIE_FILE.read_text(encoding='utf-8'))
+            for k,v in data.get('cookies', {}).items():
+                session.cookies.set(k,v)
+        except Exception:
+            pass
+
+load_cookies()
+
 def list_events():
     """Sunucudaki tüm sınavları listeler (/events endpoint'i FullCalendar formatında)."""
     try:
@@ -25,6 +44,58 @@ def list_events():
 
 
 def add_exam(subjects: str, date: str):
+    def login(username: str, password: str):
+        """Stats için giriş yap ve auth cookie sakla."""
+        try:
+            payload = {
+                'login_attempt': '1',
+                'username': username,
+                'password': password
+            }
+            r = session.post(f"{BASE}/stats", data=payload, timeout=10)
+            if r.status_code == 200 and 'stats_auth' in session.cookies.get_dict():
+                save_cookies()
+                print("✔ Giriş başarılı. Cookie kaydedildi.")
+            else:
+                print("❌ Giriş başarısız (status)", r.status_code)
+        except Exception as e:
+            print("Hata (login):", e)
+
+    def fetch_stats():
+        """JSON stats endpoint'inden verileri çek."""
+        try:
+            r = session.get(f"{BASE}/stats/json", timeout=10)
+            if r.status_code == 200:
+                return r.json()
+            else:
+                print("❌ Yetkisiz veya hata:", r.status_code)
+                return None
+        except Exception as e:
+            print("Hata (stats):", e)
+            return None
+
+    def print_stats(data):
+        if not data:
+            print("Veri yok")
+            return
+        print(f"Toplam: {data.get('total')} | Bugün: {data.get('today')} | 7 Gün: {data.get('last_7_days')} | IP: {data.get('unique_ips')}")
+
+    def stats_live(interval: int):
+        print(f"Gerçek zamanlı stats (her {interval} sn) için Ctrl+C ile çıkış.")
+        while True:
+            data = fetch_stats()
+            ts = time.strftime('%H:%M:%S')
+            print(f"[{ts}] ", end='')
+            print_stats(data)
+            time.sleep(interval)
+
+    def events_live(interval: int):
+        print(f"Gerçek zamanlı events (her {interval} sn) için Ctrl+C ile çıkış.")
+        while True:
+            evs = list_events()
+            ts = time.strftime('%H:%M:%S')
+            print(f"[{ts}] Toplam sınav: {len(evs)}")
+            time.sleep(interval)
     """Sunucuya yeni sınav(lar) ekler. subjects: virgülle ayrılmış ders listesi, date: YYYY-MM-DD."""
     data = {
         "subjects": subjects,
@@ -46,6 +117,10 @@ def usage():
     print("  client.py list")
     print("  client.py add MATEMATIK 2025-12-18")
     print("  client.py add 'MATEMATIK,FIZIK' 2025-12-18")
+    print("  client.py login USER PASS")
+    print("  client.py stats")
+    print("  client.py stats_live 15")
+    print("  client.py events_live 30")
 
 
 if __name__ == "__main__":
@@ -62,5 +137,16 @@ if __name__ == "__main__":
         subjects = sys.argv[2]
         date = sys.argv[3]
         add_exam(subjects, date)
+    elif cmd == "login" and len(sys.argv) >= 4:
+        login(sys.argv[2], sys.argv[3])
+    elif cmd == "stats":
+        data = fetch_stats()
+        print_stats(data)
+    elif cmd == "stats_live":
+        interval = int(sys.argv[2]) if len(sys.argv) >= 3 else 15
+        stats_live(interval)
+    elif cmd == "events_live":
+        interval = int(sys.argv[2]) if len(sys.argv) >= 3 else 30
+        events_live(interval)
     else:
         usage()

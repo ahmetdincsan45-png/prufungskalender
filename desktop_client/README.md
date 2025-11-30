@@ -9,7 +9,7 @@ Bu klasör, mevcut Render üzerindeki Flask takvim API'sine bağlanan hafif bir 
 
 ## Dosyalar
 - `config.json`: Sunucunun taban URL'si (`API_BASE`). Bunu kendi canlı URL'inizle değiştirin.
-- `client.py`: Listeleme ve sınav ekleme komutları.
+- `client.py`: Listeleme, ekleme, login, stats ve canlı (polling) komutları.
 
 ## Kurulum (Windows Örnek)
 ```powershell
@@ -24,6 +24,10 @@ pip install requests pyinstaller
 python desktop_client\client.py list
 python desktop_client\client.py add MATEMATIK 2025-12-18
 python desktop_client\client.py add "MATEMATIK,FIZIK" 2025-12-18
+python desktop_client\client.py login Ahmet 45ee551
+python desktop_client\client.py stats
+python desktop_client\client.py stats_live 15   # 15 sn'de bir yenile
+python desktop_client\client.py events_live 30  # 30 sn'de bir sınav listesi
 ```
 
 ## .exe Üretme
@@ -36,17 +40,20 @@ dist\client.exe add MATEMATIK 2025-12-18
 ```
 
 ## Notlar
-- `/add` şu an form POST beklediği için JSON değil `data=` ile gönderiyoruz.
-- Auth gerektiren admin/statistik endpoint'lerini eklemek istersen cookie yönetimi gerekir.
-- Otomatik güncelleme istersen daha sonra bir küçük versiyon kontrol endpoint'i ekleyebilirsin.
+- `/add` form POST beklediği için JSON değil `data=`.
+- Login sonrası `stats_auth` cookie'si kaydedilir (`.session_cookie.json`).
+- `stats` ve `stats_live` komutları `/stats/json` endpoint'ini kullanır (HTML parse gerekmez).
+- Canlı modlar Ctrl+C ile durdurulur.
+- Otomatik güncelleme / versiyon kontrolü ileride eklenebilir.
 
 ## Güvenlik
 - `config.json` içindeki URL düz metin. Gizli bilgi (şifre hash vs.) koyma.
 - Şifreli işlemler sadece web üzerinden login ile kalsın; istemciye gömme.
 
 ## Genişletme Fikirleri
-- `update` komutu: Lokal versiyon numarasını kontrol edip yeni sürüm indir.
-- `stats` komutu: `/stats` HTML'ini çekip temel metrikleri sadeleştirerek konsola yaz.
-- Gerçek zamanlı yenileme: `list` sonrası belirli aralıkla tekrar çağıran bir mod.
+- `update` komutu: Yeni sürüm kontrolü + otomatik indirme.
+- WebSocket/SSE: Polling yerine anlık push için.
+- Log dosyası: Canlı mod çıktısını `client_live.log` içine yazma.
+- Komut kısayolları: `sl` (stats_live), `el` (events_live) gibi alias'lar.
 
 İhtiyacın olursa sonraki adımları birlikte ekleyebiliriz.

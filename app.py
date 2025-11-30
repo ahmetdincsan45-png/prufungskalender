@@ -1493,6 +1493,38 @@ def update_credentials():
     resp.set_cookie('stats_auth', token, max_age=86400, httponly=True)
     return resp
 
+# -------------------- Stats JSON Endpoint --------------------
+@app.route('/stats/json')
+def stats_json():
+    """İstemci uygulaması için JSON formatında istatistikler (aynı auth cookie)."""
+    def get_admin_hash():
+        with get_db_connection() as conn:
+            r = conn.execute("SELECT password_hash FROM admin_credentials LIMIT 1").fetchone()
+        return r['password_hash'] if r else None
+    pwd_hash = get_admin_hash()
+    if not pwd_hash:
+        return jsonify({'error': 'auth missing'}), 401
+    expected = hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest()
+    token = request.cookies.get('stats_auth')
+    if token != expected:
+        return jsonify({'error': 'unauthorized'}), 401
+    try:
+        with get_db_connection() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
+            today = conn.execute("SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')").fetchone()[0]
+            last_7_days = conn.execute("SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')").fetchone()[0]
+            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
+            recent = conn.execute("SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20").fetchall()
+        return jsonify({
+            'total': total,
+            'today': today,
+            'last_7_days': last_7_days,
+            'unique_ips': unique_ips,
+            'recent': [ {'timestamp': r[0], 'ip': r[1], 'path': r[2]} for r in recent ]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # -------------------- Email Raporu --------------------
 def send_weekly_report():
     """Haftalık istatistik raporunu mail olarak gönder"""
