@@ -1406,6 +1406,7 @@ def stats():
                 <div class="fab-container">
                     <a href="/logout" class="send-report-btn logout-btn">🚪 Çıkış</a>
                     <a href="/send-report" class="send-report-btn">📧 Rapor Gönder</a>
+                    <a href="/stats/delete-past" class="send-report-btn" style="background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);">🗑️ Geçmişi Sil</a>
                 </div>
                 <h1>📊 Ziyaretçi İstatistikleri</h1>
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
