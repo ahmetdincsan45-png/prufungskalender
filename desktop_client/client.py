@@ -1,16 +1,34 @@
-import requests, json, sys, time
+import requests, json, sys, time, os
 from pathlib import Path
 
-CONFIG_PATH = Path(__file__).parent / "config.json"
-if not CONFIG_PATH.exists():
-    print("config.json bulunamadı.")
-    sys.exit(1)
+def load_config():
+    # Öncelik: ENV -> çalışma dizini config.json -> script dizini config.json
+    env_base = os.getenv('API_BASE', '').strip()
+    if env_base:
+        return env_base.rstrip('/')
+    cwd_cfg = Path.cwd() / 'config.json'
+    if cwd_cfg.exists():
+        try:
+            data = json.loads(cwd_cfg.read_text(encoding='utf-8'))
+            base = data.get('API_BASE','').strip()
+            if base:
+                return base.rstrip('/')
+        except Exception:
+            pass
+    script_cfg = Path(__file__).parent / 'config.json'
+    if script_cfg.exists():
+        try:
+            data = json.loads(script_cfg.read_text(encoding='utf-8'))
+            base = data.get('API_BASE','').strip()
+            if base:
+                return base.rstrip('/')
+        except Exception:
+            pass
+    return ''
 
-cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-BASE = cfg.get("API_BASE", "").rstrip('/')
+BASE = load_config()
 if not BASE:
-    print("API_BASE config.json içinde tanımlı olmalı.")
-    sys.exit(1)
+    print("Uyarı: API_BASE bulunamadı. Çoğu komut çalışmayacak. ENV veya config.json ekleyin.")
 
 
 session = requests.Session()
@@ -121,6 +139,7 @@ def usage():
     print("  client.py stats")
     print("  client.py stats_live 15")
     print("  client.py events_live 30")
+    print("ENV override: API_BASE=... python client.py list")
 
 
 if __name__ == "__main__":

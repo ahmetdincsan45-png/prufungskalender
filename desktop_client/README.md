@@ -31,12 +31,13 @@ python desktop_client\client.py events_live 30  # 30 sn'de bir sınav listesi
 ```
 
 ## .exe Üretme
+Config dosyasını tek dosyalık exe içine dahil etmek için `--add-data` kullanın (Windows'ta kaynak ve hedef `;` ile ayrılır).
 ```powershell
-pyinstaller --onefile desktop_client\client.py
+pyinstaller --clean --onefile --add-data "desktop_client\config.json;." desktop_client\client.py
 # Oluşan dosya: dist\client.exe
-# Test:
+# Çalışma dizinine kendi URL'nizle bir config.json koyarsanız internal fallback yerine onu kullanır.
 dist\client.exe list
-dist\client.exe add MATEMATIK 2025-12-18
+dist\client.exe login Ahmet 45ee551
 ```
 
 ## Notlar
@@ -44,6 +45,7 @@ dist\client.exe add MATEMATIK 2025-12-18
 - Login sonrası `stats_auth` cookie'si kaydedilir (`.session_cookie.json`).
 - `stats` ve `stats_live` komutları `/stats/json` endpoint'ini kullanır (HTML parse gerekmez).
 - Canlı modlar Ctrl+C ile durdurulur.
+- `API_BASE` çözüm sırası: ENV > çalışma dizini `config.json` > paketlenen `config.json`.
 - Otomatik güncelleme / versiyon kontrolü ileride eklenebilir.
 
 ## Güvenlik
