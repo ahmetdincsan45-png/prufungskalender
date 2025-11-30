@@ -489,9 +489,11 @@ def delete_exam():
                             conn.commit()
                 return redirect(url_for("delete_exam"))
         with get_db_connection() as conn:
-            # Yalnız gelecekteki sınavları listele
+            # Gelecekteki sınavlar + son 10 geçmiş sınav (birlikte göster)
             today_str = datetime.now().strftime('%Y-%m-%d')
-            rows = conn.execute("SELECT * FROM exams WHERE date >= ? ORDER BY date", (today_str,)).fetchall()
+            future = conn.execute("SELECT * FROM exams WHERE date >= ? ORDER BY date", (today_str,)).fetchall()
+            past10 = conn.execute("SELECT * FROM exams WHERE date < ? ORDER BY date DESC LIMIT 10", (today_str,)).fetchall()
+            rows = list(future) + list(past10)
         # Her satıra biçimlenmiş tarih ekle
         exams = []
         today_str = datetime.now().strftime('%Y-%m-%d')
