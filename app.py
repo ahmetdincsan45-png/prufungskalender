@@ -1338,8 +1338,67 @@ def stats():
                 <title>Stats</title>
                 <style>
                     * {{ box-sizing: border-box; }}
-                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 15px; 
+                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 0; 
                             max-width: 1000px; margin: 0 auto; background: #f5f5f5; }}
+                    /* Top Toolbar */
+                    .toolbar {{
+                        position: sticky;
+                        top: 0;
+                        z-index: 1000;
+                        background: #ffffff;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 10px 15px;
+                        box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+                        border-bottom: 1px solid #eee;
+                    }}
+                    .toolbar-title {{
+                        font-weight: 600;
+                        color: #333;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }}
+                    .kebab {{
+                        position: relative;
+                    }}
+                    .kebab-btn {{
+                        background: none;
+                        border: none;
+                        font-size: 22px;
+                        line-height: 1;
+                        padding: 6px 10px;
+                        cursor: pointer;
+                        color: #333;
+                    }}
+                    .menu {{
+                        position: absolute;
+                        right: 0;
+                        top: 36px;
+                        background: #fff;
+                        border: 1px solid #eee;
+                        border-radius: 10px;
+                        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+                        min-width: 190px;
+                        display: none;
+                        overflow: hidden;
+                    }}
+                    .menu.open {{ display: block; }}
+                    .menu a {{
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 10px 12px;
+                        text-decoration: none;
+                        color: #333;
+                        font-weight: 600;
+                        border-bottom: 1px solid #f5f5f5;
+                    }}
+                    .menu a:last-child {{ border-bottom: none; }}
+                    .menu a:hover {{ background: #f8f9fa; }}
+                    .menu .danger {{ color: #c82333; }}
+                    .content {{ padding: 15px; }}
                     h1 {{ color: #333; font-size: 1.5em; margin: 0 0 15px 0; }}
                     h2 {{ color: #555; margin-top: 25px; font-size: 1.2em; }}
                     .stat {{ background: white; padding: 12px 15px; margin: 8px 0; border-radius: 8px; 
@@ -1359,40 +1418,8 @@ def stats():
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
                     .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; }}
-                    .fab-container {{
-                        position: fixed;
-                        bottom: 20px;
-                        right: 20px;
-                        display: flex;
-                        gap: 12px;
-                        z-index: 1000;
-                    }}
-                    .send-report-btn {{
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        border: none;
-                        padding: 15px 25px;
-                        border-radius: 50px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-                        transition: transform 0.2s, box-shadow 0.3s;
-                        text-decoration: none;
-                        display: inline-block;
-                    }}
-                    .logout-btn {{
-                        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-                    }}
-                    .send-report-btn:hover {{
-                        transform: translateY(-3px);
-                        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-                    }}
-                    .send-report-btn:active {{
-                        transform: translateY(0);
-                    }}
                     @media (max-width: 600px) {{
-                        body {{ padding: 10px; }}
+                        .content {{ padding: 10px; }}
                         h1 {{ font-size: 1.3em; }}
                         h2 {{ font-size: 1.1em; margin-top: 20px; }}
                         .stat {{ padding: 10px 12px; }}
@@ -1403,12 +1430,19 @@ def stats():
                 </style>
             </head>
             <body>
-                <div class="fab-container">
-                    <a href="/logout" class="send-report-btn logout-btn">🚪 Çıkış</a>
-                    <a href="/send-report" class="send-report-btn">📧 Rapor Gönder</a>
-                    <a href="/stats/delete-past" class="send-report-btn" style="background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);">🗑️ Geçmişi Sil</a>
+                <div class="toolbar">
+                    <div class="toolbar-title">📊 Ziyaretçi İstatistikleri</div>
+                    <div class="kebab">
+                        <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
+                        <div class="menu" id="kebabMenu">
+                            <a href="/send-report">📧 Rapor Gönder</a>
+                            <a href="/stats/delete-past">🗑️ Geçmişi Sil</a>
+                            <a href="/logout" class="danger">🚪 Çıkış</a>
+                        </div>
+                    </div>
                 </div>
-                <h1>📊 Ziyaretçi İstatistikleri</h1>
+                <div class="content">
+                <h1>Genel Bakış</h1>
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
                 <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
                 <div class="stat"><span class="stat-label">Son 7 Gün</span><span class="stat-value">{last_7_days}</span></div>
@@ -1432,6 +1466,20 @@ def stats():
             html += """
                     </table>
                 </div>
+                </div>
+                <script>
+                    (function(){
+                        const btn = document.getElementById('kebabBtn');
+                        const menu = document.getElementById('kebabMenu');
+                        function close(){ menu.classList.remove('open'); }
+                        btn.addEventListener('click', function(e){
+                            e.stopPropagation();
+                            menu.classList.toggle('open');
+                        });
+                        document.addEventListener('click', close);
+                        window.addEventListener('resize', close);
+                    })();
+                </script>
             </body>
             </html>
             """
