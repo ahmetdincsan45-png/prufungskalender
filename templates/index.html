@@ -389,10 +389,10 @@
                             {% if next_exam %}
                             <div class="next-exam-info" data-next-date="{{ next_exam.date }}">
                                 <h5 class="fw-bold text-primary mb-1">
-                                                                        <span id="alarmIcon" class="alarm-anim" aria-label="Alarm">
-                                                                                    <i class="bi bi-alarm" aria-hidden="true"></i>
-                                                                        </span>
-                                                                        Nächste Prüfung: <span id="countdownText"></span>
+                <span id="alarmIcon" aria-label="Alarm">
+                    <i class="bi bi-alarm" aria-hidden="true"></i>
+                </span>
+                <span id="nextExamText">Nächste Prüfung: <span id="countdownText">in 6 Tagen</span></span>
                                 </h5>
                                 <div class="fw-bold fs-6">{{ next_exam.subject }}</div>
                                 <small class="text-muted">
@@ -425,6 +425,45 @@
                         </div>
                     </div>
                 </div>
+
+<style>
+    /* Alarm ikonunu metinle aynı taban hizasına getir */
+    #alarmIcon {
+        display: inline-block;
+        position: relative;
+        top: -6px; /* kullanıcı talebi: +6px yukarı taşı */
+    }
+    #alarmIcon i {
+        display: inline-block;
+        vertical-align: baseline;
+        line-height: 1; /* font ikonun satır yüksekliği etkisini azalt */
+        font-size: 1em; /* h5 ile orantılı kalsın */
+    }
+
+    /* Son 1 gün kala animasyon: mevcutsa korunur, yoksa devre dışı kalır */
+    .alarm-anim {
+        animation: bellPattern 1.1s ease-in-out infinite;
+    }
+    @keyframes bellPattern {
+        0%   { transform: translateY(0); }
+        10%  { transform: translateY(-3px); }
+        20%  { transform: translateY(0); }
+        30%  { transform: translateY(-3px); }
+        40%  { transform: translateY(0); }
+        50%  { transform: translate(-2px, -2px); }
+        60%  { transform: translate(0, 0); }
+        70%  { transform: translate(2px, -2px); }
+        80%  { transform: translate(0, 0); }
+        90%  { transform: translateY(-3px); }
+        100% { transform: translateY(0); }
+    }
+    /* Kullanıcı talebi: metni 6px aşağı indir */
+    #nextExamText {
+        display: inline-block;
+        position: relative;
+        top: 6px;
+    }
+</style>
                 
                 <!-- Takvim -->
                 <div id="calendar" class="calendar-bleed"></div>
