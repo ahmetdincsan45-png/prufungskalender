@@ -532,13 +532,9 @@
                 var span = document.getElementById('countdownText');
                 if (span && text) {
                     span.textContent = text;
-                    if (delta <= 3 && delta >= 0) {
-                        span.style.color = '#dc3545';
-                        span.style.fontWeight = 'bold';
-                        // Alarm ikonunu çalar saat gibi sallandır
-                        var icon = document.getElementById('alarmIcon');
-                        if (icon) icon.classList.add('alarm-anim');
-                    }
+                    // Alarm ikonunu her zaman çalar saat gibi sallandır
+                    var icon = document.getElementById('alarmIcon');
+                    if (icon) icon.classList.add('alarm-anim');
                 }
             })();
             
