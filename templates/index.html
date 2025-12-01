@@ -73,23 +73,26 @@
         /* Nächste Prüfung geri sayım metnini bir tık küçült (≈14px) */
         #countdownText { font-size: 0.875rem; }
         /* Alarm ikonuna sallanma animasyonu (çalar saat efekti) */
+        /* Bootstrap Icons <i> etiketi italik değildir, net görünüm için normal yap */
+        i.bi { font-style: normal; }
         @keyframes ringBell {
             0% { transform: rotate(0deg); }
-            10% { transform: rotate(10deg); }
-            20% { transform: rotate(-10deg); }
-            30% { transform: rotate(8deg); }
-            40% { transform: rotate(-8deg); }
-            50% { transform: rotate(6deg); }
-            60% { transform: rotate(-6deg); }
-            70% { transform: rotate(4deg); }
-            80% { transform: rotate(-4deg); }
-            90% { transform: rotate(2deg); }
+            10% { transform: rotate(7deg); }
+            20% { transform: rotate(-7deg); }
+            30% { transform: rotate(6deg); }
+            40% { transform: rotate(-6deg); }
+            50% { transform: rotate(5deg); }
+            60% { transform: rotate(-5deg); }
+            70% { transform: rotate(3deg); }
+            80% { transform: rotate(-3deg); }
+            90% { transform: rotate(1.5deg); }
             100% { transform: rotate(0deg); }
         }
         .alarm-anim {
             display: inline-block;
             transform-origin: center top;
             animation: ringBell 1.1s ease-in-out infinite;
+            will-change: transform; /* net ve pürüzsüz görünüm için */
         }
         /* Başlık ile altındaki bölüm arasındaki boşluğu %50 azalt (1.5rem -> 0.75rem) */
         h1.text-center.mb-4 {
@@ -350,7 +353,6 @@
                             {% endif %}
                         </div>
                         <div class="col-md-6 text-end">
-                            <span id="liveClock" class="me-3 fw-semibold" aria-label="Saat"></span>
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
                                 <span class="calendar-day" aria-hidden="true">
                                     <!-- Sade ikon: gün sayfası detayları yok, arka "Fri" benzeri görüntü kalkar -->
@@ -450,20 +452,7 @@
             
             calendar.render();
 
-            // Canlı saat: her zaman yerel saati gösterir
-            (function setupLiveClock(){
-                var clockEl = document.getElementById('liveClock');
-                if (!clockEl) return;
-                function updateClock(){
-                    var now = new Date();
-                    var hh = String(now.getHours()).padStart(2, '0');
-                    var mm = String(now.getMinutes()).padStart(2, '0');
-                    var ss = String(now.getSeconds()).padStart(2, '0');
-                    clockEl.textContent = hh + ":" + mm + ":" + ss;
-                }
-                updateClock();
-                setInterval(updateClock, 1000);
-            })();
+            // (Saat kaldırıldı) Canlı saat isteğe bağlı olarak tekrar eklenebilir
 
             // Heute ikonunun içine Almanca kısaltılmış gün adını yaz (Mo, Di, Mi, Do, Fr, Sa, So)
             (function setTodayAbbr(){
