@@ -7,3 +7,10 @@ __pycache__/
 exams.db
 *.log
 .env
+
+# Build artifacts
+dist/
+build/
+*.spec
+venv/
+*.exe
