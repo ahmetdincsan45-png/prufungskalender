@@ -102,8 +102,9 @@
         }
         /* Zil çizgileri: çalma hissi veren küçük yaylar */
             /* Zil çizgileri: çalma hissi veren küçük yaylar (inline, aynı layer) */
-            #alarmIcon { display: inline-flex; align-items: center; position: relative; line-height: 1; vertical-align: baseline; margin-right: 6px; z-index: 2; }
-            #alarmIcon i { display: inline-block; line-height: 1; font-size: 1rem; vertical-align: baseline; }
+            /* Alt çizgiyle tam hizalama için inline-block + text-bottom */
+            #alarmIcon { display: inline-block; position: relative; line-height: 1; vertical-align: text-bottom; margin-right: 6px; z-index: 2; }
+            #alarmIcon i { display: inline-block; line-height: 1; font-size: 1rem; vertical-align: text-bottom; }
             /* Yaylar kaldırıldı: alarm ikonunu sade tut */
         @keyframes bellMarks {
               0%   { opacity: 0; transform: scale(0.9); }
