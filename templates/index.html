@@ -579,7 +579,28 @@
                     span.textContent = text;
                     // Alarm ikonunu her zaman çalar saat gibi sallandır
                     var icon = document.getElementById('alarmIcon');
-                    if (icon) icon.classList.add('alarm-anim');
+                    if (icon) {
+                        try {
+                            const nextInfo = document.querySelector('.next-exam-info');
+                            const nextDateStr = nextInfo?.getAttribute('data-next-date');
+                            if (nextDateStr) {
+                                const nextDate = new Date(nextDateStr + 'T00:00:00');
+                                const today = new Date();
+                                // Sadece tarih karşılaştırması (saat farklarını normalize et)
+                                const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                const msPerDay = 24 * 60 * 60 * 1000;
+                                const diffDays = Math.floor((nextDate - startOfToday) / msPerDay);
+                                // Son 1 gün kala (0 veya 1 gün kaldıysa) animasyon açılsın
+                                if (diffDays <= 1) {
+                                    icon.classList.add('alarm-anim');
+                                } else {
+                                    icon.classList.remove('alarm-anim');
+                                }
+                            }
+                        } catch (e) {
+                            // Sessizce geç: tarih parse edilemezse animasyonu ekleme
+                        }
+                    }
                 }
             })();
             
