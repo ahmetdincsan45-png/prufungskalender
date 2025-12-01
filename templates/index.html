@@ -77,17 +77,17 @@
         i.bi { font-style: normal; }
         @keyframes ringBell {
             0%   { transform: rotate(0deg); }
-            8%   { transform: rotate(12deg); }
-            16%  { transform: rotate(-12deg); }
-            24%  { transform: rotate(10deg); }
-            32%  { transform: rotate(-10deg); }
-            40%  { transform: rotate(8deg); }
-            48%  { transform: rotate(-8deg); }
+            8%   { transform: rotate(14deg); }
+            16%  { transform: rotate(-14deg); }
+            24%  { transform: rotate(12deg); }
+            32%  { transform: rotate(-12deg); }
+            40%  { transform: rotate(9deg); }
+            48%  { transform: rotate(-9deg); }
             56%  { transform: rotate(6deg); }
             64%  { transform: rotate(-6deg); }
-            72%  { transform: rotate(4deg); }
-            80%  { transform: rotate(-4deg); }
-            88%  { transform: rotate(2deg); }
+            72%  { transform: rotate(3deg); }
+            80%  { transform: rotate(-3deg); }
+            88%  { transform: rotate(1.5deg); }
             100% { transform: rotate(0deg); }
         }
         /* Boyutu sabit tut: sadece çok hafif dikey titreşim, ölçek yok */
@@ -98,7 +98,7 @@
         .alarm-anim {
             display: inline-block;
             transform-origin: center top;
-            animation: ringBell 1s ease-in-out infinite, bellJitter 1s ease-in-out infinite;
+            animation: ringBell 0.9s ease-in-out infinite, bellJitter 0.9s ease-in-out infinite;
             will-change: transform; /* net ve pürüzsüz görünüm için */
             backface-visibility: hidden;
         }
