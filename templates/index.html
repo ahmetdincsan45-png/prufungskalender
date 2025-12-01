@@ -102,8 +102,8 @@
         }
         /* Zil çizgileri: çalma hissi veren küçük yaylar */
             /* Zil çizgileri: çalma hissi veren küçük yaylar (inline, aynı layer) */
-            #alarmIcon { display: inline-flex; align-items: center; position: relative; line-height: 1; vertical-align: middle; margin-right: 6px; z-index: 2; }
-            #alarmIcon i { display: inline-block; line-height: 1; font-size: 1rem; }
+            #alarmIcon { display: inline-flex; align-items: center; position: relative; line-height: 1; vertical-align: baseline; margin-right: 6px; z-index: 2; }
+            #alarmIcon i { display: inline-block; line-height: 1; font-size: 1rem; vertical-align: baseline; }
             /* Yaylar kaldırıldı: alarm ikonunu sade tut */
         @keyframes bellMarks {
               0%   { opacity: 0; transform: scale(0.9); }
@@ -118,16 +118,32 @@
         .alarm-anim {
             display: inline-block;
             transform-origin: center;
-            animation: bellBounce 0.45s ease-in-out infinite;
+            animation: bellPattern 1.2s ease-in-out infinite;
             will-change: transform;
             backface-visibility: hidden;
         }
 
-        /* Hızlı ve tatlı dikey sallanma (çalıyor hissi) */
-        @keyframes bellBounce {
-            0%, 100% { transform: translateY(0); }
-            25%      { transform: translateY(-2px); }
-            75%      { transform: translateY(2px); }
+        /* Desen: 3 kez yukarı zıpla → sola çapraz → sağa çapraz → 3 kez yukarı zıpla */
+        @keyframes bellPattern {
+            /* 3 kısa yukarı zıplama */
+            0%   { transform: translate(0, 0); }
+            6%   { transform: translate(0, -3px); }
+            12%  { transform: translate(0, 0); }
+            18%  { transform: translate(0, -3px); }
+            24%  { transform: translate(0, 0); }
+            30%  { transform: translate(0, -3px); }
+            36%  { transform: translate(0, 0); }
+            /* Sola çapraz küçük zıplama */
+            46%  { transform: translate(-2px, -2px); }
+            52%  { transform: translate(0, 0); }
+            /* Sağa çapraz küçük zıplama */
+            62%  { transform: translate(2px, -2px); }
+            68%  { transform: translate(0, 0); }
+            /* Son 3 kısa yukarı zıplama */
+            76%  { transform: translate(0, -3px); }
+            84%  { transform: translate(0, 0); }
+            92%  { transform: translate(0, -3px); }
+            100% { transform: translate(0, 0); }
         }
         /* Başlık ile altındaki bölüm arasındaki boşluğu %50 azalt (1.5rem -> 0.75rem) */
         h1.text-center.mb-4 {
