@@ -90,6 +90,43 @@
             88%  { transform: rotate(1.5deg); }
             100% { transform: rotate(0deg); }
         }
+        /* Sağ-sol hafif titreşim (ikon boyutu sabit kalır) */
+        @keyframes bellShakeX {
+            0%, 100% { transform: translateX(0); }
+            50%      { transform: translateX(1px); }
+        }
+        /* Zil çizgileri: çalma hissi veren küçük yaylar */
+        #alarmIcon {
+            position: relative;
+        }
+        #alarmIcon::before,
+        #alarmIcon::after {
+            content: "";
+            position: absolute;
+            top: -0.15em; /* zilin kulaklarına yakın */
+            width: 0.35em;
+            height: 0.35em;
+            border-top: 2px solid currentColor;
+            border-radius: 50% 50% 0 0;
+            opacity: 0.0;
+        }
+        /* Sol yay */
+        #alarmIcon::before {
+            left: -0.45em;
+            transform-origin: center;
+            animation: bellMarks 0.9s ease-in-out infinite;
+        }
+        /* Sağ yay */
+        #alarmIcon::after {
+            right: -0.45em;
+            transform-origin: center;
+            animation: bellMarks 0.9s ease-in-out infinite;
+        }
+        @keyframes bellMarks {
+            0%   { opacity: 0; transform: scale(0.9); }
+            50%  { opacity: 0.6; transform: scale(1.05); }
+            100% { opacity: 0; transform: scale(0.9); }
+        }
         /* Boyutu sabit tut: sadece çok hafif dikey titreşim, ölçek yok */
         @keyframes bellJitter {
             0%, 100% { transform: translateY(0); }
@@ -98,7 +135,9 @@
         .alarm-anim {
             display: inline-block;
             transform-origin: center top;
-            animation: ringBell 0.9s ease-in-out infinite, bellJitter 0.9s ease-in-out infinite;
+            animation: ringBell 0.9s ease-in-out infinite,
+                       bellJitter 0.9s ease-in-out infinite,
+                       bellShakeX 0.9s ease-in-out infinite;
             will-change: transform; /* net ve pürüzsüz görünüm için */
             backface-visibility: hidden;
         }
