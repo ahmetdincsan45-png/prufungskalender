@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .Python
 exams.db
+*.db
 *.log
 .env
 
