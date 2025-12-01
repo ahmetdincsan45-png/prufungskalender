@@ -101,35 +101,15 @@
             50%      { transform: translateX(1px); }
         }
         /* Zil çizgileri: çalma hissi veren küçük yaylar */
-        #alarmIcon { position: relative; z-index: 2; }
-        #alarmIcon::before,
-        #alarmIcon::after {
-            content: "";
-            position: absolute;
-            top: -0.15em; /* zilin kulaklarına yakın */
-            width: 0.35em;
-            height: 0.35em;
-            border-top: 2px solid currentColor;
-            border-radius: 50% 50% 0 0;
-            opacity: 0.0;
-            pointer-events: none; /* tıklamayı engelle */
-        }
-        /* Sol yay */
-        #alarmIcon::before {
-            left: -0.45em;
-            transform-origin: center;
-            animation: bellMarks 0.9s ease-in-out infinite;
-        }
-        /* Sağ yay */
-        #alarmIcon::after {
-            right: -0.45em;
-            transform-origin: center;
-            animation: bellMarks 0.9s ease-in-out infinite;
-        }
+            /* Zil çizgileri: çalma hissi veren küçük yaylar (inline, aynı layer) */
+            #alarmIcon { display: inline-flex; align-items: center; position: relative; line-height: 1; }
+            #alarmIcon .bell-mark { width: 0.35em; height: 0.35em; border-top: 2px solid currentColor; border-radius: 50% 50% 0 0; opacity: 0; animation: bellMarks 0.9s ease-in-out infinite; pointer-events: none; }
+            #alarmIcon .bell-mark.left { margin-right: 0.15em; }
+            #alarmIcon .bell-mark.right { margin-left: 0.15em; }
         @keyframes bellMarks {
-            0%   { opacity: 0; transform: scale(0.9); }
-            50%  { opacity: 0.6; transform: scale(1.05); }
-            100% { opacity: 0; transform: scale(0.9); }
+              0%   { opacity: 0; transform: scale(0.9); }
+              50%  { opacity: 0.6; transform: scale(1); }
+              100% { opacity: 0; transform: scale(0.9); }
         }
         /* Boyutu sabit tut: sadece çok hafif dikey titreşim, ölçek yok */
         @keyframes bellJitter {
@@ -389,7 +369,9 @@
                             <div class="next-exam-info" data-next-date="{{ next_exam.date }}">
                                 <h5 class="fw-bold text-primary mb-1">
                                                                         <span id="alarmIcon" class="alarm-anim" aria-label="Alarm">
-                                            <i class="bi bi-alarm" aria-hidden="true"></i>
+                                                                                    <span class="bell-mark left" aria-hidden="true"></span>
+                                                                                    <i class="bi bi-alarm" aria-hidden="true"></i>
+                                                                                    <span class="bell-mark right" aria-hidden="true"></span>
                                                                         </span>
                                                                         Nächste Prüfung: <span id="countdownText"></span>
                                 </h5>
