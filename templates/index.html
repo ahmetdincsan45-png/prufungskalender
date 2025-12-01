@@ -327,7 +327,7 @@
                     <i class="bi bi-calendar-event"></i> Prüfungskalender
                 </h1>
                 
-                <!-- Gelecek Prüfung ve Butonlar -->
+                <!-- Gelecek Prüfung ve Butonlar + Canlı Saat -->
                 <div class="filter-section">
                     <div class="row align-items-center">
                         <div class="col-md-6">
@@ -350,6 +350,7 @@
                             {% endif %}
                         </div>
                         <div class="col-md-6 text-end">
+                            <span id="liveClock" class="me-3 fw-semibold" aria-label="Saat"></span>
                             <button id="todayBtn" class="btn btn-outline-primary me-2">
                                 <span class="calendar-day" aria-hidden="true">
                                     <!-- Sade ikon: gün sayfası detayları yok, arka "Fri" benzeri görüntü kalkar -->
@@ -448,6 +449,21 @@
             });
             
             calendar.render();
+
+            // Canlı saat: her zaman yerel saati gösterir
+            (function setupLiveClock(){
+                var clockEl = document.getElementById('liveClock');
+                if (!clockEl) return;
+                function updateClock(){
+                    var now = new Date();
+                    var hh = String(now.getHours()).padStart(2, '0');
+                    var mm = String(now.getMinutes()).padStart(2, '0');
+                    var ss = String(now.getSeconds()).padStart(2, '0');
+                    clockEl.textContent = hh + ":" + mm + ":" + ss;
+                }
+                updateClock();
+                setInterval(updateClock, 1000);
+            })();
 
             // Heute ikonunun içine Almanca kısaltılmış gün adını yaz (Mo, Di, Mi, Do, Fr, Sa, So)
             (function setTodayAbbr(){
