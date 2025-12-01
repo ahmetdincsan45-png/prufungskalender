@@ -90,14 +90,15 @@
             88%  { transform: rotate(2deg); }
             100% { transform: rotate(0deg); }
         }
-        @keyframes bellBounce {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50%      { transform: translateY(-1px) scale(1.03); }
+        /* Boyutu sabit tut: sadece çok hafif dikey titreşim, ölçek yok */
+        @keyframes bellJitter {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-1px); }
         }
         .alarm-anim {
             display: inline-block;
             transform-origin: center top;
-            animation: ringBell 1s ease-in-out infinite, bellBounce 1s ease-in-out infinite;
+            animation: ringBell 1s ease-in-out infinite, bellJitter 1s ease-in-out infinite;
             will-change: transform; /* net ve pürüzsüz görünüm için */
             backface-visibility: hidden;
         }
