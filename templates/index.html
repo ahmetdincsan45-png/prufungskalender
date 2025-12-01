@@ -104,14 +104,7 @@
             /* Zil çizgileri: çalma hissi veren küçük yaylar (inline, aynı layer) */
             #alarmIcon { display: inline-flex; align-items: center; position: relative; line-height: 1; vertical-align: middle; margin-right: 6px; z-index: 2; }
             #alarmIcon i { display: inline-block; line-height: 1; font-size: 1rem; }
-            /* Nazik, ince yaylar: 1px çizgi, 1px aralık, farklı uzunluklar */
-            #alarmIcon .bell-mark { height: 0.35em; border-top: 1px solid currentColor; border-radius: 50% 50% 0 0; opacity: 0.4; animation: none !important; pointer-events: none; display: inline-block; }
-            #alarmIcon .bell-mark.left { margin-right: 1px; }
-            #alarmIcon .bell-mark.right { margin-left: 1px; }
-            /* Uzunluk kademeleri: m1 kısa, m2 orta, m3 biraz daha uzun */
-            #alarmIcon .bell-mark.m1 { width: 0.25em; }
-            #alarmIcon .bell-mark.m2 { width: 0.32em; }
-            #alarmIcon .bell-mark.m3 { width: 0.40em; }
+            /* Yaylar kaldırıldı: alarm ikonunu sade tut */
         @keyframes bellMarks {
               0%   { opacity: 0; transform: scale(0.9); }
               50%  { opacity: 0.6; transform: scale(1); }
@@ -380,15 +373,7 @@
                             <div class="next-exam-info" data-next-date="{{ next_exam.date }}">
                                 <h5 class="fw-bold text-primary mb-1">
                                                                         <span id="alarmIcon" class="alarm-anim" aria-label="Alarm">
-                                                                                    <!-- Sol kulak: üç nazik yay -->
-                                                                                    <span class="bell-mark left m1" aria-hidden="true"></span>
-                                                                                    <span class="bell-mark left m2" aria-hidden="true"></span>
-                                                                                    <span class="bell-mark left m3" aria-hidden="true"></span>
                                                                                     <i class="bi bi-alarm" aria-hidden="true"></i>
-                                                                                    <!-- Sağ kulak: üç nazik yay -->
-                                                                                    <span class="bell-mark right m1" aria-hidden="true"></span>
-                                                                                    <span class="bell-mark right m2" aria-hidden="true"></span>
-                                                                                    <span class="bell-mark right m3" aria-hidden="true"></span>
                                                                         </span>
                                                                         Nächste Prüfung: <span id="countdownText"></span>
                                 </h5>
