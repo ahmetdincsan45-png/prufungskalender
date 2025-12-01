@@ -103,7 +103,7 @@
         /* Zil çizgileri: çalma hissi veren küçük yaylar */
             /* Zil çizgileri: çalma hissi veren küçük yaylar (inline, aynı layer) */
             #alarmIcon { display: inline-flex; align-items: center; position: relative; line-height: 1; }
-            #alarmIcon .bell-mark { width: 0.35em; height: 0.35em; border-top: 2px solid currentColor; border-radius: 50% 50% 0 0; opacity: 0; animation: bellMarks 0.9s ease-in-out infinite; pointer-events: none; }
+            #alarmIcon .bell-mark { width: 0.35em; height: 0.35em; border-top: 2px solid currentColor; border-radius: 50% 50% 0 0; opacity: 0; animation: none !important; pointer-events: none; }
             #alarmIcon .bell-mark.left { margin-right: 0.15em; }
             #alarmIcon .bell-mark.right { margin-left: 0.15em; }
         @keyframes bellMarks {
@@ -119,11 +119,9 @@
         .alarm-anim {
             display: inline-block;
             transform-origin: center top;
-            animation: ringBell 0.9s ease-in-out infinite,
-                       bellJitter 0.9s ease-in-out infinite,
-                       bellShakeX 0.9s ease-in-out infinite;
-            will-change: transform; /* net ve pürüzsüz görünüm için */
-            backface-visibility: hidden;
+            animation: none !important;
+            will-change: auto;
+            backface-visibility: visible;
         }
         /* Başlık ile altındaki bölüm arasındaki boşluğu %50 azalt (1.5rem -> 0.75rem) */
         h1.text-center.mb-4 {
