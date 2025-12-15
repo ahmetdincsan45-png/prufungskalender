@@ -1356,6 +1356,29 @@ def stats():
                     seen.add(lk)
                     merged_names.append(key)
             merged_names.sort(key=lambda s: s.lower())
+            # Stats listesinde göstermek için HTML öğelerini hazırla
+            items_html_parts = []
+            for name in merged_names:
+                key_l = (name or '').strip().lower()
+                sid = db_map.get(key_l)
+                if sid is not None:
+                    items_html_parts.append(
+                        f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
+                        f"<span style='font-weight:600;color:#333'>{name}</span>"
+                        f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
+                        f"<input type='hidden' name='subject_id' value='{sid}'/>"
+                        f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
+                        f"</form>"
+                        f"</li>"
+                    )
+                else:
+                    items_html_parts.append(
+                        f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
+                        f"<span style='font-weight:600;color:#333'>{name}</span>"
+                        f"<span class='small' style='color:#666;background:#f1f3f5;border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px'>Varsayılan</span>"
+                        f"</li>"
+                    )
+            items_html = "".join(items_html_parts)
             
             html = f"""
             <!DOCTYPE html>
@@ -1499,24 +1522,7 @@ def stats():
                         </div>
                         <div class="col">
                             <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Mevcut Dersler</h3>
-                            <ul class="clean">{"".join([
-                                (
-                                    (lambda _name: (
-                                        (lambda _id: (
-                                            f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
-                                            f"<span style='font-weight:600;color:#333'>{_name}</span>"
-                                            + (
-                                                (f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
-                                                 f"<input type='hidden' name='subject_id' value='{_id}'/>"
-                                                 f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
-                                                 f"</form>") if _id is not None else
-                                                f"<span class='small' style='color:#666;background:#f1f3f5;border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px'>Varsayılan</span>"
-                                            )
-                                            + f"</li>"
-                                        ))(db_map.get(_name.strip().lower()))
-                                    )))(name)
-                                ) for name in merged_names
-                            ])}</ul>
+                            <ul class="clean">{items_html or "<li style='color:#666'>Henüz ders eklenmemiş.</li>"}</ul>
                         </div>
                     </div>
                 </div>
