@@ -463,7 +463,52 @@
         position: relative;
         top: -4px; /* metni 4px yukarı al */
     }
+
+    /* 3 gün veya daha az kala kırmızıya zorla (Bootstrap rengini güvenle ez) */
+    #countdownText.text-danger { color: var(--bs-danger) !important; }
 </style>
+
+<script>
+    (function() {
+        function getDiffDaysFromDataset() {
+            const infoEl = document.querySelector('.next-exam-info');
+            if (!infoEl || !infoEl.dataset || !infoEl.dataset.nextDate) return null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const nextDate = new Date(infoEl.dataset.nextDate + 'T00:00:00');
+            const ms = nextDate - today;
+            return Math.ceil(ms / 86400000);
+        }
+
+        function getDiffDaysFromText() {
+            const el = document.getElementById('countdownText');
+            if (!el) return null;
+            const txt = (el.textContent || '').trim();
+            const m = txt.match(/(\d+)/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+
+        function updateCountdownColor() {
+            const el = document.getElementById('countdownText');
+            if (!el) return;
+            let diff = getDiffDaysFromDataset();
+            if (diff == null || Number.isNaN(diff)) {
+                diff = getDiffDaysFromText();
+            }
+            if (diff != null && diff <= 3) {
+                el.classList.add('text-danger');
+            } else {
+                el.classList.remove('text-danger');
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateCountdownColor);
+        } else {
+            updateCountdownColor();
+        }
+    })();
+    </script>
                 
                 <!-- Takvim -->
                 <div id="calendar" class="calendar-bleed"></div>
