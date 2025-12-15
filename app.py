@@ -124,6 +124,16 @@ def init_db():
                     path TEXT
                 )
             """)
+            # Ders havuzu tablosu (stats sayfasından yönetilecek)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS subjects (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS admin_credentials (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -594,6 +604,20 @@ def health():
         return jsonify({"ok": True, "db": DB_PATH, "journal_mode": mode})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+# ---- Subjects API (public, read-only) ----
+@app.route('/api/subjects')
+def api_subjects():
+    try:
+        default_pool = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion','Musik']
+        with get_db_connection() as conn:
+            rows = conn.execute("SELECT name FROM subjects ORDER BY name COLLATE NOCASE").fetchall()
+        names = [r['name'] for r in rows]
+        if not names:
+            names = default_pool
+        return jsonify({"subjects": names})
+    except Exception as e:
+        return jsonify({"subjects": [], "error": str(e)}), 500
 
 @app.route("/stats", methods=["GET", "POST"])
 def stats():
@@ -1302,6 +1326,8 @@ def stats():
             recent = conn.execute(
                 "SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20"
             ).fetchall()
+            # Ders listesi (yönetim)
+            sub_rows = conn.execute("SELECT id, name FROM subjects ORDER BY name COLLATE NOCASE").fetchall()
             
             html = f"""
             <!DOCTYPE html>
@@ -1392,6 +1418,14 @@ def stats():
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
                     .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; }}
+                    .card {{ background:#fff; padding:12px 15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); margin:12px 0; }}
+                    .row-flex {{ display:flex; gap:12px; flex-wrap:wrap; }}
+                    .row-flex .col {{ flex:1 1 320px; }}
+                    .input-inline {{ display:flex; gap:8px; align-items:center; }}
+                    .input-inline input[type=text] {{ flex:1; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:.95em; }}
+                    .input-inline button {{ padding:10px 14px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; }}
+                    .input-inline button:hover {{ background:#0b5ed7; }}
+                    ul.clean {{ list-style:none; padding:0; margin:0; }}
                     @media (max-width: 600px) {{
                         .content {{ padding: 10px; }}
                         h1 {{ font-size: 1.3em; }}
@@ -1423,6 +1457,32 @@ def stats():
                 <div class="stat"><span class="stat-label">Benzersiz IP</span><span class="stat-value">{unique_ips}</span></div>
                 
                 
+                
+                <h2>📚 Ders Havuzu</h2>
+                <div class="card">
+                    <div class="row-flex">
+                        <div class="col">
+                            <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Yeni Ders Ekle</h3>
+                            <form method="post" action="/stats/subjects/add" class="input-inline">
+                                <input type="text" name="subject_name" placeholder="Örn: Biologie" maxlength="64" required>
+                                <button type="submit">Ekle</button>
+                            </form>
+                            <div class="small" style="margin-top:6px;color:#666">Eklenen dersler, anasayfadaki ekleme diyalogunda görünecek.</div>
+                        </div>
+                        <div class="col">
+                            <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Mevcut Dersler</h3>
+                            <ul class="clean">{"".join([
+                                f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
+                                f"<span style='font-weight:600;color:#333'>{r['name']}</span>"
+                                f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
+                                f"<input type='hidden' name='subject_id' value='{r['id']}'/>"
+                                f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
+                                f"</form>"
+                                f"</li>" for r in sub_rows
+                            ]) or "<li style='color:#666'>Henüz ders eklenmemiş.</li>"}</ul>
+                        </div>
+                    </div>
+                </div>
                 
                 <h2>🕐 Son 20 Ziyaret</h2>
                 <div class="table-container">
@@ -1492,6 +1552,49 @@ def update_credentials():
     resp = redirect(url_for('stats'))
     resp.set_cookie('stats_auth', token, max_age=86400, httponly=True)
     return resp
+
+# ---- Subjects management (Stats auth required) ----
+def _stats_expected_token():
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT password_hash FROM admin_credentials LIMIT 1").fetchone()
+    if not row:
+        return None
+    return hashlib.sha256(f"{row['password_hash']}:prufungskalender".encode()).hexdigest()
+
+@app.route('/stats/subjects/add', methods=['POST'])
+def stats_subjects_add():
+    token = request.cookies.get('stats_auth')
+    if token != _stats_expected_token():
+        return redirect(url_for('stats'))
+    name = (request.form.get('subject_name') or '').strip()
+    if not name:
+        return redirect(url_for('stats'))
+    # Basit doğrulama: uzunluk ve tehlikeli karakterleri filtrele
+    if len(name) > 64:
+        name = name[:64]
+    try:
+        with get_db_connection() as conn:
+            conn.execute("INSERT OR IGNORE INTO subjects(name) VALUES (?)", (name,))
+            conn.commit()
+    except Exception:
+        pass
+    return redirect(url_for('stats'))
+
+@app.route('/stats/subjects/delete', methods=['POST'])
+def stats_subjects_delete():
+    token = request.cookies.get('stats_auth')
+    if token != _stats_expected_token():
+        return redirect(url_for('stats'))
+    sid = (request.form.get('subject_id') or '').strip()
+    if not sid:
+        return redirect(url_for('stats'))
+    try:
+        with get_db_connection() as conn:
+            conn.execute("DELETE FROM subjects WHERE id = ?", (sid,))
+            conn.commit()
+    except Exception:
+        pass
+    return redirect(url_for('stats'))
 
 # -------------------- Stats JSON Endpoint --------------------
 @app.route('/stats/json')

@@ -219,7 +219,7 @@
                 }
             });
 
-            // Sabit dersler (Almanca)
+            // Sabit dersler (varsayılan havuz, boşsa API'den gelecek)
             var SUBJECT_POOL = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion','Musik'];
 
             var subjectsInput = document.getElementById('subjects');
@@ -228,8 +228,7 @@
             var modalEl = document.getElementById('subjectPickerModal');
             var subjectModal = new bootstrap.Modal(modalEl, { backdrop: true, keyboard: true, focus: false });
             var subjectList = document.getElementById('subjectList');
-            // Listeyi sadece bir kere üret (açılışta hazır olsun, bekleme yok)
-            (function initSubjectList(){
+            function renderSubjectList() {
                 var frag = document.createDocumentFragment();
                 SUBJECT_POOL.slice().sort(function(a,b){ return a.localeCompare(b,'de'); }).forEach(function(s){
                     var item = document.createElement('button');
@@ -242,15 +241,28 @@
                         subjectsInput.value = s;
                         selectedSingle.textContent = s;
                         selectedSingle.classList.remove('d-none');
-                        // Modalı anında kapat (animasyonsuz)
-                        subjectModal.hide();
+                        subjectModal.hide(); // animasyonsuz kapat
                         updateSubmitState();
                     });
                     frag.appendChild(item);
                 });
                 subjectList.innerHTML = '';
                 subjectList.appendChild(frag);
-            })();
+            }
+            // İlk render (hemen hazır)
+            renderSubjectList();
+            // Sunucudan dinamik havuz (varsa) ile güncelle
+            try {
+                fetch('/api/subjects', {cache:'no-store'})
+                    .then(function(r){ return r.ok ? r.json() : null; })
+                    .then(function(data){
+                        if (data && Array.isArray(data.subjects) && data.subjects.length) {
+                            SUBJECT_POOL = data.subjects.filter(function(x){ return !!x && typeof x === 'string'; });
+                            renderSubjectList();
+                        }
+                    })
+                    .catch(function(){});
+            } catch(e) {}
 
             openBtn.addEventListener('click', function(){
                 subjectModal.show();
