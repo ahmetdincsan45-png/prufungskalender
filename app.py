@@ -609,13 +609,24 @@ def health():
 @app.route('/api/subjects')
 def api_subjects():
     try:
+        # Varsayılan havuz + DB'deki eklenenler = BİRLEŞİK liste (benzersiz)
         default_pool = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion','Musik']
         with get_db_connection() as conn:
-            rows = conn.execute("SELECT name FROM subjects ORDER BY name COLLATE NOCASE").fetchall()
-        names = [r['name'] for r in rows]
-        if not names:
-            names = default_pool
-        return jsonify({"subjects": names})
+            rows = conn.execute("SELECT name FROM subjects").fetchall()
+        seen = set()
+        merged = []
+        for name in default_pool + [r['name'] for r in rows]:
+            if not name:
+                continue
+            key = name.strip()
+            if not key:
+                continue
+            lk = key.lower()
+            if lk not in seen:
+                seen.add(lk)
+                merged.append(key)
+        merged.sort(key=lambda s: s.lower())
+        return jsonify({"subjects": merged})
     except Exception as e:
         return jsonify({"subjects": [], "error": str(e)}), 500
 
@@ -1326,8 +1337,23 @@ def stats():
             recent = conn.execute(
                 "SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20"
             ).fetchall()
-            # Ders listesi (yönetim)
+            # Ders listesi (yönetim) - varsayılan + DB birleşik gösterim
             sub_rows = conn.execute("SELECT id, name FROM subjects ORDER BY name COLLATE NOCASE").fetchall()
+            default_pool = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion','Musik']
+            db_map = { (r['name'] or '').strip().lower(): r['id'] for r in sub_rows }
+            merged_names = []
+            seen = set()
+            for nm in (default_pool + [r['name'] for r in sub_rows]):
+                if not nm:
+                    continue
+                key = nm.strip()
+                if not key:
+                    continue
+                lk = key.lower()
+                if lk not in seen:
+                    seen.add(lk)
+                    merged_names.append(key)
+            merged_names.sort(key=lambda s: s.lower())
             
             html = f"""
             <!DOCTYPE html>
@@ -1472,14 +1498,23 @@ def stats():
                         <div class="col">
                             <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Mevcut Dersler</h3>
                             <ul class="clean">{"".join([
-                                f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
-                                f"<span style='font-weight:600;color:#333'>{r['name']}</span>"
-                                f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
-                                f"<input type='hidden' name='subject_id' value='{r['id']}'/>"
-                                f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
-                                f"</form>"
-                                f"</li>" for r in sub_rows
-                            ]) or "<li style='color:#666'>Henüz ders eklenmemiş.</li>"}</ul>
+                                (
+                                    (lambda _name: (
+                                        (lambda _id: (
+                                            f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
+                                            f"<span style='font-weight:600;color:#333'>{_name}</span>"
+                                            + (
+                                                (f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
+                                                 f"<input type='hidden' name='subject_id' value='{_id}'/>"
+                                                 f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
+                                                 f"</form>") if _id is not None else
+                                                f"<span class='small' style='color:#666;background:#f1f3f5;border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px'>Varsayılan</span>"
+                                            )
+                                            + f"</li>"
+                                        ))(db_map.get(_name.strip().lower()))
+                                    )))(name)
+                                ) for name in merged_names
+                            ])}</ul>
                         </div>
                     </div>
                 </div>

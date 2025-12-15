@@ -257,7 +257,15 @@
                     .then(function(r){ return r.ok ? r.json() : null; })
                     .then(function(data){
                         if (data && Array.isArray(data.subjects) && data.subjects.length) {
-                            SUBJECT_POOL = data.subjects.filter(function(x){ return !!x && typeof x === 'string'; });
+                            var incoming = data.subjects.filter(function(x){ return !!x && typeof x === 'string'; });
+                            // Varsayılan + API listesini birleştir, yinelenenleri kaldır
+                            var set = new Set();
+                            SUBJECT_POOL.concat(incoming).forEach(function(s){
+                                var k = (s||'').trim();
+                                if (k) set.add(k);
+                            });
+                            SUBJECT_POOL = Array.from(set);
+                            SUBJECT_POOL.sort(function(a,b){ return a.localeCompare(b,'de'); });
                             renderSubjectList();
                         }
                     })
