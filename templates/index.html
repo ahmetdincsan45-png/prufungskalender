@@ -464,8 +464,11 @@
         top: -4px; /* metni 4px yukarı al */
     }
 
-    /* 3 gün veya daha az kala kırmızıya zorla (Bootstrap rengini güvenle ez) */
-    #countdownText.text-danger { color: var(--bs-danger) !important; }
+    /* Kalan güne göre kademeli kırmızı tonları */
+    #countdownText.countdown-3 { color: rgba(var(--bs-danger-rgb), 0.60) !important; } /* 3 gün: açık kırmızı */
+    #countdownText.countdown-2 { color: rgba(var(--bs-danger-rgb), 0.75) !important; } /* 2 gün: biraz koyu */
+    #countdownText.countdown-1 { color: rgba(var(--bs-danger-rgb), 0.90) !important; } /* 1 gün: çok koyu */
+    #countdownText.countdown-0 { color: rgba(var(--bs-danger-rgb), 1.00) !important; }  /* bugün: en kırmızı */
 </style>
 
 <script>
@@ -495,10 +498,11 @@
             if (diff == null || Number.isNaN(diff)) {
                 diff = getDiffDaysFromText();
             }
+            const levels = ['countdown-0','countdown-1','countdown-2','countdown-3'];
+            el.classList.remove('text-danger', ...levels);
             if (diff != null && diff <= 3) {
-                el.classList.add('text-danger');
-            } else {
-                el.classList.remove('text-danger');
+                const cls = (diff <= 0) ? 'countdown-0' : `countdown-${diff}`;
+                el.classList.add(cls);
             }
         }
 
