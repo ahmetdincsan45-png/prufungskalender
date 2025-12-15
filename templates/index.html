@@ -227,9 +227,12 @@
             }
         }
         
-        /* Bugünün rengini 2 ton daha koyu yap */
-        .fc .fc-daygrid-day.fc-day-today {
-            background-color: rgba(255, 193, 7, 0.25) !important;
+        /* Bugünün arka planını hücre çerçevesine uygula ki köşeler oval kalsın */
+        .fc .fc-daygrid-day.fc-day-today { 
+            background-color: transparent !important; /* td seviyesinde sarıyı kaldır */
+        }
+        .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame {
+            background-color: rgba(255, 193, 7, 0.25) !important; /* sarı vurguyu yuvarlak çerçevenin içine uygula */
         }
         
         /* Takvim kutucuklarının kenar çizgilerini yuvarlak gösterme tekniği */
