@@ -45,8 +45,10 @@ def apple_touch_icon():
 def apple_touch_icon_pre():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 
-# -------------------- DB Yolu (kalıcı disk) --------------------
-DB_PATH = os.getenv("SQLITE_DB_PATH", "/var/data/prufungskalender.db")
+# -------------------- DB Yolu --------------------
+# Heroku gibi salt-okunur slug ortamlarda yazılabilir tek alan /tmp olduğundan
+# varsayılan yolu /tmp yapıyoruz. İsteyen ortam değişkeni ile geçersiz kılabilir.
+DB_PATH = os.getenv("SQLITE_DB_PATH", "/tmp/prufungskalender.db")
 DATA_DIR = Path(DB_PATH).parent
 DATA_DIR.mkdir(parents=True, exist_ok=True)  # /var/data yoksa oluştur
 CACHE_DIR = DATA_DIR / "ferien_cache"
