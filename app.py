@@ -1642,6 +1642,35 @@ def update_credentials():
     resp.set_cookie('stats_auth', token, max_age=86400, httponly=True)
     return resp
 
+# --- Admin Reset (env token korumalı) ---
+@app.route('/admin/reset', methods=['POST'])
+def admin_reset():
+    token_env = os.getenv('ADMIN_RESET_TOKEN')
+    if not token_env:
+        return "Reset kapalı (ADMIN_RESET_TOKEN yok)", 403
+    token = (request.form.get('token') or '').strip()
+    if token != token_env:
+        return "Yetkisiz", 403
+    new_username = (request.form.get('new_username') or '').strip()
+    new_password = (request.form.get('new_password') or '').strip()
+    if not new_username or not new_password:
+        return "Eksik bilgi", 400
+    import re
+    if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
+        return "Geçersiz kullanıcı adı", 400
+    if len(new_password) < 8:
+        return "Şifre çok kısa (min 8)", 400
+    pwd_hash = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT id FROM admin_credentials LIMIT 1").fetchone()
+        if row:
+            conn.execute("UPDATE admin_credentials SET username=?, password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                         (new_username, pwd_hash, row['id']))
+        else:
+            conn.execute("INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)", (new_username, pwd_hash))
+        conn.commit()
+    return "Reset OK. /stats sayfasında giriş yapabilirsiniz.", 200
+
 # ---- Subjects management (Stats auth required) ----
 def _stats_expected_token():
     with get_db_connection() as conn:
