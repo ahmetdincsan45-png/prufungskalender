@@ -99,8 +99,7 @@ takvım/
 ├── app.py              # Ana Flask uygulaması
 ├── schema.sql          # Veritabanı şeması
 ├── requirements.txt    # Python bağımlılıkları
-├── Procfile           # Heroku dağıtım dosyası
-├── runtime.txt        # Python versiyonu
+├── render.yaml        # Render blueprint (otomatik deploy için)
 ├── README.md          # Bu dosya
 └── templates/
     ├── index.html     # Ana sayfa şablonu
