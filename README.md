@@ -105,9 +105,22 @@ takvım/
 └── templates/
     ├── index.html     # Ana sayfa şablonu
     └── add.html       # Sınav ekleme şablonu
+  ├── render.yaml        # Render blueprint (otomatik deploy için)
 ```
 
 ## Güvenlik Notları
+## Deploy (Render)
+
+- Render hesabı açın (kişisel hesap yeterlidir).
+- “New +” → “Blueprint” → repo’yu seçin. Alternatif: “Web Service” ve GitHub repo bağlama.
+- Disk eklenmiş servis otomatik oluşur (render.yaml):
+  - Build: `pip install -r requirements.txt`
+  - Start: `gunicorn app:app`
+  - Disk: `/var/data` (kalıcı SQLite)
+  - Env: `SQLITE_DB_PATH=/var/data/prufungskalender.db`
+- Otomatik deploy açık: GitHub’a push → Render yeniden yayınlar.
+
+Not: Heroku üye olamıyorsanız Render/ Railway uygun alternatiflerdir.
 
 - Bu uygulama eğitim/demo amaçlıdır
 - Kişisel verileri saklamayın
