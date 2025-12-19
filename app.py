@@ -663,6 +663,7 @@ def stats():
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
                 <title>Giriş</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -797,9 +798,10 @@ def stats():
                     .loading .spinner { display: block; }
                     .loading .btn-text { opacity: 0; }
                 </style>
-            </head>
+            <head>
             <body>
                 <div class="container">
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
                     <div class="login-box" id="loginBox">
                         <h2>🔒 Stats</h2>
                         <div class="error">❌ Yanlış kullanıcı adı veya şifre!</div>
@@ -810,7 +812,7 @@ def stats():
                             </div>
                             <div class="input-group">
                                 <input type="password" name="password" id="password" placeholder="Şifre" required autocomplete="current-password">
-                                <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                                <button type="button" class="toggle-password" onclick="togglePassword()"><i class="bi bi-eye-slash"></i></button>
                             </div>
                             <button type="submit" class="submit-btn" id="submitBtn">
                                 <span class="btn-text">Giriş</span>
@@ -847,10 +849,10 @@ def stats():
                         const btn = document.querySelector('.toggle-password');
                         if (input.type === 'password') {
                             input.type = 'text';
-                            btn.textContent = '🙈';
+                            btn.innerHTML = '<i class="bi bi-eye"></i>';
                         } else {
                             input.type = 'password';
-                            btn.textContent = '👁️';
+                            btn.innerHTML = '<i class="bi bi-eye-slash"></i>';
                         }
                     }
                     
@@ -895,6 +897,7 @@ def stats():
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
             <title>Giriş</title>
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1026,7 +1029,7 @@ def stats():
                     <form method="get" id="loginForm">
                         <div class="input-group">
                             <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
-                            <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                            <button type="button" class="toggle-password" onclick="togglePassword()"><i class="bi bi-eye-slash"></i></button>
                         </div>
                         <button type="submit" class="submit-btn" id="submitBtn">
                             <span class="btn-text">Giriş</span>
@@ -1041,10 +1044,10 @@ def stats():
                     const btn = document.querySelector('.toggle-password');
                     if (input.type === 'password') {
                         input.type = 'text';
-                        btn.textContent = '🙈';
+                        btn.innerHTML = '<i class="bi bi-eye"></i>';
                     } else {
                         input.type = 'password';
-                        btn.textContent = '👁️';
+                        btn.innerHTML = '<i class="bi bi-eye-slash"></i>';
                     }
                 }
                 
@@ -1243,7 +1246,7 @@ def stats():
                         </div>
                         <div class="input-group">
                             <input type="password" name="password" id="password" placeholder="Şifre" required autocomplete="current-password">
-                            <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                            <button type="button" class="toggle-password" onclick="togglePassword()"><i class="bi bi-eye-slash"></i></button>
                         </div>
                         <button type="submit" class="submit-btn" id="submitBtn">
                             <span class="btn-text">Giriş</span>
@@ -1280,10 +1283,10 @@ def stats():
                     const btn = document.querySelector('.toggle-password');
                     if (input.type === 'password') {
                         input.type = 'text';
-                        btn.textContent = '🙈';
+                        btn.innerHTML = '<i class="bi bi-eye"></i>';
                     } else {
                         input.type = 'password';
-                        btn.textContent = '👁️';
+                        btn.innerHTML = '<i class="bi bi-eye-slash"></i>';
                     }
                 }
                 
