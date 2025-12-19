@@ -110,18 +110,34 @@ takvım/
 ## Güvenlik Notları
 ## Deploy (Render)
 
-- Render hesabı açın (kişisel hesap yeterlidir).
-- “New +” → “Blueprint” → repo’yu seçin. Alternatif: “Web Service” ve GitHub repo bağlama.
-- Disk eklenmiş servis otomatik oluşur (render.yaml):
   - Build: `pip install -r requirements.txt`
   - Start: `gunicorn app:app`
   - Disk: `/var/data` (kalıcı SQLite)
   - Env: `SQLITE_DB_PATH=/var/data/prufungskalender.db`
-- Otomatik deploy açık: GitHub’a push → Render yeniden yayınlar.
 
 Not: Heroku üye olamıyorsanız Render/ Railway uygun alternatiflerdir.
 
 - Bu uygulama eğitim/demo amaçlıdır
+### Admin Acil Durum Endpoints
+- `POST /admin/reset`: Env token (`ADMIN_RESET_TOKEN`) ile korumalıdır. Form alanları: `token`, `new_username`, `new_password`. Başarılı olduğunda admin kullanıcı adı ve şifre güncellenir.
+- `GET /admin/info`: Env token (`ADMIN_INFO_TOKEN` yoksa `ADMIN_RESET_TOKEN`) ile korumalıdır. Sadece güncel `username` ve `updated_at` döner. Şifre hash’li tutulur ve görüntülenemez.
+
+Örnek istek (PowerShell):
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://<servis>/admin/info?token=YOUR_SECRET_TOKEN" `
+  -Method GET
+```
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://<servis>/admin/reset" `
+  -Method POST `
+  -ContentType "application/x-www-form-urlencoded" `
+  -Body @{ token="YOUR_SECRET_TOKEN"; new_username="Ahmet"; new_password="YeniSifre123" }
+```
+
 - Kişisel verileri saklamayın
 - Üretim ortamında güvenlik önlemleri alın
 - Veritabanı yedeklemelerini düzenli yapın

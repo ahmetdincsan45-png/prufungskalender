@@ -1671,6 +1671,26 @@ def admin_reset():
         conn.commit()
     return "Reset OK. /stats sayfasında giriş yapabilirsiniz.", 200
 
+# --- Admin Info (env token korumalı, sadece username ve güncelleme zamanı) ---
+@app.route('/admin/info', methods=['GET'])
+def admin_info():
+    token_env = os.getenv('ADMIN_INFO_TOKEN') or os.getenv('ADMIN_RESET_TOKEN')
+    if not token_env:
+        return "Info kapalı (ADMIN_INFO_TOKEN yok)", 403
+    token = (request.args.get('token') or request.form.get('token') or '').strip()
+    if token != token_env:
+        return "Yetkisiz", 403
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT username, updated_at FROM admin_credentials LIMIT 1").fetchone()
+    username = row['username'] if row else None
+    updated = row['updated_at'] if row else None
+    return jsonify({
+        "username": username,
+        "updated_at": updated,
+        "password_visible": False,
+        "note": "Şifre hash'li tutulur; görüntülenemez. /admin/reset ile güncelleyebilirsiniz."
+    })
+
 # ---- Subjects management (Stats auth required) ----
 def _stats_expected_token():
     with get_db_connection() as conn:
