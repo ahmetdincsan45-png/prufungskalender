@@ -1645,45 +1645,8 @@ def stats_login():
     except Exception as e:
         return f"Error: {e}", 500
 
-# Basit tarayıcılar (VS Code Simple Browser gibi) 401 durum kodlu sayfaları boş gösterebilir.
-# Bu rota, aynı login formunu 200 OK ile sunar.
-@app.route('/stats/login', methods=['GET'])
-def stats_login_page():
-    return (
-        """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Giriş</title>
-            <style>
-                body { font-family: system-ui, -apple-system, sans-serif; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f5f5f5; }
-                .box { background:#fff; padding:24px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.1); min-width:280px; }
-                .box h2 { margin:0 0 12px 0; font-size:1.25em; color:#333; }
-                .box .row { margin:8px 0; }
-                input { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:.95em; }
-                .btn { width:100%; padding:10px 12px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; margin-top:10px; }
-                .btn:hover { background:#0b5ed7; }
-                .small { font-size:.85em; color:#666; text-align:center; margin-top:8px; }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h2>🔒 Stats Giriş</h2>
-                <form method="post" action="/stats">
-                    <input type="hidden" name="login_attempt" value="1" />
-                    <div class="row"><input type="text" name="username" placeholder="Kullanıcı Adı" required autocomplete="username" value="Ahmet"></div>
-                    <div class="row"><input type="password" name="password" placeholder="Şifre" required autocomplete="current-password" value=""></div>
-                    <button type="submit" class="btn">Giriş</button>
-                </form>
-                <div class="small"><a href="/logout" style="color:#0d6efd; text-decoration:none;">Çıkış</a> • <a href="/" style="color:#0d6efd; text-decoration:none;">Ana Sayfa</a></div>
-            </div>
-        </body>
-        </html>
-        """,
-        200,
-    )
+# Basit tarayıcılar 401 kodlu sayfaları boş gösterebileceği için
+# yukarıda tanımlanan `stats_login` rotası aynı formu 200 OK ile sunar.
 
 @app.route('/stats/update-credentials', methods=['POST'])
 def update_credentials():
