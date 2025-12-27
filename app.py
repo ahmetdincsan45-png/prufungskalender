@@ -100,7 +100,6 @@ def stats_login():
                 <div class='row'><input type='password' name='password' placeholder='Şifre' required></div>
                 <div class='row'><button type='submit'>Giriş</button></div>
             </form>
-            <div class='hint'>Tek kullanıcı: ahmet / 45ee551</div>
         </div>
         </body></html>
         """
