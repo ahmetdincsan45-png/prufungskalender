@@ -95,7 +95,15 @@ def stats_login():
             button {{ width:100%; padding:12px; border:none; border-radius:8px; background:#667eea; color:#fff; font-weight:600; cursor:pointer; }}
             button:active {{ background:#5568d3; }}
             .err {{ color:#dc3545; font-size:.9em; margin-bottom:10px; text-align:center; }}
+            .success {{ color:#28a745; font-size:.9em; margin-bottom:10px; text-align:center; }}
             .bio-btn {{ margin-top:12px; background:#f5f6fa; color:#667eea; border:1px solid #667eea; }}
+            .modal {{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.5); align-items:center; justify-content:center; z-index:1000; }}
+            .modal.show {{ display:flex; }}
+            .modal-content {{ background:#fff; padding:24px; border-radius:12px; width:90%; max-width:360px; }}
+            .modal-content h3 {{ margin:0 0 16px; text-align:center; }}
+            .btn-group {{ display:flex; gap:8px; margin-top:16px; }}
+            .btn-group button {{ flex:1; }}
+            .btn-cancel {{ background:#6c757d; }}
             @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
         </style></head><body>
         <div class='box' id='loginBox'>
@@ -105,18 +113,101 @@ def stats_login():
                 <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' autocomplete='username webauthn' required></div>
                 <div class='row'><input type='password' name='password' placeholder='Şifre' id='password' autocomplete='current-password webauthn' required></div>
                 <div class='row'><button type='submit'>Giriş</button></div>
-                <div class='row'><button type='button' class='bio-btn' id='bioBtn' style='display:none'>🔐 Yüz Tanıma ile Giriş</button></div>
+                <div class='row'><button type='button' class='bio-btn' id='bioBtn' style='display:none'>🔐 Yüz Tanıma Kaydet/Giriş</button></div>
             </form>
+        </div>
+        <div class='modal' id='bioModal'>
+            <div class='modal-content'>
+                <h3>Yüz Tanıma Kaydı</h3>
+                <div id='modalMsg'>Önce kullanıcı adı ve şifrenizi doğrulayın:</div>
+                <form id='bioRegForm'>
+                    <div class='row'><input type='text' id='bioUser' placeholder='Kullanıcı adı' required></div>
+                    <div class='row'><input type='password' id='bioPass' placeholder='Şifre' required></div>
+                    <div class='btn-group'>
+                        <button type='button' class='btn-cancel' onclick='closeBioModal()'>İptal</button>
+                        <button type='submit'>Devam</button>
+                    </div>
+                </form>
+            </div>
         </div>
         <script>
         const loginBox=document.getElementById('loginBox');const pwdInput=document.getElementById('password');
+        const bioModal=document.getElementById('bioModal');
+        const bioRegForm=document.getElementById('bioRegForm');
+        const modalMsg=document.getElementById('modalMsg');
         const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if(isMobile){{pwdInput.addEventListener('focus',()=>{{setTimeout(()=>{{loginBox.classList.add('keyboard-open');pwdInput.scrollIntoView({{behavior:'smooth',block:'center'}});}},100);}});pwdInput.addEventListener('blur',()=>{{loginBox.classList.remove('keyboard-open');}});}}
-        if(window.PublicKeyCredential){{document.getElementById('bioBtn').style.display='block';document.getElementById('bioBtn').addEventListener('click',async()=>{{if(navigator.credentials){{try{{const cred=await navigator.credentials.get({{password:true,mediation:'optional'}});if(cred){{document.querySelector('input[name=username]').value=cred.id||'ahmet';document.querySelector('input[name=password]').value=cred.password||'45ee551';document.getElementById('loginForm').submit();}}}}catch(e){{console.log('Biometric auth failed:',e);alert('Yüz tanıma kullanılamadı. Lütfen manuel giriş yapın.');}}}}}});}}
+        
+        function closeBioModal(){{bioModal.classList.remove('show');}}
+        
+        if(window.PublicKeyCredential){{
+            document.getElementById('bioBtn').style.display='block';
+            document.getElementById('bioBtn').addEventListener('click',()=>{{bioModal.classList.add('show');}});
+            
+            bioRegForm.addEventListener('submit',async(e)=>{{
+                e.preventDefault();
+                const user=document.getElementById('bioUser').value.trim();
+                const pass=document.getElementById('bioPass').value.trim();
+                
+                modalMsg.innerHTML='Doğrulanıyor...';
+                try{{
+                    const verifyResp=await fetch('/stats/verify-credentials',{{
+                        method:'POST',
+                        headers:{{'Content-Type':'application/json'}},
+                        body:JSON.stringify({{username:user,password:pass}})
+                    }});
+                    const verifyData=await verifyResp.json();
+                    
+                    if(!verifyData.success){{
+                        modalMsg.innerHTML='<div class="err">'+verifyData.error+'</div>';
+                        return;
+                    }}
+                    
+                    modalMsg.innerHTML='Yüz tanıma kaydediliyor...';
+                    
+                    if(navigator.credentials && navigator.credentials.store){{
+                        const cred=new PasswordCredential({{
+                            id:user,
+                            password:pass
+                        }});
+                        await navigator.credentials.store(cred);
+                        modalMsg.innerHTML='<div class="success">Yüz tanıma kaydedildi! Giriş yapılıyor...</div>';
+                        setTimeout(()=>{{
+                            document.querySelector('input[name=username]').value=user;
+                            document.querySelector('input[name=password]').value=pass;
+                            document.getElementById('loginForm').submit();
+                        }},1000);
+                    }}else{{
+                        modalMsg.innerHTML='<div class="err">Yüz tanıma bu cihazda desteklenmiyor</div>';
+                    }}
+                }}catch(err){{
+                    modalMsg.innerHTML='<div class="err">Hata: '+err.message+'</div>';
+                }}
+            }});
+        }}
         </script>
         </body></html>
         """
     )
+
+@app.route('/stats/verify-credentials', methods=['POST'])
+def stats_verify_credentials():
+    """Biometric kayıt için kullanıcı adı/şifre doğrulama"""
+    try:
+        data = request.get_json()
+        in_user = (data.get('username') or '').strip()
+        in_pass = (data.get('password') or '').strip()
+        
+        admin_user, admin_hash = get_admin_credentials()
+        user_match = (admin_user or '').strip().lower() == in_user.lower()
+        pass_ok = bool(admin_hash) and check_password_hash(admin_hash, in_pass)
+        
+        if user_match and pass_ok:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Hatalı kullanıcı adı veya şifre'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/stats/logout', methods=['POST', 'GET'])
 def stats_logout():
