@@ -198,16 +198,25 @@ def stats_verify_credentials():
         in_user = (data.get('username') or '').strip()
         in_pass = (data.get('password') or '').strip()
         
+        if not in_user or not in_pass:
+            return jsonify({'success': False, 'error': 'Kullanıcı adı ve şifre gerekli'})
+        
         admin_user, admin_hash = get_admin_credentials()
+        
+        if not admin_user or not admin_hash:
+            return jsonify({'success': False, 'error': 'Sistem hatası: Admin bilgileri bulunamadı'})
+        
         user_match = (admin_user or '').strip().lower() == in_user.lower()
         pass_ok = bool(admin_hash) and check_password_hash(admin_hash, in_pass)
         
         if user_match and pass_ok:
             return jsonify({'success': True})
+        elif not user_match:
+            return jsonify({'success': False, 'error': f'Kullanıcı adı hatalı. Beklenen: {admin_user}'})
         else:
-            return jsonify({'success': False, 'error': 'Hatalı kullanıcı adı veya şifre'})
+            return jsonify({'success': False, 'error': 'Şifre hatalı'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': f'Hata: {str(e)}'})
 
 @app.route('/stats/logout', methods=['POST', 'GET'])
 def stats_logout():
