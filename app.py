@@ -1349,6 +1349,7 @@ def stats():
                             <a href="/send-report">📧 Rapor Gönder</a>
                             <a href="/stats/delete-past">🗑️ Geçmişi Sil</a>
                             <a href="/" class="danger">🏠 Ana Sayfa</a>
+                            <a href="/stats/logout" class="danger">🚪 Çıkış</a>
                         </div>
                     </div>
                 </div>
