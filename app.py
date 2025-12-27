@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 try:
     from zoneinfo import ZoneInfo
-except Exception:  # Python <3.9 veya ortamda yoksa
+except Exception:
     ZoneInfo = None
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
@@ -19,17 +19,16 @@ import hashlib
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # -------------------- Flask --------------------
-
 app = Flask(__name__)
-app.secret_key = "prufungskalender_secret_key_2025_ahmet"  # Session için secret key
-app.config['SESSION_COOKIE_SECURE'] = False  # HTTP için (HTTPS olsa True olmalı)
+app.secret_key = "prufungskalender_secret_key_2025_ahmet"
+app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app)
 
 # Email konfigürasyonu
 EMAIL_ADDRESS = "ahmetdincsan45@gmail.com"
-EMAIL_PASSWORD = "jdygziqeduesbplk"  # Gmail uygulama şifresi (boşluksuz)
+EMAIL_PASSWORD = "jdygziqeduesbplk"
 RECIPIENT_EMAIL = "ahmetdincsan45@gmail.com"
 
 # Favicon ve Apple Touch Icon rotaları
@@ -41,16 +40,20 @@ def favicon():
 def apple_touch_icon():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 
+@app.route('/apple-touch-icon-precomposed.png')
+def apple_touch_icon_pre():
+    return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
+
+# Basit tarayıcılar için 200 OK dönen login formu
 @app.route('/stats/login', methods=['GET'])
 def stats_login():
-    """Basit login formunu 200 OK ile döner (tarayıcı uyumu için)."""
     return (
         """
         <!DOCTYPE html>
         <html>
         <head>
-            <meta charset=\"UTF-8\">
-            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Giriş</title>
             <style>
                 body { font-family: system-ui, -apple-system, sans-serif; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f5f5f5; }
@@ -64,23 +67,20 @@ def stats_login():
             </style>
         </head>
         <body>
-            <div class=\"box\">
+            <div class="box">
                 <h2>🔒 Stats Giriş</h2>
-                <form method=\"post\" action=\"/stats\">
-                    <input type=\"hidden\" name=\"login_attempt\" value=\"1\" />
-                    <div class=\"row\"><input type=\"text\" name=\"username\" placeholder=\"Kullanıcı Adı\" required autocomplete=\"username\" value=\"Ahmet\"></div>
-                    <div class=\"row\"><input type=\"password\" name=\"password\" placeholder=\"Şifre\" required autocomplete=\"current-password\" value=\"\"></div>
-                    <button type=\"submit\" class=\"btn\">Giriş</button>
+                <form method="post" action="/stats">
+                    <input type="hidden" name="login_attempt" value="1" />
+                    <div class="row"><input type="text" name="username" placeholder="Kullanıcı Adı" required autocomplete="username" value="Ahmet"></div>
+                    <div class="row"><input type="password" name="password" placeholder="Şifre" required autocomplete="current-password" value=""></div>
+                    <button type="submit" class="btn">Giriş</button>
                 </form>
-                <div class=\"small\"><a href=\"/logout\" style=\"color:#0d6efd; text-decoration:none;\">Çıkış</a> • <a href=\"/\" style=\"color:#0d6efd; text-decoration:none;\">Ana Sayfa</a></div>
+                <div class="small"><a href="/logout" style="color:#0d6efd; text-decoration:none;">Çıkış</a> • <a href="/" style="color:#0d6efd; text-decoration:none;">Ana Sayfa</a></div>
             </div>
         </body>
         </html>
         """
     )
-@app.route('/apple-touch-icon-precomposed.png')
-def apple_touch_icon_pre():
-    return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 
 # -------------------- DB Yolu --------------------
 # Ortam değişkeni öncelikli. Yoksa Render/Heroku gibi ortamlarda kalıcı disk
@@ -1667,8 +1667,6 @@ def update_credentials():
             return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Geçersiz kullanıcı adı</h3><p>3-32 karakter; harf, rakam, altçizgi.</p><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
         updates['username'] = new_username
     if new_password:
-        if len(new_password) < 8:
-            return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Şifre çok kısa</h3><p>En az 8 karakter.</p><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
         if new_password != new_repeat:
             return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Şifreler uyuşmuyor</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
         updates['password_hash'] = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
@@ -1702,8 +1700,6 @@ def admin_reset():
     import re
     if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
         return "Geçersiz kullanıcı adı", 400
-    if len(new_password) < 8:
-        return "Şifre çok kısa (min 8)", 400
     pwd_hash = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
     with get_db_connection() as conn:
         row = conn.execute("SELECT id FROM admin_credentials LIMIT 1").fetchone()
@@ -1732,8 +1728,6 @@ def admin_bootstrap():
     import re
     if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
         return "Geçersiz kullanıcı adı", 400
-    if len(new_password) < 8:
-        return "Şifre çok kısa (min 8)", 400
     pwd_hash = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
     with get_db_connection() as conn:
         conn.execute("INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)", (new_username, pwd_hash))
