@@ -80,27 +80,40 @@ def stats_login():
     return (
         f"""
         <!DOCTYPE html>
-        <html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'>
+        <meta name='apple-mobile-web-app-capable' content='yes'>
         <title>Stats Giriş</title>
         <style>
-            body {{ font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f5f6fa; }}
-            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; }}
-            h2 {{ margin:0 0 16px; font-size:1.2em; color:#333; }}
+            * {{ margin:0; padding:0; box-sizing:border-box; }}
+            html, body {{ height:100%; overflow:hidden; }}
+            body {{ font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; background:#f5f6fa; padding:16px; }}
+            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; transition:transform 0.3s ease; }}
+            .box.keyboard-open {{ transform:translateY(-80px); }}
+            h2 {{ margin:0 0 16px; font-size:1.2em; color:#333; text-align:center; }}
             .row {{ margin:10px 0; }}
-            input {{ width:100%; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:8px; }}
-            button {{ width:100%; padding:10px 12px; border:none; border-radius:8px; background:#667eea; color:#fff; font-weight:600; cursor:pointer; }}
-            .err {{ color:#dc3545; font-size:.9em; margin-bottom:10px; }}
-            .hint {{ font-size:.8em; color:#666; margin-top:8px; }}
+            input {{ width:100%; padding:12px; font-size:16px; border:1px solid #ddd; border-radius:8px; }}
+            button {{ width:100%; padding:12px; border:none; border-radius:8px; background:#667eea; color:#fff; font-weight:600; cursor:pointer; }}
+            button:active {{ background:#5568d3; }}
+            .err {{ color:#dc3545; font-size:.9em; margin-bottom:10px; text-align:center; }}
+            .bio-btn {{ margin-top:12px; background:#f5f6fa; color:#667eea; border:1px solid #667eea; }}
+            @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
         </style></head><body>
-        <div class='box'>
+        <div class='box' id='loginBox'>
             <h2>🔒 Stats Giriş</h2>
             {error_html}
-            <form method='post'>
-                <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' required></div>
-                <div class='row'><input type='password' name='password' placeholder='Şifre' required></div>
+            <form method='post' id='loginForm' autocomplete='on'>
+                <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' autocomplete='username webauthn' required></div>
+                <div class='row'><input type='password' name='password' placeholder='Şifre' id='password' autocomplete='current-password webauthn' required></div>
                 <div class='row'><button type='submit'>Giriş</button></div>
+                <div class='row'><button type='button' class='bio-btn' id='bioBtn' style='display:none'>🔐 Yüz Tanıma ile Giriş</button></div>
             </form>
         </div>
+        <script>
+        const loginBox=document.getElementById('loginBox');const pwdInput=document.getElementById('password');
+        const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if(isMobile){{pwdInput.addEventListener('focus',()=>{{setTimeout(()=>{{loginBox.classList.add('keyboard-open');pwdInput.scrollIntoView({{behavior:'smooth',block:'center'}});}},100);}});pwdInput.addEventListener('blur',()=>{{loginBox.classList.remove('keyboard-open');}});}}
+        if(window.PublicKeyCredential){{document.getElementById('bioBtn').style.display='block';document.getElementById('bioBtn').addEventListener('click',async()=>{{if(navigator.credentials){{try{{const cred=await navigator.credentials.get({{password:true,mediation:'optional'}});if(cred){{document.querySelector('input[name=username]').value=cred.id||'ahmet';document.querySelector('input[name=password]').value=cred.password||'45ee551';document.getElementById('loginForm').submit();}}}}catch(e){{console.log('Biometric auth failed:',e);alert('Yüz tanıma kullanılamadı. Lütfen manuel giriş yapın.');}}}}}});}}
+        </script>
         </body></html>
         """
     )
@@ -1347,7 +1360,7 @@ def stats():
                         <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
                         <div class="menu" id="kebabMenu">
                             <a href="/">⌂ Ana Sayfa</a>
-                            <a href="/send-report">✉ Mail</a>
+                            <a href="/send-report">@ Mail</a>
                             <a href="/stats/delete-past">✕ Sil</a>
                             <a href="/stats/logout" class="danger">⎋ Çıkış</a>
                         </div>
