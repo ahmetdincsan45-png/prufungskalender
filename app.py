@@ -9,6 +9,7 @@ try:
 except Exception:
     ZoneInfo = None
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from functools import wraps
 from flask_cors import CORS
 import requests
 import json
@@ -44,10 +45,71 @@ def apple_touch_icon():
 def apple_touch_icon_pre():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 
-# Basit tarayıcılar için 200 OK dönen login formu
-@app.route('/stats/login', methods=['GET'])
+# ---- Stats Auth Helpers ----
+def get_admin_credentials():
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT username, password_hash FROM admin_credentials LIMIT 1").fetchone()
+    return (row['username'], row['password_hash']) if row else (None, None)
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if session.get('stats_authed'):
+            return fn(*args, **kwargs)
+        return redirect(url_for('stats_login'))
+    return wrapper
+
+# Login formu ve giriş işlemi
+@app.route('/stats/login', methods=['GET', 'POST'])
 def stats_login():
-    return redirect(url_for('stats'))
+    if request.method == 'POST':
+        in_user = (request.form.get('username') or '').strip()
+        in_pass = (request.form.get('password') or '').strip()
+        admin_user, admin_hash = get_admin_credentials()
+        # Kullanıcı adı eşleşmesini büyük/küçük harf duyarsız yap
+        user_match = (admin_user or '').strip().lower() == in_user.lower()
+        pass_ok = bool(admin_hash) and check_password_hash(admin_hash, in_pass)
+        if user_match and pass_ok:
+            session['stats_authed'] = True
+            session['stats_user'] = admin_user
+            return redirect(url_for('stats'))
+        error_msg = "Hatalı kullanıcı adı veya şifre"
+    else:
+        error_msg = None
+    error_html = f"<div class='err'>{error_msg}</div>" if error_msg else ""
+    return (
+        f"""
+        <!DOCTYPE html>
+        <html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Stats Giriş</title>
+        <style>
+            body {{ font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f5f6fa; }}
+            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; }}
+            h2 {{ margin:0 0 16px; font-size:1.2em; color:#333; }}
+            .row {{ margin:10px 0; }}
+            input {{ width:100%; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:8px; }}
+            button {{ width:100%; padding:10px 12px; border:none; border-radius:8px; background:#667eea; color:#fff; font-weight:600; cursor:pointer; }}
+            .err {{ color:#dc3545; font-size:.9em; margin-bottom:10px; }}
+            .hint {{ font-size:.8em; color:#666; margin-top:8px; }}
+        </style></head><body>
+        <div class='box'>
+            <h2>🔒 Stats Giriş</h2>
+            {error_html}
+            <form method='post'>
+                <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' required></div>
+                <div class='row'><input type='password' name='password' placeholder='Şifre' required></div>
+                <div class='row'><button type='submit'>Giriş</button></div>
+            </form>
+            <div class='hint'>Tek kullanıcı: ahmet / 45ee551</div>
+        </div>
+        </body></html>
+        """
+    )
+
+@app.route('/stats/logout', methods=['POST', 'GET'])
+def stats_logout():
+    session.clear()
+    return redirect(url_for('stats_login'))
 
 # -------------------- DB Yolu --------------------
 # Ortam değişkeni öncelikli. Yoksa Render/Heroku gibi ortamlarda kalıcı disk
@@ -545,6 +607,7 @@ def delete_exam():
         print("❌ Delete exam error:", e)
         return render_template("delete.html", exams=[], error=str(e))
 
+@login_required
 @app.route("/stats/delete-past", methods=["GET", "POST"])
 def stats_delete_past():
     """Geçmiş sınavları yalnız stats yetkisi ile silebilme sayfası"""
@@ -628,6 +691,7 @@ def api_subjects():
     except Exception as e:
         return jsonify({"subjects": [], "error": str(e)}), 500
 
+@login_required
 @app.route("/stats", methods=["GET"])
 def stats():
     """İstatistikler (şifresiz)"""
@@ -1347,6 +1411,7 @@ def stats():
 # Basit tarayıcılar 401 kodlu sayfaları boş gösterebileceği için
 # yukarıda tanımlanan `stats_login` rotası aynı formu 200 OK ile sunar.
 
+@login_required
 @app.route('/stats/update-credentials', methods=['POST'])
 def update_credentials():
     return redirect(url_for('stats'))
@@ -1421,6 +1486,7 @@ def admin_info():
         "note": "Şifre hash'li tutulur; görüntülenemez. /admin/reset ile güncelleyebilirsiniz."
     })
 
+@login_required
 @app.route('/stats/subjects/add', methods=['POST'])
 def stats_subjects_add():
     name = (request.form.get('subject_name') or '').strip()
@@ -1437,6 +1503,7 @@ def stats_subjects_add():
         pass
     return redirect(url_for('stats'))
 
+@login_required
 @app.route('/stats/subjects/delete', methods=['POST'])
 def stats_subjects_delete():
     sid = (request.form.get('subject_id') or '').strip()
@@ -1451,6 +1518,7 @@ def stats_subjects_delete():
     return redirect(url_for('stats'))
 
 # -------------------- Stats JSON Endpoint --------------------
+@login_required
 @app.route('/stats/json')
 def stats_json():
     """İstemci uygulaması için JSON formatında istatistikler (aynı auth cookie)."""
