@@ -47,40 +47,7 @@ def apple_touch_icon_pre():
 # Basit tarayıcılar için 200 OK dönen login formu
 @app.route('/stats/login', methods=['GET'])
 def stats_login():
-    return (
-        """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Giriş</title>
-            <style>
-                body { font-family: system-ui, -apple-system, sans-serif; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f5f5f5; }
-                .box { background:#fff; padding:24px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.1); min-width:280px; }
-                .box h2 { margin:0 0 12px 0; font-size:1.25em; color:#333; }
-                .box .row { margin:8px 0; }
-                input { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:.95em; }
-                .btn { width:100%; padding:10px 12px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; margin-top:10px; }
-                .btn:hover { background:#0b5ed7; }
-                .small { font-size:.85em; color:#666; text-align:center; margin-top:8px; }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h2>🔒 Stats Giriş</h2>
-                <form method="post" action="/stats">
-                    <input type="hidden" name="login_attempt" value="1" />
-                    <div class="row"><input type="text" name="username" placeholder="Kullanıcı Adı" required autocomplete="username" value="Ahmet"></div>
-                    <div class="row"><input type="password" name="password" placeholder="Şifre" required autocomplete="current-password" value=""></div>
-                    <button type="submit" class="btn">Giriş</button>
-                </form>
-                <div class="small"><a href="/logout" style="color:#0d6efd; text-decoration:none;">Çıkış</a> • <a href="/" style="color:#0d6efd; text-decoration:none;">Ana Sayfa</a></div>
-            </div>
-        </body>
-        </html>
-        """
-    )
+    return redirect(url_for('stats'))
 
 # -------------------- DB Yolu --------------------
 # Ortam değişkeni öncelikli. Yoksa Render/Heroku gibi ortamlarda kalıcı disk
@@ -591,7 +558,7 @@ def stats_delete_past():
     admin_user, admin_hash = get_admin()
     expected = generate_token(admin_hash) if admin_hash else None
     token = request.cookies.get('stats_auth')
-    if token != expected:
+    if False and token != expected:
         return redirect(url_for('stats'))
     try:
         if request.method == 'POST':
@@ -675,7 +642,7 @@ def api_subjects():
 
 @app.route("/stats", methods=["GET", "POST"])
 def stats():
-    """İstatistikler - username + parola ile korumalı"""
+    """İstatistikler (şifresiz)"""
     def get_admin():
         with get_db_connection() as conn:
             row = conn.execute("SELECT username, password_hash FROM admin_credentials LIMIT 1").fetchone()
@@ -704,265 +671,9 @@ def stats():
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-                <title>Giriş</title>
+                # Eski login formu POST'ları gelirse paneli göster
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { 
-                        font-family: system-ui, -apple-system, sans-serif; 
-                        display: flex; 
-                        justify-content: center; 
-                        align-items: center; 
-                        min-height: 100vh; 
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        overflow: auto;
-                        padding: 20px;
-                    }
-                    .container {
-                        width: 100%;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 100vh;
-                    }
-                    @keyframes fadeInUp {
-                        from { opacity: 0; transform: translateY(30px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                    @keyframes shake {
-                        0%, 100% { transform: translateX(0); }
-                        25% { transform: translateX(-10px); }
-                        75% { transform: translateX(10px); }
-                    }
-                    .login-box { 
-                        background: rgba(255, 255, 255, 0.95); 
-                        padding: 50px 40px; 
-                        border-radius: 20px; 
-                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                        animation: fadeInUp 0.6s ease-out, shake 0.5s ease-out;
-                        backdrop-filter: blur(10px);
-                        min-width: 350px;
-                        max-width: 400px;
-                        width: 100%;
-                        transition: transform 0.3s ease;
-                    }
-                    .login-box.keyboard-open {
-                        transform: translateY(-80px);
-                    }
-                    @media (max-width: 600px) {
-                        .login-box {
-                            min-width: unset;
-                            padding: 40px 30px;
-                        }
-                    }
-                    h2 { 
-                        text-align: center; 
-                        color: #333; 
-                        margin-bottom: 10px;
-                        font-size: 1.8em;
-                    }
-                    .error {
-                        color: #dc3545;
-                        text-align: center;
-                        margin-bottom: 20px;
-                        font-size: 0.9em;
-                        font-weight: 500;
-                    }
-                    .input-group {
-                        position: relative;
-                        margin-bottom: 25px;
-                    }
-                    input { 
-                        padding: 14px 45px 14px 14px; 
-                        font-size: 16px; 
-                        border: 2px solid #dc3545; 
-                        border-radius: 10px; 
-                        width: 100%;
-                        transition: all 0.3s ease;
-                        background: white;
-                    }
-                    input:focus {
-                        outline: none;
-                        border-color: #dc3545;
-                        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
-                    }
-                    /* Edge/IE varsayılan şifre gözünü gizle */
-                    input[type="password"]::-ms-reveal,
-                    input[type="password"]::-ms-clear { display: none; }
-                    .toggle-password {
-                        position: absolute;
-                        right: 12px;
-                        top: 50%;
-                        transform: translateY(-50%);
-                        background: none;
-                        border: none;
-                        cursor: pointer;
-                        font-size: 20px;
-                        padding: 5px;
-                        color: #666;
-                        transition: color 0.3s;
-                    }
-                    .toggle-password:hover { color: #667eea; }
-                    button.submit-btn { 
-                        padding: 14px 24px; 
-                        font-size: 16px; 
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white; 
-                        border: none; 
-                        border-radius: 10px; 
-                        cursor: pointer; 
-                        width: 100%;
-                        font-weight: 600;
-                        transition: transform 0.2s, box-shadow 0.3s;
-                        position: relative;
-                    }
-                    button.submit-btn:hover { 
-                        transform: translateY(-2px);
-                        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-                    }
-                    button.submit-btn:active {
-                        transform: translateY(0);
-                    }
-                    @keyframes spin {
-                        to { transform: rotate(360deg); }
-                    }
-                    .spinner {
-                        display: none;
-                        width: 20px;
-                        height: 20px;
-                        border: 3px solid rgba(255,255,255,0.3);
-                        border-top-color: white;
-                        border-radius: 50%;
-                        animation: spin 0.8s linear infinite;
-                        position: absolute;
-                        left: 50%;
-                        top: 50%;
-                        transform: translate(-50%, -50%);
-                    }
-                    .loading .spinner { display: block; }
-                    .loading .btn-text { opacity: 0; }
-                </style>
-            <head>
-            <body>
-                <div class="container">
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-                    <div class="login-box" id="loginBox">
-                        <h2>🔒 Stats</h2>
-                        <div class="error">❌ Yanlış kullanıcı adı veya şifre!</div>
-                        <form method="post" id="loginForm">
-                            <input type="hidden" name="login_attempt" value="1" />
-                            <div class="input-group">
-                                <input type="text" name="username" id="username" placeholder="Kullanıcı Adı" required autocomplete="username">
-                            </div>
-                                                        <div class="input-group">
-                                                                <input type="password" name="password" id="password" placeholder="Şifre" required autocomplete="current-password">
-                                                                <span class="toggle-password" aria-hidden="true">
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                                                                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
-                                                                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
-                                                                        </svg>
-                                                                </span>
-                            </div>
-                            <button type="submit" class="submit-btn" id="submitBtn">
-                                <span class="btn-text">Giriş</span>
-                                <div class="spinner"></div>
-                            </button>
-                        </form>
-                        <button class="change-toggle" id="changeToggle" style="margin-top:18px;background:none;border:none;color:#667eea;cursor:pointer;font-weight:600">Bilgileri Değiştir ▾</button>
-                        <div id="changePanel" style="display:none;margin-top:15px;animation:fadeInUp 0.4s ease-out">
-                            <form method="post" action="/stats/update-credentials" id="changeForm">
-                                <div class="input-group">
-                                    <input type="password" name="current_password" placeholder="Mevcut Şifre" required autocomplete="current-password">
-                                </div>
-                                <div class="input-group">
-                                    <input type="text" name="new_username" placeholder="Yeni Kullanıcı Adı (opsiyonel)" autocomplete="username">
-                                </div>
-                                <div class="input-group">
-                                    <input type="password" name="new_password" placeholder="Yeni Şifre (opsiyonel)" autocomplete="new-password">
-                                </div>
-                                <div class="input-group">
-                                    <input type="password" name="new_password_repeat" placeholder="Yeni Şifre Tekrar" autocomplete="new-password">
-                                </div>
-                                <button type="submit" class="submit-btn" style="margin-top:5px">
-                                    <span class="btn-text">Kaydet</span>
-                                    <div class="spinner"></div>
-                                </button>
-                                <div style="font-size:0.75em;color:#666;margin-top:6px">En az 8 karakter, harf + rakam önerilir.</div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <script>
-                    // Basit göz togglesı: şifre görünür/gizli durumunu değiştirir.
-                    (function(){
-                        const btn = document.querySelector('.toggle-password');
-                        const input = document.getElementById('password');
-                        if (!btn || !input) return;
-                        const EYE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>';
-                        const EYE_SLASH = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/><path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/></svg>';
-                        btn.style.cursor = 'pointer';
-                        // İlk durumu simgele: şifre gizliyse eye-slash
-                        btn.innerHTML = input.type === 'password' ? EYE_SLASH : EYE;
-                        btn.addEventListener('click', function(){
-                            const show = input.type === 'password';
-                            input.type = show ? 'text' : 'password';
-                            btn.innerHTML = show ? EYE : EYE_SLASH;
-                        });
-                    })();
-                    
-                    const loginBox = document.getElementById('loginBox');
-                    const passwordInput = document.getElementById('password');
-                    
-                    let userInteracted = false;
-                    ['touchstart','mousedown','click'].forEach(ev => {
-                        window.addEventListener(ev, () => { userInteracted = true; }, { once: true });
-                    });
-                    passwordInput.addEventListener('focus', function() {
-                        if (!userInteracted) return;
-                        setTimeout(function() {
-                            loginBox.classList.add('keyboard-open');
-                            passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 50);
-                    });
-                    passwordInput.addEventListener('blur', function() {
-                        loginBox.classList.remove('keyboard-open');
-                    });
-                    
-                    document.getElementById('loginForm').addEventListener('submit', function() {
-                        document.getElementById('submitBtn').classList.add('loading');
-                    });
-                    const changeToggle = document.getElementById('changeToggle');
-                    const changePanel = document.getElementById('changePanel');
-                    changeToggle.addEventListener('click', ()=>{
-                        const open = changePanel.style.display === 'block';
-                        changePanel.style.display = open ? 'none' : 'block';
-                        changeToggle.textContent = open ? 'Bilgileri Değiştir ▾' : 'Bilgileri Gizle ▴';
-                    });
-                </script>
-            </body>
-            </html>
-            """, 401
-    
-    # Legacy session gate removed
-    if False:
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-            <title>Giriş</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { 
-                    font-family: system-ui, -apple-system, sans-serif; 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    min-height: 100vh; 
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    overflow: auto;
-                    padding: 20px;
+                    return redirect(url_for('stats'))
                     padding-bottom: 120px; /* floating butonlar için boşluk */
                 }
                 .container {
@@ -1167,11 +878,11 @@ def stats():
         """, 401
     
 
-    # Cookie kontrolü
+    # Cookie kontrolü (artık devre dışı)
     admin_user, admin_hash = get_admin()
     token = request.cookies.get('stats_auth')
     expected = generate_token(admin_hash) if admin_hash else None
-    if token != expected:
+    if False and token != expected:
         return """
         <!DOCTYPE html>
         <html>
@@ -1583,7 +1294,7 @@ def stats():
                         <div class="menu" id="kebabMenu">
                             <a href="/send-report">📧 Rapor Gönder</a>
                             <a href="/stats/delete-past">🗑️ Geçmişi Sil</a>
-                            <a href="/logout" class="danger">🚪 Çıkış</a>
+                            <a href="/" class="danger">🏠 Ana Sayfa</a>
                         </div>
                     </div>
                 </div>
@@ -1650,6 +1361,8 @@ def stats():
 
 @app.route('/stats/update-credentials', methods=['POST'])
 def update_credentials():
+    return redirect(url_for('stats'))
+
     with get_db_connection() as conn:
         row = conn.execute("SELECT id, username, password_hash FROM admin_credentials LIMIT 1").fetchone()
     if not row:
@@ -1765,7 +1478,7 @@ def _stats_expected_token():
 @app.route('/stats/subjects/add', methods=['POST'])
 def stats_subjects_add():
     token = request.cookies.get('stats_auth')
-    if token != _stats_expected_token():
+    if False and token != _stats_expected_token():
         return redirect(url_for('stats'))
     name = (request.form.get('subject_name') or '').strip()
     if not name:
@@ -1784,7 +1497,7 @@ def stats_subjects_add():
 @app.route('/stats/subjects/delete', methods=['POST'])
 def stats_subjects_delete():
     token = request.cookies.get('stats_auth')
-    if token != _stats_expected_token():
+    if False and token != _stats_expected_token():
         return redirect(url_for('stats'))
     sid = (request.form.get('subject_id') or '').strip()
     if not sid:
@@ -1801,17 +1514,6 @@ def stats_subjects_delete():
 @app.route('/stats/json')
 def stats_json():
     """İstemci uygulaması için JSON formatında istatistikler (aynı auth cookie)."""
-    def get_admin_hash():
-        with get_db_connection() as conn:
-            r = conn.execute("SELECT password_hash FROM admin_credentials LIMIT 1").fetchone()
-        return r['password_hash'] if r else None
-    pwd_hash = get_admin_hash()
-    if not pwd_hash:
-        return jsonify({'error': 'auth missing'}), 401
-    expected = hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest()
-    token = request.cookies.get('stats_auth')
-    if token != expected:
-        return jsonify({'error': 'unauthorized'}), 401
     try:
         with get_db_connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
@@ -1937,18 +1639,6 @@ def send_weekly_report():
 @app.route("/send-report")
 def send_report():
     """Manuel rapor gönderme endpoint'i (stats sayfasından erişilebilir)"""
-    # Cookie kontrolü - stats ile aynı mantık
-    try:
-        with get_db_connection() as conn:
-            row = conn.execute("SELECT password_hash FROM admin_credentials LIMIT 1").fetchone()
-        pwd_hash = row['password_hash'] if row else None
-        expected_token = hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest() if pwd_hash else None
-        auth_token = request.cookies.get('stats_auth')
-        if (not expected_token) or (auth_token != expected_token):
-            return redirect(url_for('stats'))
-    except Exception:
-        return redirect(url_for('stats'))
-    
     success = send_weekly_report()
     if success:
         return """
@@ -1980,9 +1670,7 @@ def send_report():
 @app.route("/logout")
 def logout():
     """Stats sayfasından çıkış yap"""
-    response = redirect(url_for('stats'))
-    response.set_cookie('stats_auth', '', max_age=0)  # Cookie'yi sil
-    return response
+    return redirect(url_for('stats'))
 
 # -------------------- Local çalıştırma --------------------
 if __name__ == "__main__":
