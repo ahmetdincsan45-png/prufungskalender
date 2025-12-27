@@ -1132,40 +1132,6 @@ def stats():
         </html>
         """, 401
     
-@app.route('/stats/login', methods=['GET'])
-def stats_login():
-    """Basit login formunu 200 OK ile döner (tarayıcı uyumu için)."""
-    return (
-        """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset=\"UTF-8\">
-            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-            <title>Giriş</title>
-            <style>
-                body { font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f5f5f5; }
-                .box { background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.1); width:320px; }
-                .box h2 { margin:0 0 12px; }
-                .input { width:100%; padding:10px 12px; margin:8px 0; border:1px solid #ddd; border-radius:8px; }
-                .btn { width:100%; padding:10px 12px; margin-top:8px; background:#667eea; color:#fff; border:none; border-radius:8px; cursor:pointer; }
-            </style>
-        </head>
-        <body>
-            <div class=\"box\">
-                <h2>🔒 Stats Giriş</h2>
-                <form method=\"post\" action=\"/stats\"> 
-                    <input type=\"hidden\" name=\"login_attempt\" value=\"1\" />
-                    <input class=\"input\" type=\"text\" name=\"username\" placeholder=\"Kullanıcı Adı\" required />
-                    <input class=\"input\" type=\"password\" name=\"password\" placeholder=\"Şifre\" required />
-                    <button class=\"btn\" type=\"submit\">Giriş</button>
-                </form>
-            </div>
-        </body>
-        </html>
-        """,
-        200,
-    )
 
     # Cookie kontrolü
     admin_user, admin_hash = get_admin()
