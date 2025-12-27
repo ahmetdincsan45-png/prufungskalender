@@ -41,6 +41,9 @@ def favicon():
 def apple_touch_icon():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 
+@app.route('/stats/login', methods=['GET'])
+def stats_login():
+    """Basit login formunu 200 OK ile döner (tarayıcı uyumu için)."""
 @app.route('/apple-touch-icon-precomposed.png')
 def apple_touch_icon_pre():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
