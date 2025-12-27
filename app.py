@@ -1346,10 +1346,10 @@ def stats():
                     <div class="kebab">
                         <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
                         <div class="menu" id="kebabMenu">
-                            <a href="/send-report">📧 Rapor Gönder</a>
-                            <a href="/stats/delete-past">🗑️ Geçmişi Sil</a>
-                            <a href="/" class="danger">🏠 Ana Sayfa</a>
-                            <a href="/stats/logout" class="danger">🚪 Çıkış</a>
+                            <a href="/">⌂ Ana Sayfa</a>
+                            <a href="/send-report">✉ Mail</a>
+                            <a href="/stats/delete-past">✕ Sil</a>
+                            <a href="/stats/logout" class="danger">⎋ Çıkış</a>
                         </div>
                     </div>
                 </div>
