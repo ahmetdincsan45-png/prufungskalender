@@ -548,18 +548,6 @@ def delete_exam():
 @app.route("/stats/delete-past", methods=["GET", "POST"])
 def stats_delete_past():
     """Geçmiş sınavları yalnız stats yetkisi ile silebilme sayfası"""
-    # Stats ile aynı cookie doğrulaması
-    def get_admin():
-        with get_db_connection() as conn:
-            row = conn.execute("SELECT username, password_hash FROM admin_credentials LIMIT 1").fetchone()
-        return (row['username'], row['password_hash']) if row else (None, None)
-    def generate_token(pwd_hash):
-        return hashlib.sha256(f"{pwd_hash}:prufungskalender".encode()).hexdigest()
-    admin_user, admin_hash = get_admin()
-    expected = generate_token(admin_hash) if admin_hash else None
-    token = request.cookies.get('stats_auth')
-    if False and token != expected:
-        return redirect(url_for('stats'))
     try:
         if request.method == 'POST':
             exam_id = (request.form.get('exam_id') or '').strip()
@@ -640,7 +628,7 @@ def api_subjects():
     except Exception as e:
         return jsonify({"subjects": [], "error": str(e)}), 500
 
-@app.route("/stats", methods=["GET", "POST"])
+@app.route("/stats", methods=["GET"])
 def stats():
     """İstatistikler (şifresiz)"""
     def get_admin():
@@ -1363,40 +1351,6 @@ def stats():
 def update_credentials():
     return redirect(url_for('stats'))
 
-    with get_db_connection() as conn:
-        row = conn.execute("SELECT id, username, password_hash FROM admin_credentials LIMIT 1").fetchone()
-    if not row:
-        return redirect(url_for('stats'))
-    current_password = (request.form.get('current_password') or '').strip()
-    new_username = (request.form.get('new_username') or '').strip()
-    new_password = (request.form.get('new_password') or '').strip()
-    new_repeat = (request.form.get('new_password_repeat') or '').strip()
-    if not check_password_hash(row['password_hash'], current_password):
-        return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Mevcut şifre hatalı</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
-    updates = {}
-    if new_username:
-        import re
-        if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
-            return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Geçersiz kullanıcı adı</h3><p>3-32 karakter; harf, rakam, altçizgi.</p><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
-        updates['username'] = new_username
-    if new_password:
-        if new_password != new_repeat:
-            return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Şifreler uyuşmuyor</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
-        updates['password_hash'] = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
-    if not updates:
-        return """<html><body style='font-family:system-ui;padding:40px'><h3 style='color:#dc3545'>Değişiklik yok</h3><a href='/stats' style='color:#667eea'>Geri dön</a></body></html>""", 400
-    set_clause = ', '.join(f"{k}=?" for k in updates.keys()) + ', updated_at=CURRENT_TIMESTAMP'
-    vals = list(updates.values()) + [row['id']]
-    with get_db_connection() as conn:
-        conn.execute(f"UPDATE admin_credentials SET {set_clause} WHERE id=?", vals)
-        conn.commit()
-        new_row = conn.execute("SELECT password_hash FROM admin_credentials WHERE id=?", (row['id'],)).fetchone()
-    new_hash = new_row['password_hash'] if new_row else row['password_hash']
-    token = hashlib.sha256(f"{new_hash}:prufungskalender".encode()).hexdigest()
-    resp = redirect(url_for('stats'))
-    resp.set_cookie('stats_auth', token, max_age=86400, httponly=True)
-    return resp
-
 # --- Admin Reset (env token korumalı) ---
 @app.route('/admin/reset', methods=['POST'])
 def admin_reset():
@@ -1467,19 +1421,8 @@ def admin_info():
         "note": "Şifre hash'li tutulur; görüntülenemez. /admin/reset ile güncelleyebilirsiniz."
     })
 
-# ---- Subjects management (Stats auth required) ----
-def _stats_expected_token():
-    with get_db_connection() as conn:
-        row = conn.execute("SELECT password_hash FROM admin_credentials LIMIT 1").fetchone()
-    if not row:
-        return None
-    return hashlib.sha256(f"{row['password_hash']}:prufungskalender".encode()).hexdigest()
-
 @app.route('/stats/subjects/add', methods=['POST'])
 def stats_subjects_add():
-    token = request.cookies.get('stats_auth')
-    if False and token != _stats_expected_token():
-        return redirect(url_for('stats'))
     name = (request.form.get('subject_name') or '').strip()
     if not name:
         return redirect(url_for('stats'))
@@ -1496,9 +1439,6 @@ def stats_subjects_add():
 
 @app.route('/stats/subjects/delete', methods=['POST'])
 def stats_subjects_delete():
-    token = request.cookies.get('stats_auth')
-    if False and token != _stats_expected_token():
-        return redirect(url_for('stats'))
     sid = (request.form.get('subject_id') or '').strip()
     if not sid:
         return redirect(url_for('stats'))
