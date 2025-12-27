@@ -1345,8 +1345,31 @@ def stats():
                 <title>Stats</title>
                 <style>
                     * {{ box-sizing: border-box; }}
-                    body {{ font-family: system-ui, -apple-system, sans-serif; padding: 0; 
-                            max-width: 1000px; margin: 0 auto; background: #f5f5f5; }}
+                    body {{ 
+                        font-family: system-ui, -apple-system, sans-serif; 
+                        padding: 0; 
+                        max-width: 1000px; 
+                        margin: 0 auto; 
+                        background: #f5f5f5;
+                        position: relative;
+                    }}
+                    body::before {{
+                        content: '';
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 35%;
+                        max-width: 400px;
+                        height: 55%;
+                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600'%3E%3Cpath d='M 200 50 L 220 80 L 240 60 L 260 90 L 280 85 L 295 95 L 310 110 L 320 130 L 325 160 L 320 190 L 310 220 L 320 250 L 315 280 L 300 310 L 280 330 L 260 350 L 250 380 L 240 410 L 230 440 L 220 470 L 210 490 L 200 510 L 190 520 L 180 530 L 170 525 L 160 515 L 150 500 L 140 480 L 130 460 L 120 440 L 115 420 L 110 390 L 100 360 L 95 330 L 90 300 L 85 270 L 80 240 L 75 210 L 80 180 L 85 150 L 95 120 L 105 100 L 120 85 L 140 75 L 160 65 L 180 58 L 200 50 Z M 180 140 L 190 160 L 200 170 L 210 165 L 215 155 L 210 145 L 200 140 L 190 142 L 180 140 Z' fill='%23667eea' fill-opacity='0.02' stroke='%23667eea' stroke-width='1.5' stroke-opacity='0.06'/%3E%3C/svg%3E");
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        background-size: contain;
+                        opacity: 1;
+                        z-index: 0;
+                        pointer-events: none;
+                    }}
                     /* Top Toolbar */
                     .toolbar {{
                         position: sticky;
@@ -1359,6 +1382,7 @@ def stats():
                         padding: 10px 15px;
                         box-shadow: 0 1px 6px rgba(0,0,0,0.08);
                         border-bottom: 1px solid #eee;
+                        position: relative;
                     }}
                     .toolbar-title {{
                         font-weight: 600;
@@ -1405,27 +1429,22 @@ def stats():
                     .menu a:last-child {{ border-bottom: none; }}
                     .menu a:hover {{ background: #f8f9fa; }}
                     .menu .danger {{ color: #c82333; }}
-                    .content {{ padding: 15px; }}
-                    h1 {{ color: #333; font-size: 1.5em; margin: 0 0 15px 0; }}
-                    h2 {{ color: #555; margin-top: 25px; font-size: 1.2em; }}
-                    .stat {{ background: white; padding: 12px 15px; margin: 8px 0; border-radius: 8px; 
-                             box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; 
-                             justify-content: space-between; align-items: center; }}
-                    .stat-label {{ font-size: 0.95em; color: #666; }}
-                    .stat-value {{ font-size: 1.5em; color: #007bff; font-weight: bold; }}
+                    .content {{ position: relative; z-index: 1; padding: 15px; }}
+                    h1 {{ color: #333; font-size: 1.5em; margin: 0 0 15px 0; position: relative; z-index: 1; }}
+                    h2 {{ color: #555; margin-top: 25px; font-size: 1.2em; position: relative; z-index: 1; }}
                     .chart-container {{ background: white; padding: 15px; border-radius: 8px; 
                                         box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 15px 0; 
-                                        overflow-x: auto; }}
+                                        overflow-x: auto; position: relative; z-index: 1; }}
                     .chart-scroll {{ min-width: 600px; }}
                     table {{ width: 100%; border-collapse: collapse; margin-top: 15px; background: white; 
                              border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-                             font-size: 0.9em; }}
+                             font-size: 0.9em; position: relative; z-index: 1; }}
                     th, td {{ padding: 10px 8px; text-align: left; border-bottom: 1px solid #f0f0f0; }}
                     th {{ background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }}
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
-                    .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; }}
-                    .card {{ background:#fff; padding:12px 15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); margin:12px 0; }}
+                    .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; position: relative; z-index: 1; }}
+                    .card {{ background:#fff; padding:12px 15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); margin:12px 0; position: relative; z-index: 1; }}
                     .row-flex {{ display:flex; gap:12px; flex-wrap:wrap; }}
                     .row-flex .col {{ flex:1 1 320px; }}
                     .input-inline {{ display:flex; gap:8px; align-items:center; }}
@@ -1433,6 +1452,13 @@ def stats():
                     .input-inline button {{ padding:10px 14px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; }}
                     .input-inline button:hover {{ background:#0b5ed7; }}
                     ul.clean {{ list-style:none; padding:0; margin:0; }}
+                    .content {{ position: relative; z-index: 1; padding: 15px; }}
+                    .stat {{ background: white; padding: 15px; border-radius: 8px; 
+                             box-shadow: 0 1px 3px rgba(0,0,0,.1); margin: 10px 0; display: flex; 
+                             justify-content: space-between; align-items: center; position: relative; z-index: 1; }}
+                    .stat-label {{ font-weight: 600; color: #555; }}
+                    .stat-value {{ font-size: 1.8em; font-weight: 700; color: #667eea; }}
+                    h1, h2 {{ color: #333; margin-top: 25px; position: relative; z-index: 1; }}
                     @media (max-width: 600px) {{
                         .content {{ padding: 10px; }}
                         h1 {{ font-size: 1.3em; }}
