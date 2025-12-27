@@ -695,6 +695,9 @@ def api_subjects():
 @app.route("/stats", methods=["GET"])
 def stats():
     """İstatistikler (şifresiz)"""
+    # Ek güvenlik: dekoratöre ek olarak içerden de kontrol et
+    if not session.get('stats_authed'):
+        return redirect(url_for('stats_login'))
     def get_admin():
         with get_db_connection() as conn:
             row = conn.execute("SELECT username, password_hash FROM admin_credentials LIMIT 1").fetchone()
