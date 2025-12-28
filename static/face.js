@@ -18,15 +18,18 @@
   let activeStream = null;
   const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
   const MATCH_THRESHOLD = 0.55;
+  const MODEL_TIMEOUT_MS = 6000;
 
   async function ensureModels() {
     if (!window.faceapi) throw new Error('face-api.js yüklenemedi');
     // Load once; subsequent calls are fast
-    await Promise.all([
+    const loadPromise = Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
     ]);
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Modeller zaman aşımına uğradı')), MODEL_TIMEOUT_MS));
+    return Promise.race([loadPromise, timeoutPromise]);
   }
 
   async function getDetection() {
@@ -90,6 +93,9 @@
 
   async function startCameraSafe() {
     try {
+      if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        throw new Error('Güvenli bağlam yok (HTTPS gerekli)');
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
       videoEl.srcObject = stream;
       activeStream = stream;
@@ -180,13 +186,16 @@
     modalMsg.innerHTML = 'Yüzünüz doğrulanıyor...';
     scanMsg.innerHTML = '📸 Lütfen kameraya bakın';
 
+    modalMsg.innerHTML = 'Kamera açılıyor...';
     const stream = await startCameraSafe();
     if (!stream) {
       scanMsg.innerHTML = '<div class="err">Kamera açılamadı</div>';
       setTimeout(closeBioModal, 1200);
       return;
     }
+    modalMsg.innerHTML = 'Kamera hazır';
 
+    scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
     const ok = await quickFrameCheck();
     if (!ok) {
       scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlık bir ortamda tekrar deneyin.</div>';
@@ -200,6 +209,7 @@
 
     // Face descriptor match + challenge required
     try {
+      scanMsg.innerHTML = '📦 Modeller yükleniyor...';
       await ensureModels();
       // Random challenge: left or right
       const dir = Math.random() < 0.5 ? 'left' : 'right';
@@ -241,8 +251,10 @@
 
     document.querySelector('input[name=username]').value = faceData.u;
     document.querySelector('input[name=password]').value = atob(faceData.p);
+    modalMsg.innerHTML = 'Başarılı, giriş yapılıyor…';
+    stopStream();
     closeBioModal();
-    loginForm.submit();
+    try { loginForm.submit(); } catch (_e) {}
   });
 
   bioBtn.addEventListener('click', () => {
@@ -268,9 +280,11 @@
       modalMsg.innerHTML = 'Kimlik doğrulandı! Kamera açılıyor...';
       bioRegForm.style.display = 'none';
       videoSection.style.display = 'block';
+      modalMsg.innerHTML = 'Kamera açılıyor...';
       const stream = await startCameraSafe();
       if (!stream) throw new Error('Kamera açılamadı');
-      scanMsg.innerHTML = '📸 Yüzünüzü tarıyoruz...';
+      modalMsg.innerHTML = 'Kamera hazır';
+      scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
       const ok = await quickFrameCheck();
       if (!ok) {
         scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlıkta tekrar deneyin.</div>';
@@ -280,6 +294,7 @@
         return;
       }
       // Yüz descriptor üret ve kaydet
+      scanMsg.innerHTML = '📦 Modeller yükleniyor...';
       await ensureModels();
       const desc = await getDescriptor();
       if (!desc) {
@@ -295,12 +310,13 @@
       const payload = { u: user, p: btoa(pass), d: desc, t: Date.now() };
       localStorage.setItem('faceData', JSON.stringify(payload));
       stopStream(stream);
-      modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi!</div>';
+      modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi! Giriş yapılıyor…</div>';
       setTimeout(() => {
         document.querySelector('input[name=username]').value = user;
         document.querySelector('input[name=password]').value = pass;
+        stopStream();
         closeBioModal();
-        loginForm.submit();
+        try { loginForm.submit(); } catch (_e) {}
       }, 800);
     } catch (err) {
       modalMsg.innerHTML = '<div class="err">Hata: ' + err.message + '</div>';
