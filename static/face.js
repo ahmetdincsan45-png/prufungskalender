@@ -114,12 +114,21 @@ function closeBioModal() {
 
   async function quickFrameCheck() {
     if (!ctx) return false;
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+      // Önce modelleri yükle ki yüz tespit edebilelim
+      try {
+        await ensureModels();
+      } catch (_e) {
+        resolve(false);
+        return;
+      }
+      
       let frames = 0;
+      let faceDetectedFrames = 0;
       let last = null;
       let motionSpikes = 0;
       let brightOkCount = 0;
-      const timer = setInterval(() => {
+      const timer = setInterval(async () => {
         if (!videoEl.videoWidth) return;
         canvasEl.width = videoEl.videoWidth;
         canvasEl.height = videoEl.videoHeight;
@@ -138,24 +147,34 @@ function closeBioModal() {
         }
         last = data.slice();
         frames += 1;
+        
+        // Yüz tespiti yap
+        try {
+          const det = await faceapi
+            .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+            .withFaceLandmarks();
+          if (det) faceDetectedFrames += 1;
+        } catch (_e) {}
+        
         const avg = sum / (data.length / 4);
         const motionRatio = motion / (data.length / 4);
-        const brightOk = avg > 80; // daha aydınlık zorunlu
-        const motionOk = motionRatio > 0.03; // daha yüksek hareket eşiği
+        const brightOk = avg > 60;
+        const motionOk = motionRatio > 0.02;
         if (brightOk) brightOkCount += 1;
-        if (motionRatio > 0.06) motionSpikes += 1; // ani hareket varsa say
+        if (motionRatio > 0.04) motionSpikes += 1;
 
-        const enoughSamples = frames >= 8; // en az 8 kare
-        const livenessOk = brightOkCount >= 5 && motionSpikes >= 2 && motionOk;
+        const enoughSamples = frames >= 6;
+        const faceOk = faceDetectedFrames >= 3; // En az 3 karede yüz tespit edilsin
+        const livenessOk = brightOkCount >= 3 && motionSpikes >= 1 && motionOk && faceOk;
 
         if (livenessOk && enoughSamples) {
           clearInterval(timer);
           resolve(true);
-        } else if (frames >= 30) {
+        } else if (frames >= 25) {
           clearInterval(timer);
           resolve(false);
         }
-      }, 120);
+      }, 100);
     });
   }
 
@@ -319,16 +338,21 @@ function closeBioModal() {
       scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
       const turned = await waitForHeadTurn(dir);
       if (!turned) {
-        scanMsg.innerHTML = '<div class="err">Hareket doğrulaması başarısız.</div>';
+        scanMsg.innerHTML = '<div class="err">Hareket doğrulaması başarısız. Başınızı daha belirgin şekilde çevirin.</div>';
         stopStream(stream);
         videoSection.style.display = 'none';
         bioRegForm.style.display = 'block';
         return;
       }
       scanMsg.innerHTML = '✅ Hareket doğrulandı, yüz kaydediliyor...';
-      const desc = await getDescriptor();
+      let desc;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        desc = await getDescriptor();
+        if (desc) break;
+        await new Promise(r => setTimeout(r, 200)); // 200ms bekle ve retry
+      }
       if (!desc) {
-        scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi.</div>';
+        scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi. Kameraya doğru bakın ve çerçeve içinde durun.</div>';
         stopStream(stream);
         videoSection.style.display = 'none';
         bioRegForm.style.display = 'block';
@@ -339,6 +363,7 @@ function closeBioModal() {
       scanMsg.innerHTML = '💾 Kaydediliyor...';
       const payload = { u: user, p: btoa(pass), d: desc, t: Date.now() };
       localStorage.setItem('faceData', JSON.stringify(payload));
+      cameraIcon.style.display = 'flex'; // Show camera icon for next login
       stopStream(stream);
       modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi!</div>';
       setTimeout(() => {
@@ -347,7 +372,10 @@ function closeBioModal() {
         videoSection.style.display = 'none';
         document.getElementById('bioUser').value = '';
         document.getElementById('bioPass').value = '';
-      }, 800);
+        // Başarı mesajını göster ve login formuna yönlendir
+        alert('✓ Yüz tanıma başarıyla kaydedildi! Şimdi kamera ikonu ile giriş yapabilirsiniz.');
+        location.href = '/stats/login'; // Login sayfasına yönlendir
+      }, 1200);
     } catch (err) {
       modalMsg.innerHTML = '<div class="err">Hata: ' + err.message + '</div>';
       videoSection.style.display = 'none';
