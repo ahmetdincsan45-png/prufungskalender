@@ -305,7 +305,27 @@ function closeBioModal() {
       }
       // Yüz descriptor üret ve kaydet
       scanMsg.innerHTML = '📦 Modeller yükleniyor...';
-      await ensureModels();
+      try {
+        await ensureModels();
+      } catch (modelErr) {
+        scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
+        stopStream(stream);
+        videoSection.style.display = 'none';
+        bioRegForm.style.display = 'block';
+        return;
+      }
+      // Random challenge: left or right
+      const dir = Math.random() < 0.5 ? 'left' : 'right';
+      scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
+      const turned = await waitForHeadTurn(dir);
+      if (!turned) {
+        scanMsg.innerHTML = '<div class="err">Hareket doğrulaması başarısız.</div>';
+        stopStream(stream);
+        videoSection.style.display = 'none';
+        bioRegForm.style.display = 'block';
+        return;
+      }
+      scanMsg.innerHTML = '✅ Hareket doğrulandı, yüz kaydediliyor...';
       const desc = await getDescriptor();
       if (!desc) {
         scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi.</div>';
