@@ -1368,10 +1368,10 @@ def stats():
                         top: 50%;
                         left: 50%;
                         transform: translate(-50%, -50%);
-                        width: 35%;
-                        max-width: 400px;
-                        height: 55%;
-                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600'%3E%3Cpath d='M 200 50 L 220 80 L 240 60 L 260 90 L 280 85 L 295 95 L 310 110 L 320 130 L 325 160 L 320 190 L 310 220 L 320 250 L 315 280 L 300 310 L 280 330 L 260 350 L 250 380 L 240 410 L 230 440 L 220 470 L 210 490 L 200 510 L 190 520 L 180 530 L 170 525 L 160 515 L 150 500 L 140 480 L 130 460 L 120 440 L 115 420 L 110 390 L 100 360 L 95 330 L 90 300 L 85 270 L 80 240 L 75 210 L 80 180 L 85 150 L 95 120 L 105 100 L 120 85 L 140 75 L 160 65 L 180 58 L 200 50 Z M 180 140 L 190 160 L 200 170 L 210 165 L 215 155 L 210 145 L 200 140 L 190 142 L 180 140 Z' fill='%23667eea' fill-opacity='0.02' stroke='%23667eea' stroke-width='1.5' stroke-opacity='0.06'/%3E%3C/svg%3E");
+                        width: 50%;
+                        max-width: 500px;
+                        height: 70%;
+                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600'%3E%3Cpath d='M 200 50 L 220 80 L 240 60 L 260 90 L 280 85 L 295 95 L 310 110 L 320 130 L 325 160 L 320 190 L 310 220 L 320 250 L 315 280 L 300 310 L 280 330 L 260 350 L 250 380 L 240 410 L 230 440 L 220 470 L 210 490 L 200 510 L 190 520 L 180 530 L 170 525 L 160 515 L 150 500 L 140 480 L 130 460 L 120 440 L 115 420 L 110 390 L 100 360 L 95 330 L 90 300 L 85 270 L 80 240 L 75 210 L 80 180 L 85 150 L 95 120 L 105 100 L 120 85 L 140 75 L 160 65 L 180 58 L 200 50 Z M 180 140 L 190 160 L 200 170 L 210 165 L 215 155 L 210 145 L 200 140 L 190 142 L 180 140 Z' fill='%23667eea' fill-opacity='0.08' stroke='%23667eea' stroke-width='2' stroke-opacity='0.15'/%3E%3C/svg%3E");
                         background-repeat: no-repeat;
                         background-position: center;
                         background-size: contain;
