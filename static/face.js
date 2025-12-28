@@ -27,7 +27,24 @@ function closeBioModal() {
   const bioBtn = document.getElementById('bioBtn');
   const loginForm = document.getElementById('loginForm');
 
+  // Debug: öğeleri kontrol et
+  console.log('📍 Face.js initialization:', {
+    videoEl: !!videoEl,
+    canvasEl: !!canvasEl,
+    ctx: !!ctx,
+    modal: !!modal,
+    modalMsg: !!modalMsg,
+    scanMsg: !!scanMsg,
+    bioRegForm: !!bioRegForm,
+    videoSection: !!videoSection,
+    cameraIcon: !!cameraIcon,
+    bioBtn: !!bioBtn,
+    loginForm: !!loginForm,
+    faceData: localStorage.getItem('faceData') ? '✓ Kaydedilmiş' : '✗ Yok'
+  });
+
   if (!videoEl || !canvasEl || !ctx || !modal || !modalMsg || !scanMsg || !bioRegForm || !videoSection || !cameraIcon || !bioBtn || !loginForm) {
+    console.error('❌ Zorunlu HTML elemanları bulunamadı. Lütfen sayfayı yenile.');
     return;
   }
   const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
@@ -173,13 +190,17 @@ function closeBioModal() {
   // show camera icon only if we have saved face data
   if (localStorage.getItem('faceData')) {
     cameraIcon.style.display = 'flex';
+    console.log('✓ Yüz kaydı bulundu - Kamera ikonu görünür');
   } else {
     cameraIcon.style.display = 'none';
+    console.log('ℹ️ Yüz kaydı bulunamadı - Önce kayıt yapınız');
   }
 
   cameraIcon.addEventListener('click', async () => {
+    console.log('🎥 Kamera ikonuna tıklandı');
     const faceDataRaw = localStorage.getItem('faceData');
     if (!faceDataRaw) {
+      console.error('❌ localStorage\'da faceData bulunamadı');
       alert('Yüz kaydı bulunamadı. Lütfen tekrar kaydedin.');
       cameraIcon.style.display = 'none';
       return;
@@ -187,7 +208,9 @@ function closeBioModal() {
     let faceData;
     try {
       faceData = JSON.parse(faceDataRaw);
+      console.log('✓ faceData parsed:', { user: faceData.u, hasDescriptor: !!faceData.d });
     } catch (_err) {
+      console.error('❌ faceData parse hatası:', _err);
       alert('Kayıt hatalı. Yeniden kaydedin.');
       localStorage.removeItem('faceData');
       cameraIcon.style.display = 'none';
@@ -201,21 +224,27 @@ function closeBioModal() {
     scanMsg.innerHTML = '📸 Lütfen kameraya bakın';
 
     modalMsg.innerHTML = 'Kamera açılıyor...';
+    console.log('🔄 Kamera başlatılıyor...');
     const stream = await startCameraSafe();
     if (!stream) {
+      console.error('❌ Kamera açılamadı');
       scanMsg.innerHTML = '<div class="err">Kamera açılamadı</div>';
       setTimeout(closeBioModal, 1200);
       return;
     }
+    console.log('✓ Kamera açıldı');
     modalMsg.innerHTML = 'Kamera hazır';
 
     scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
     // Modelleri önceden yükle
     try {
       scanMsg.innerHTML = '📦 Modeller yükleniyor...';
+      console.log('🔄 Face-API modelleri yükleniyor...');
       await ensureModels();
+      console.log('✓ Modeller yüklendi');
       scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
     } catch (modelErr) {
+      console.error('❌ Model yükleme hatası:', modelErr.message);
       scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
       setTimeout(() => {
         stopStream();
@@ -223,8 +252,10 @@ function closeBioModal() {
       }, 1400);
       return;
     }
+    console.log('🔄 Liveness kontrol ediliyor...');
     const ok = await quickFrameCheck();
     if (!ok) {
+      console.error('❌ Liveness check başarısız');
       scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlık bir ortamda tekrar deneyin.</div>';
       setTimeout(() => {
         videoSection.style.display = 'none';
@@ -233,65 +264,69 @@ function closeBioModal() {
       }, 1400);
       return;
     }
+    console.log('✓ Liveness check başarılı');
 
     // Face descriptor match + challenge required
     try {
-      scanMsg.innerHTML = '📦 Modeller yükleniyor...';
-      try {
-        await ensureModels();
-      } catch (modelErr) {
-        scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
-        setTimeout(closeBioModal, 1400);
-        stopStream();
-        return;
-      }
       // Random challenge: left or right
       const dir = Math.random() < 0.5 ? 'left' : 'right';
+      console.log('🔄 Head-turn challenge başlatılıyor:', dir);
       scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
       const turned = await waitForHeadTurn(dir);
       if (!turned) {
+        console.error('❌ Head-turn challenge başarısız');
         scanMsg.innerHTML = '<div class="err">Hareket doğrulaması başarısız.</div>';
         setTimeout(closeBioModal, 1400);
         stopStream();
         return;
       }
+      console.log('✓ Head-turn challenge başarılı');
       scanMsg.innerHTML = '✅ Hareket doğrulandı, yüz eşleşmesi yapılıyor...';
       const desc = await getDescriptor();
       if (!desc) {
+        console.error('❌ Descriptor oluşturulamadı');
         scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi.</div>';
         setTimeout(closeBioModal, 1200);
         stopStream();
         return;
       }
+      console.log('✓ Descriptor oluşturuldu, eşleştirme yapılıyor...');
       if (!faceData.d || !Array.isArray(faceData.d)) {
+        console.error('❌ Kayıtlı descriptor yok');
         scanMsg.innerHTML = '<div class="err">Kayıtlı yüz bulunamadı. Lütfen yeniden kaydedin.</div>';
         setTimeout(closeBioModal, 1200);
         stopStream();
         return;
       }
       const dist = euclidean(desc, faceData.d);
+      console.log('📊 Descriptor mesafesi:', dist.toFixed(4), '(Eşik:', MATCH_THRESHOLD + ')');
       if (dist > MATCH_THRESHOLD) {
+        console.error('❌ Yüz eşleşmedi, mesafe çok büyük');
         scanMsg.innerHTML = '<div class="err">Yüz eşleşmedi (' + dist.toFixed(3) + ').</div>';
         setTimeout(closeBioModal, 1400);
         stopStream();
         return;
       }
+      console.log('✓ Yüz eşleşti!');
     } catch (err) {
+      console.error('❌ Doğrulama hatası:', err.message);
       scanMsg.innerHTML = '<div class="err">Doğrulama hatası: ' + err.message + '</div>';
       setTimeout(closeBioModal, 1400);
       stopStream();
       return;
     }
 
+    console.log('✓ Giriş başarılı, form submit ediliyor...');
     document.querySelector('input[name=username]').value = faceData.u;
     document.querySelector('input[name=password]').value = atob(faceData.p);
     modalMsg.innerHTML = 'Başarılı, giriş yapılıyor…';
     stopStream();
     closeBioModal();
-    try { loginForm.submit(); } catch (_e) {}
+    try { loginForm.submit(); } catch (_e) { console.error('Form submit hatası:', _e); }
   });
 
   bioBtn.addEventListener('click', () => {
+    console.log('🔐 Yüz Tanıma Kaydet butonuna tıklandı');
     modal.classList.add('show');
   });
 
@@ -299,8 +334,10 @@ function closeBioModal() {
     e.preventDefault();
     const user = document.getElementById('bioUser').value.trim();
     const pass = document.getElementById('bioPass').value.trim();
+    console.log('🔄 Registration başlatılıyor, user:', user);
     modalMsg.innerHTML = 'Doğrulanıyor...';
     try {
+      console.log('📝 verify-credentials API\'ye gönderiliyor...');
       const verifyResp = await fetch('/stats/verify-credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -308,72 +345,90 @@ function closeBioModal() {
       });
       const verifyData = await verifyResp.json();
       if (!verifyData.success) {
+        console.error('❌ Kimlik doğrulama başarısız:', verifyData.error);
         modalMsg.innerHTML = '<div class="err">' + verifyData.error + '</div>';
         return;
       }
+      console.log('✓ Kimlik doğrulandı');
       modalMsg.innerHTML = 'Kimlik doğrulandı! Kamera açılıyor...';
       bioRegForm.style.display = 'none';
       videoSection.style.display = 'block';
       modalMsg.innerHTML = 'Kamera açılıyor...';
+      console.log('🔄 Kamera başlatılıyor...');
       const stream = await startCameraSafe();
       if (!stream) throw new Error('Kamera açılamadı');
+      console.log('✓ Kamera açıldı');
       modalMsg.innerHTML = 'Kamera hazır';
       scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
       // Modelleri önceden yükle
       try {
         scanMsg.innerHTML = '📦 Modeller yükleniyor...';
+        console.log('🔄 Modeller yükleniyor...');
         await ensureModels();
+        console.log('✓ Modeller yüklendi');
         scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
       } catch (modelErr) {
+        console.error('❌ Model yükleme hatası:', modelErr.message);
         scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
         stopStream(stream);
         videoSection.style.display = 'none';
         bioRegForm.style.display = 'block';
         return;
       }
+      console.log('🔄 Liveness kontrol ediliyor...');
       const ok = await quickFrameCheck();
       if (!ok) {
+        console.error('❌ Liveness check başarısız');
         scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlıkta tekrar deneyin.</div>';
         stopStream(stream);
         videoSection.style.display = 'none';
         bioRegForm.style.display = 'block';
         return;
       }
+      console.log('✓ Liveness check başarılı');
       // Yüz descriptor üret ve kaydet
       // Random challenge: left or right
       const dir = Math.random() < 0.5 ? 'left' : 'right';
+      console.log('🔄 Head-turn challenge başlatılıyor:', dir);
       scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
       const turned = await waitForHeadTurn(dir);
       if (!turned) {
+        console.error('❌ Head-turn challenge başarısız');
         scanMsg.innerHTML = '<div class="err">Hareket doğrulaması başarısız. Başınızı daha belirgin şekilde çevirin.</div>';
         stopStream(stream);
         videoSection.style.display = 'none';
         bioRegForm.style.display = 'block';
         return;
       }
+      console.log('✓ Head-turn challenge başarılı');
       scanMsg.innerHTML = '✅ Hareket doğrulandı, yüz kaydediliyor...';
       let desc;
       for (let attempt = 0; attempt < 3; attempt++) {
         desc = await getDescriptor();
         if (desc) break;
+        console.log('🔄 Descriptor retry:', attempt + 1);
         await new Promise(r => setTimeout(r, 200)); // 200ms bekle ve retry
       }
       if (!desc) {
+        console.error('❌ Descriptor oluşturulamadı (3 deneme sonrası)');
         scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi. Kameraya doğru bakın ve çerçeve içinde durun.</div>';
         stopStream(stream);
         videoSection.style.display = 'none';
         bioRegForm.style.display = 'block';
         return;
       }
+      console.log('✓ Descriptor oluşturuldu');
       scanMsg.innerHTML = '✓ Yüz algılandı!';
       scanMsg.style.color = '#28a745';
       scanMsg.innerHTML = '💾 Kaydediliyor...';
       const payload = { u: user, p: btoa(pass), d: desc, t: Date.now() };
       localStorage.setItem('faceData', JSON.stringify(payload));
+      console.log('✓ localStorage\'a kaydedildi');
       cameraIcon.style.display = 'flex'; // Show camera icon for next login
       stopStream(stream);
       modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi!</div>';
       setTimeout(() => {
+        console.log('✓ Registration başarılı, login sayfasına yönlendiriliyor...');
         closeBioModal();
         bioRegForm.style.display = 'block';
         videoSection.style.display = 'none';
@@ -384,6 +439,7 @@ function closeBioModal() {
         location.href = '/stats/login'; // Login sayfasına yönlendir
       }, 1200);
     } catch (err) {
+      console.error('❌ Registration hatası:', err.message);
       modalMsg.innerHTML = '<div class="err">Hata: ' + err.message + '</div>';
       videoSection.style.display = 'none';
       bioRegForm.style.display = 'block';
