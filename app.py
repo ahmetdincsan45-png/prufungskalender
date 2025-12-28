@@ -87,7 +87,7 @@ def stats_login():
             * {{ margin:0; padding:0; box-sizing:border-box; }}
             html, body {{ height:100%; overflow:hidden; }}
             body {{ font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; background:#f5f6fa; padding:16px; }}
-            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; transition:transform 0.3s ease; }}
+            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; transition:transform 0.3s ease; position:relative; }}
             .box.keyboard-open {{ transform:translateY(-80px); }}
             h2 {{ margin:0 0 16px; font-size:1.2em; color:#333; text-align:center; }}
             .row {{ margin:10px 0; }}
@@ -97,30 +97,38 @@ def stats_login():
             .err {{ color:#dc3545; font-size:.9em; margin-bottom:10px; text-align:center; }}
             .success {{ color:#28a745; font-size:.9em; margin-bottom:10px; text-align:center; }}
             .bio-btn {{ margin-top:12px; background:#f5f6fa; color:#667eea; border:1px solid #667eea; }}
-            .modal {{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.5); align-items:center; justify-content:center; z-index:1000; }}
+            .camera-icon {{ position:absolute; top:20px; right:20px; width:44px; height:44px; background:#667eea; border-radius:50%; display:none; align-items:center; justify-content:center; color:#fff; font-size:20px; cursor:pointer; box-shadow:0 4px 12px rgba(102,126,234,.3); transition:transform .2s; }}
+            .camera-icon:hover {{ transform:scale(1.1); }}
+            .camera-icon:active {{ transform:scale(0.95); }}
+            .modal {{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.7); align-items:center; justify-content:center; z-index:1000; }}
             .modal.show {{ display:flex; }}
-            .modal-content {{ background:#fff; padding:24px; border-radius:12px; width:90%; max-width:360px; }}
+            .modal-content {{ background:#fff; padding:24px; border-radius:12px; width:90%; max-width:360px; text-align:center; }}
             .modal-content h3 {{ margin:0 0 16px; text-align:center; }}
             .btn-group {{ display:flex; gap:8px; margin-top:16px; }}
             .btn-group button {{ flex:1; }}
             .btn-cancel {{ background:#6c757d; }}
+            .video-container {{ margin:16px 0; border-radius:12px; overflow:hidden; background:#000; position:relative; }}
+            .video-container video {{ width:100%; height:auto; display:block; }}
+            .camera-overlay {{ position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #28a745; border-radius:12px; animation:pulse 1.5s infinite; }}
+            @keyframes pulse {{ 0%, 100% {{ opacity:1; }} 50% {{ opacity:0.5; }} }}
             @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
         </style></head><body>
         <div class='box' id='loginBox'>
+            <div class='camera-icon' id='cameraIcon' title='Yüz Tanıma ile Giriş'>📷</div>
             <h2>🔒 Stats Giriş</h2>
             {error_html}
             <form method='post' id='loginForm' autocomplete='on'>
-                <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' autocomplete='username webauthn' required></div>
-                <div class='row'><input type='password' name='password' placeholder='Şifre' id='password' autocomplete='current-password webauthn' required></div>
+                <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' autocomplete='username' required></div>
+                <div class='row'><input type='password' name='password' placeholder='Şifre' id='password' autocomplete='current-password' required></div>
                 <div class='row'><button type='submit'>Giriş</button></div>
-                <div class='row'><button type='button' class='bio-btn' id='bioBtn' style='display:none'>🔐 Yüz Tanıma Kaydet/Giriş</button></div>
+                <div class='row'><button type='button' class='bio-btn' id='bioBtn'>🔐 Yüz Tanıma Kaydet</button></div>
             </form>
         </div>
         <div class='modal' id='bioModal'>
             <div class='modal-content'>
                 <h3>Yüz Tanıma Kaydı</h3>
-                <div id='modalMsg'>Önce kullanıcı adı ve şifrenizi doğrulayın:</div>
-                <form id='bioRegForm'>
+                <div id='modalMsg'>Önce kimliğinizi doğrulayın:</div>
+                <form id='bioRegForm' style='display:block'>
                     <div class='row'><input type='text' id='bioUser' placeholder='Kullanıcı adı' required></div>
                     <div class='row'><input type='password' id='bioPass' placeholder='Şifre' required></div>
                     <div class='btn-group'>
@@ -128,63 +136,128 @@ def stats_login():
                         <button type='submit'>Devam</button>
                     </div>
                 </form>
+                <div id='videoSection' style='display:none'>
+                    <div class='video-container' id='videoContainer'>
+                        <video id='video' autoplay playsinline></video>
+                        <div class='camera-overlay'></div>
+                    </div>
+                    <div style='margin-top:16px; color:#666; font-size:0.9em'>Yüzünüzü çerçeveye yerleştirin...</div>
+                </div>
             </div>
         </div>
         <script>
-        const loginBox=document.getElementById('loginBox');const pwdInput=document.getElementById('password');
+        const loginBox=document.getElementById('loginBox');
+        const pwdInput=document.getElementById('password');
         const bioModal=document.getElementById('bioModal');
         const bioRegForm=document.getElementById('bioRegForm');
         const modalMsg=document.getElementById('modalMsg');
+        const videoSection=document.getElementById('videoSection');
+        const video=document.getElementById('video');
+        const cameraIcon=document.getElementById('cameraIcon');
         const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if(isMobile){{pwdInput.addEventListener('focus',()=>{{setTimeout(()=>{{loginBox.classList.add('keyboard-open');pwdInput.scrollIntoView({{behavior:'smooth',block:'center'}});}},100);}});pwdInput.addEventListener('blur',()=>{{loginBox.classList.remove('keyboard-open');}});}}
         
-        function closeBioModal(){{bioModal.classList.remove('show');}}
-        
-        if(window.PublicKeyCredential){{
-            document.getElementById('bioBtn').style.display='block';
-            document.getElementById('bioBtn').addEventListener('click',()=>{{bioModal.classList.add('show');}});
-            
-            bioRegForm.addEventListener('submit',async(e)=>{{
-                e.preventDefault();
-                const user=document.getElementById('bioUser').value.trim();
-                const pass=document.getElementById('bioPass').value.trim();
-                
-                modalMsg.innerHTML='Doğrulanıyor...';
-                try{{
-                    const verifyResp=await fetch('/stats/verify-credentials',{{
-                        method:'POST',
-                        headers:{{'Content-Type':'application/json'}},
-                        body:JSON.stringify({{username:user,password:pass}})
-                    }});
-                    const verifyData=await verifyResp.json();
-                    
-                    if(!verifyData.success){{
-                        modalMsg.innerHTML='<div class="err">'+verifyData.error+'</div>';
-                        return;
-                    }}
-                    
-                    modalMsg.innerHTML='Yüz tanıma kaydediliyor...';
-                    
-                    if(navigator.credentials && navigator.credentials.store){{
-                        const cred=new PasswordCredential({{
-                            id:user,
-                            password:pass
-                        }});
-                        await navigator.credentials.store(cred);
-                        modalMsg.innerHTML='<div class="success">Yüz tanıma kaydedildi! Giriş yapılıyor...</div>';
-                        setTimeout(()=>{{
-                            document.querySelector('input[name=username]').value=user;
-                            document.querySelector('input[name=password]').value=pass;
-                            document.getElementById('loginForm').submit();
-                        }},1000);
-                    }}else{{
-                        modalMsg.innerHTML='<div class="err">Yüz tanıma bu cihazda desteklenmiyor</div>';
-                    }}
-                }}catch(err){{
-                    modalMsg.innerHTML='<div class="err">Hata: '+err.message+'</div>';
-                }}
-            }});
+        if(isMobile){{
+            pwdInput.addEventListener('focus',()=>{{setTimeout(()=>{{loginBox.classList.add('keyboard-open');pwdInput.scrollIntoView({{behavior:'smooth',block:'center'}});}},100);}});
+            pwdInput.addEventListener('blur',()=>{{loginBox.classList.remove('keyboard-open');}});
         }}
+        
+        // Kayıtlı yüz var mı kontrol et
+        if(localStorage.getItem('faceRegistered')==='true'){{
+            cameraIcon.style.display='flex';
+        }}
+        
+        function closeBioModal(){{
+            bioModal.classList.remove('show');
+            if(video.srcObject){{
+                video.srcObject.getTracks().forEach(t=>t.stop());
+                video.srcObject=null;
+            }}
+            bioRegForm.style.display='block';
+            videoSection.style.display='none';
+        }}
+        
+        // Kamera ikonu ile hızlı giriş
+        cameraIcon.addEventListener('click',async()=>{{
+            if(navigator.credentials){{
+                try{{
+                    const cred=await navigator.credentials.get({{password:true,mediation:'optional'}});
+                    if(cred && cred.id && cred.password){{
+                        document.querySelector('input[name=username]').value=cred.id;
+                        document.querySelector('input[name=password]').value=cred.password;
+                        document.getElementById('loginForm').submit();
+                    }}else{{
+                        alert('Kayıtlı yüz bulunamadı. Lütfen tekrar kaydedin.');
+                        localStorage.removeItem('faceRegistered');
+                        cameraIcon.style.display='none';
+                    }}
+                }}catch(e){{
+                    alert('Yüz tanıma başarısız. Manuel giriş yapın.');
+                }}
+            }}
+        }});
+        
+        // Yüz tanıma kaydı
+        document.getElementById('bioBtn').addEventListener('click',()=>{{bioModal.classList.add('show');}});
+        
+        bioRegForm.addEventListener('submit',async(e)=>{{
+            e.preventDefault();
+            const user=document.getElementById('bioUser').value.trim();
+            const pass=document.getElementById('bioPass').value.trim();
+            
+            modalMsg.innerHTML='Doğrulanıyor...';
+            try{{
+                const verifyResp=await fetch('/stats/verify-credentials',{{
+                    method:'POST',
+                    headers:{{'Content-Type':'application/json'}},
+                    body:JSON.stringify({{username:user,password:pass}})
+                }});
+                const verifyData=await verifyResp.json();
+                
+                if(!verifyData.success){{
+                    modalMsg.innerHTML='<div class=\"err\">'+verifyData.error+'</div>';
+                    return;
+                }}
+                
+                modalMsg.innerHTML='Kimlik doğrulandı! Kamera açılıyor...';
+                bioRegForm.style.display='none';
+                videoSection.style.display='block';
+                
+                // Kamera erişimi
+                try{{
+                    const stream=await navigator.mediaDevices.getUserMedia({{video:{{facingMode:'user'}}}});
+                    video.srcObject=stream;
+                    
+                    setTimeout(async()=>{{
+                        modalMsg.innerHTML='<div class=\"success\">Yüz kaydediliyor...</div>';
+                        
+                        // Credential kaydet
+                        if(navigator.credentials && navigator.credentials.store){{
+                            const cred=new PasswordCredential({{id:user,password:pass}});
+                            await navigator.credentials.store(cred);
+                        }}
+                        
+                        localStorage.setItem('faceRegistered','true');
+                        
+                        setTimeout(()=>{{
+                            stream.getTracks().forEach(t=>t.stop());
+                            modalMsg.innerHTML='<div class=\"success\">✓ Yüz tanıma kaydedildi! Giriş yapılıyor...</div>';
+                            setTimeout(()=>{{
+                                document.querySelector('input[name=username]').value=user;
+                                document.querySelector('input[name=password]').value=pass;
+                                closeBioModal();
+                                document.getElementById('loginForm').submit();
+                            }},1500);
+                        }},2000);
+                    }},2000);
+                }}catch(camErr){{
+                    modalMsg.innerHTML='<div class=\"err\">Kamera erişimi reddedildi: '+camErr.message+'</div>';
+                    videoSection.style.display='none';
+                    bioRegForm.style.display='block';
+                }}
+            }}catch(err){{
+                modalMsg.innerHTML='<div class=\"err\">Hata: '+err.message+'</div>';
+            }}
+        }});
         </script>
         </body></html>
         """
