@@ -66,7 +66,6 @@ def stats_login():
         in_user = (request.form.get('username') or '').strip()
         in_pass = (request.form.get('password') or '').strip()
         admin_user, admin_hash = get_admin_credentials()
-        # Kullanıcı adı eşleşmesini büyük/küçük harf duyarsız yap
         user_match = (admin_user or '').strip().lower() == in_user.lower()
         pass_ok = bool(admin_hash) and check_password_hash(admin_hash, in_pass)
         if user_match and pass_ok:
@@ -107,11 +106,11 @@ def stats_login():
             .btn-group {{ display:flex; gap:8px; margin-top:16px; }}
             .btn-group button {{ flex:1; }}
             .btn-cancel {{ background:#6c757d; }}
-            .video-container { margin:16px 0; border-radius:12px; overflow:hidden; background:#000; position:relative; }
-            .video-container video { width:100%; height:auto; display:block; transform:scaleX(-1); }
-            .camera-overlay { position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #28a745; border-radius:12px; animation:pulse 1s infinite; }
-            .face-circle { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:160px; height:200px; border:4px solid #28a745; border-radius:50%; animation:scan 1.5s ease-in-out infinite; }
-            #captureCanvas { display:none; }
+            .video-container {{ margin:16px 0; border-radius:12px; overflow:hidden; background:#000; position:relative; }}
+            .video-container video {{ width:100%; height:auto; display:block; transform:scaleX(-1); }}
+            .camera-overlay {{ position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #28a745; border-radius:12px; animation:pulse 1s infinite; }}
+            .face-circle {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:160px; height:200px; border:4px solid #28a745; border-radius:50%; animation:scan 1.5s ease-in-out infinite; }}
+            #captureCanvas {{ display:none; }}
             @keyframes pulse {{ 0%, 100% {{ opacity:1; }} 50% {{ opacity:0.3; }} }}
             @keyframes scan {{ 0%, 100% {{ border-color:#28a745; }} 50% {{ border-color:#ffc107; }} }}
             @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
