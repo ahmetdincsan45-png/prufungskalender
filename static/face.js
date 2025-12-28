@@ -115,14 +115,6 @@ function closeBioModal() {
   async function quickFrameCheck() {
     if (!ctx) return false;
     return new Promise(async (resolve) => {
-      // Önce modelleri yükle ki yüz tespit edebilelim
-      try {
-        await ensureModels();
-      } catch (_e) {
-        resolve(false);
-        return;
-      }
-      
       let frames = 0;
       let faceDetectedFrames = 0;
       let last = null;
@@ -148,7 +140,7 @@ function closeBioModal() {
         last = data.slice();
         frames += 1;
         
-        // Yüz tespiti yap
+        // Yüz tespiti yap (modeller önceden yüklü olduğunu varsay)
         try {
           const det = await faceapi
             .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
@@ -164,7 +156,7 @@ function closeBioModal() {
         if (motionRatio > 0.04) motionSpikes += 1;
 
         const enoughSamples = frames >= 6;
-        const faceOk = faceDetectedFrames >= 3; // En az 3 karede yüz tespit edilsin
+        const faceOk = faceDetectedFrames >= 3;
         const livenessOk = brightOkCount >= 3 && motionSpikes >= 1 && motionOk && faceOk;
 
         if (livenessOk && enoughSamples) {
@@ -218,6 +210,19 @@ function closeBioModal() {
     modalMsg.innerHTML = 'Kamera hazır';
 
     scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
+    // Modelleri önceden yükle
+    try {
+      scanMsg.innerHTML = '📦 Modeller yükleniyor...';
+      await ensureModels();
+      scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
+    } catch (modelErr) {
+      scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
+      setTimeout(() => {
+        stopStream();
+        closeBioModal();
+      }, 1400);
+      return;
+    }
     const ok = await quickFrameCheck();
     if (!ok) {
       scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlık bir ortamda tekrar deneyin.</div>';
@@ -314,6 +319,18 @@ function closeBioModal() {
       if (!stream) throw new Error('Kamera açılamadı');
       modalMsg.innerHTML = 'Kamera hazır';
       scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
+      // Modelleri önceden yükle
+      try {
+        scanMsg.innerHTML = '📦 Modeller yükleniyor...';
+        await ensureModels();
+        scanMsg.innerHTML = '📸 Liveness kontrolü yapılıyor...';
+      } catch (modelErr) {
+        scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
+        stopStream(stream);
+        videoSection.style.display = 'none';
+        bioRegForm.style.display = 'block';
+        return;
+      }
       const ok = await quickFrameCheck();
       if (!ok) {
         scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlıkta tekrar deneyin.</div>';
@@ -323,16 +340,6 @@ function closeBioModal() {
         return;
       }
       // Yüz descriptor üret ve kaydet
-      scanMsg.innerHTML = '📦 Modeller yükleniyor...';
-      try {
-        await ensureModels();
-      } catch (modelErr) {
-        scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
-        stopStream(stream);
-        videoSection.style.display = 'none';
-        bioRegForm.style.display = 'block';
-        return;
-      }
       // Random challenge: left or right
       const dir = Math.random() < 0.5 ? 'left' : 'right';
       scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
