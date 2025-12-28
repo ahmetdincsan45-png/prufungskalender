@@ -1,0 +1,273 @@
+(() => {
+  const videoEl = document.getElementById('video');
+  const canvasEl = document.getElementById('captureCanvas');
+  const ctx = canvasEl ? canvasEl.getContext('2d') : null;
+  const modal = document.getElementById('bioModal');
+  const modalMsg = document.getElementById('modalMsg');
+  const scanMsg = document.getElementById('scanMsg');
+  const bioRegForm = document.getElementById('bioRegForm');
+  const videoSection = document.getElementById('videoSection');
+  const cameraIcon = document.getElementById('cameraIcon');
+  const bioBtn = document.getElementById('bioBtn');
+  const loginForm = document.getElementById('loginForm');
+
+  if (!videoEl || !canvasEl || !ctx || !modal || !modalMsg || !scanMsg || !bioRegForm || !videoSection || !cameraIcon || !bioBtn || !loginForm) {
+    return;
+  }
+
+  let activeStream = null;
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+
+  async function ensureModels() {
+    if (!window.faceapi) throw new Error('face-api.js yüklenemedi');
+    // Load once; subsequent calls are fast
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]);
+  }
+
+  async function getDescriptor() {
+    // Use TinyFaceDetector for speed
+    const det = await faceapi
+      .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+    if (!det || !det.descriptor) return null;
+    return Array.from(det.descriptor);
+  }
+
+  function euclidean(a, b) {
+    if (!a || !b || a.length !== b.length) return Infinity;
+    let s = 0;
+    for (let i = 0; i < a.length; i++) {
+      const d = a[i] - b[i];
+      s += d * d;
+    }
+    return Math.sqrt(s);
+  }
+
+  function closeBioModal() {
+    modal.classList.remove('show');
+    videoSection.style.display = 'none';
+    bioRegForm.style.display = 'block';
+    stopStream();
+  }
+
+  function stopStream(stream = activeStream) {
+    if (!stream) return;
+    stream.getTracks().forEach((t) => t.stop());
+    activeStream = null;
+  }
+
+  async function startCameraSafe() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
+      videoEl.srcObject = stream;
+      activeStream = stream;
+      await new Promise((res) => {
+        if (videoEl.readyState >= 2) res();
+        else videoEl.onloadedmetadata = res;
+      });
+      return stream;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  async function quickFrameCheck() {
+    if (!ctx) return false;
+    return new Promise((resolve) => {
+      let frames = 0;
+      let last = null;
+      let motionSpikes = 0;
+      let brightOkCount = 0;
+      const timer = setInterval(() => {
+        if (!videoEl.videoWidth) return;
+        canvasEl.width = videoEl.videoWidth;
+        canvasEl.height = videoEl.videoHeight;
+        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+        const { data } = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+        let sum = 0;
+        let motion = 0;
+        if (last) {
+          for (let i = 0; i < data.length; i += 4) {
+            const diff = Math.abs(data[i] - last[i]) + Math.abs(data[i + 1] - last[i + 1]) + Math.abs(data[i + 2] - last[i + 2]);
+            if (diff > 70) motion += 1;
+          }
+        }
+        for (let i = 0; i < data.length; i += 4) {
+          sum += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        }
+        last = data.slice();
+        frames += 1;
+        const avg = sum / (data.length / 4);
+        const motionRatio = motion / (data.length / 4);
+        const brightOk = avg > 80; // daha aydınlık zorunlu
+        const motionOk = motionRatio > 0.03; // daha yüksek hareket eşiği
+        if (brightOk) brightOkCount += 1;
+        if (motionRatio > 0.06) motionSpikes += 1; // ani hareket varsa say
+
+        const enoughSamples = frames >= 8; // en az 8 kare
+        const livenessOk = brightOkCount >= 5 && motionSpikes >= 2 && motionOk;
+
+        if (livenessOk && enoughSamples) {
+          clearInterval(timer);
+          resolve(true);
+        } else if (frames >= 30) {
+          clearInterval(timer);
+          resolve(false);
+        }
+      }, 120);
+    });
+  }
+
+  // show camera icon only if we have saved face data
+  if (localStorage.getItem('faceData')) {
+    cameraIcon.style.display = 'flex';
+  } else {
+    cameraIcon.style.display = 'none';
+  }
+
+  cameraIcon.addEventListener('click', async () => {
+    const faceDataRaw = localStorage.getItem('faceData');
+    if (!faceDataRaw) {
+      alert('Yüz kaydı bulunamadı. Lütfen tekrar kaydedin.');
+      cameraIcon.style.display = 'none';
+      return;
+    }
+    let faceData;
+    try {
+      faceData = JSON.parse(faceDataRaw);
+    } catch (_err) {
+      alert('Kayıt hatalı. Yeniden kaydedin.');
+      localStorage.removeItem('faceData');
+      cameraIcon.style.display = 'none';
+      return;
+    }
+
+    modal.classList.add('show');
+    bioRegForm.style.display = 'none';
+    videoSection.style.display = 'block';
+    modalMsg.innerHTML = 'Yüzünüz doğrulanıyor...';
+    scanMsg.innerHTML = '📸 Lütfen kameraya bakın';
+
+    const stream = await startCameraSafe();
+    if (!stream) {
+      scanMsg.innerHTML = '<div class="err">Kamera açılamadı</div>';
+      setTimeout(closeBioModal, 1200);
+      return;
+    }
+
+    const ok = await quickFrameCheck();
+    stopStream(stream);
+    if (!ok) {
+      scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlık bir ortamda tekrar deneyin.</div>';
+      setTimeout(() => {
+        videoSection.style.display = 'none';
+        bioRegForm.style.display = 'block';
+        closeBioModal();
+      }, 1400);
+      return;
+    }
+
+    // Face descriptor match required
+    try {
+      await ensureModels();
+      const stream2 = await startCameraSafe();
+      if (!stream2) throw new Error('Kamera açılamadı');
+      const desc = await getDescriptor();
+      stopStream(stream2);
+      if (!desc) {
+        scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi.</div>';
+        setTimeout(closeBioModal, 1200);
+        return;
+      }
+      if (!faceData.d || !Array.isArray(faceData.d)) {
+        scanMsg.innerHTML = '<div class="err">Kayıtlı yüz bulunamadı. Lütfen yeniden kaydedin.</div>';
+        setTimeout(closeBioModal, 1200);
+        return;
+      }
+      const dist = euclidean(desc, faceData.d);
+      if (dist > 0.6) {
+        scanMsg.innerHTML = '<div class="err">Yüz eşleşmedi (' + dist.toFixed(3) + ').</div>';
+        setTimeout(closeBioModal, 1400);
+        return;
+      }
+    } catch (err) {
+      scanMsg.innerHTML = '<div class="err">Doğrulama hatası: ' + err.message + '</div>';
+      setTimeout(closeBioModal, 1400);
+      return;
+    }
+
+    document.querySelector('input[name=username]').value = faceData.u;
+    document.querySelector('input[name=password]').value = atob(faceData.p);
+    closeBioModal();
+    loginForm.submit();
+  });
+
+  bioBtn.addEventListener('click', () => {
+    modal.classList.add('show');
+  });
+
+  bioRegForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const user = document.getElementById('bioUser').value.trim();
+    const pass = document.getElementById('bioPass').value.trim();
+    modalMsg.innerHTML = 'Doğrulanıyor...';
+    try {
+      const verifyResp = await fetch('/stats/verify-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass })
+      });
+      const verifyData = await verifyResp.json();
+      if (!verifyData.success) {
+        modalMsg.innerHTML = '<div class="err">' + verifyData.error + '</div>';
+        return;
+      }
+      modalMsg.innerHTML = 'Kimlik doğrulandı! Kamera açılıyor...';
+      bioRegForm.style.display = 'none';
+      videoSection.style.display = 'block';
+      const stream = await startCameraSafe();
+      if (!stream) throw new Error('Kamera açılamadı');
+      scanMsg.innerHTML = '📸 Yüzünüzü tarıyoruz...';
+      const ok = await quickFrameCheck();
+      if (!ok) {
+        scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlıkta tekrar deneyin.</div>';
+        stopStream(stream);
+        videoSection.style.display = 'none';
+        bioRegForm.style.display = 'block';
+        return;
+      }
+      // Yüz descriptor üret ve kaydet
+      await ensureModels();
+      const desc = await getDescriptor();
+      if (!desc) {
+        scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi.</div>';
+        stopStream(stream);
+        videoSection.style.display = 'none';
+        bioRegForm.style.display = 'block';
+        return;
+      }
+      scanMsg.innerHTML = '✓ Yüz algılandı!';
+      scanMsg.style.color = '#28a745';
+      scanMsg.innerHTML = '💾 Kaydediliyor...';
+      const payload = { u: user, p: btoa(pass), d: desc, t: Date.now() };
+      localStorage.setItem('faceData', JSON.stringify(payload));
+      stopStream(stream);
+      modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi!</div>';
+      setTimeout(() => {
+        document.querySelector('input[name=username]').value = user;
+        document.querySelector('input[name=password]').value = pass;
+        closeBioModal();
+        loginForm.submit();
+      }, 800);
+    } catch (err) {
+      modalMsg.innerHTML = '<div class="err">Hata: ' + err.message + '</div>';
+      videoSection.style.display = 'none';
+      bioRegForm.style.display = 'block';
+    }
+  });
+})();
