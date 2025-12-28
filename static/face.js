@@ -1,3 +1,19 @@
+let activeStream = null;
+function stopStream(stream = activeStream) {
+  if (!stream) return;
+  stream.getTracks().forEach((t) => t.stop());
+  activeStream = null;
+}
+function closeBioModal() {
+  const modal = document.getElementById('bioModal');
+  const videoSection = document.getElementById('videoSection');
+  const bioRegForm = document.getElementById('bioRegForm');
+  if (modal) modal.classList.remove('show');
+  if (videoSection) videoSection.style.display = 'none';
+  if (bioRegForm) bioRegForm.style.display = 'block';
+  stopStream();
+}
+
 (() => {
   const videoEl = document.getElementById('video');
   const canvasEl = document.getElementById('captureCanvas');
@@ -14,8 +30,6 @@
   if (!videoEl || !canvasEl || !ctx || !modal || !modalMsg || !scanMsg || !bioRegForm || !videoSection || !cameraIcon || !bioBtn || !loginForm) {
     return;
   }
-
-  let activeStream = null;
   const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
   const MATCH_THRESHOLD = 0.55;
   const MODEL_TIMEOUT_MS = 6000;
@@ -78,18 +92,7 @@
     return Math.sqrt(s);
   }
 
-  function closeBioModal() {
-    modal.classList.remove('show');
-    videoSection.style.display = 'none';
-    bioRegForm.style.display = 'block';
-    stopStream();
-  }
 
-  function stopStream(stream = activeStream) {
-    if (!stream) return;
-    stream.getTracks().forEach((t) => t.stop());
-    activeStream = null;
-  }
 
   async function startCameraSafe() {
     try {
@@ -210,7 +213,14 @@
     // Face descriptor match + challenge required
     try {
       scanMsg.innerHTML = '📦 Modeller yükleniyor...';
-      await ensureModels();
+      try {
+        await ensureModels();
+      } catch (modelErr) {
+        scanMsg.innerHTML = '<div class="err">Model yükleme hatalı: ' + modelErr.message + '</div>';
+        setTimeout(closeBioModal, 1400);
+        stopStream();
+        return;
+      }
       // Random challenge: left or right
       const dir = Math.random() < 0.5 ? 'left' : 'right';
       scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
@@ -310,13 +320,13 @@
       const payload = { u: user, p: btoa(pass), d: desc, t: Date.now() };
       localStorage.setItem('faceData', JSON.stringify(payload));
       stopStream(stream);
-      modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi! Giriş yapılıyor…</div>';
+      modalMsg.innerHTML = '<div class="success">✓ Yüz tanıma kaydedildi!</div>';
       setTimeout(() => {
-        document.querySelector('input[name=username]').value = user;
-        document.querySelector('input[name=password]').value = pass;
-        stopStream();
         closeBioModal();
-        try { loginForm.submit(); } catch (_e) {}
+        bioRegForm.style.display = 'block';
+        videoSection.style.display = 'none';
+        document.getElementById('bioUser').value = '';
+        document.getElementById('bioPass').value = '';
       }, 800);
     } catch (err) {
       modalMsg.innerHTML = '<div class="err">Hata: ' + err.message + '</div>';
