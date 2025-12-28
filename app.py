@@ -108,9 +108,11 @@ def stats_login():
             .btn-group button {{ flex:1; }}
             .btn-cancel {{ background:#6c757d; }}
             .video-container {{ margin:16px 0; border-radius:12px; overflow:hidden; background:#000; position:relative; }}
-            .video-container video {{ width:100%; height:auto; display:block; }}
-            .camera-overlay {{ position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #28a745; border-radius:12px; animation:pulse 1.5s infinite; }}
-            @keyframes pulse {{ 0%, 100% {{ opacity:1; }} 50% {{ opacity:0.5; }} }}
+            .video-container video {{ width:100%; height:auto; display:block; transform:scaleX(-1); }}
+            .camera-overlay {{ position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #28a745; border-radius:12px; animation:pulse 1s infinite; }}
+            .face-circle {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:160px; height:200px; border:4px solid #28a745; border-radius:50%; animation:scan 1.5s ease-in-out infinite; }}
+            @keyframes pulse {{ 0%, 100% {{ opacity:1; }} 50% {{ opacity:0.3; }} }}
+            @keyframes scan {{ 0%, 100% {{ border-color:#28a745; }} 50% {{ border-color:#ffc107; }} }}
             @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
         </style></head><body>
         <div class='box' id='loginBox'>
@@ -138,10 +140,10 @@ def stats_login():
                 </form>
                 <div id='videoSection' style='display:none'>
                     <div class='video-container' id='videoContainer'>
-                        <video id='video' autoplay playsinline></video>
-                        <div class='camera-overlay'></div>
+                        <video id='video' autoplay playsinline muted></video>
+                        <div class='face-circle' id='faceCircle'></div>
                     </div>
-                    <div style='margin-top:16px; color:#666; font-size:0.9em'>Yüzünüzü çerçeveye yerleştirin...</div>
+                    <div id='scanMsg' style='margin-top:16px; color:#28a745; font-size:0.95em; font-weight:600;'>📸 Yüzünüzü tarıyoruz...</div>
                 </div>
             </div>
         </div>
@@ -162,7 +164,8 @@ def stats_login():
         }}
         
         // Kayıtlı yüz var mı kontrol et
-        if(localStorage.getItem('faceRegistered')==='true'){{
+        const savedFaceData=localStorage.getItem('faceData');
+        if(savedFaceData){{
             cameraIcon.style.display='flex';
         }}
         
@@ -178,21 +181,21 @@ def stats_login():
         
         // Kamera ikonu ile hızlı giriş
         cameraIcon.addEventListener('click',async()=>{{
-            if(navigator.credentials){{
-                try{{
-                    const cred=await navigator.credentials.get({{password:true,mediation:'optional'}});
-                    if(cred && cred.id && cred.password){{
-                        document.querySelector('input[name=username]').value=cred.id;
-                        document.querySelector('input[name=password]').value=cred.password;
-                        document.getElementById('loginForm').submit();
-                    }}else{{
-                        alert('Kayıtlı yüz bulunamadı. Lütfen tekrar kaydedin.');
-                        localStorage.removeItem('faceRegistered');
-                        cameraIcon.style.display='none';
-                    }}
-                }}catch(e){{
-                    alert('Yüz tanıma başarısız. Manuel giriş yapın.');
+                const faceData=localStorage.getItem('faceData');
+                if(!faceData){{
+                    alert('Yüz kaydı bulunamadı. Lütfen tekrar kaydedin.');
+                    cameraIcon.style.display='none';
+                    return;
                 }}
+                try{{
+                    const data=JSON.parse(faceData);
+                    document.querySelector('input[name=username]').value=data.u;
+                    document.querySelector('input[name=password]').value=atob(data.p);
+                    document.getElementById('loginForm').submit();
+                }}catch(e){{
+                    alert('Yüz tanıma hatası. Tekrar kaydedin.');
+                    localStorage.removeItem('faceData');
+                    cameraIcon.style.display='none';
             }}
         }});
         
@@ -224,31 +227,33 @@ def stats_login():
                 
                 // Kamera erişimi
                 try{{
-                    const stream=await navigator.mediaDevices.getUserMedia({{video:{{facingMode:'user'}}}});
+                        const stream=await navigator.mediaDevices.getUserMedia({{video:{{facingMode:'user',width:640,height:480}}}});
                     video.srcObject=stream;
+                        scanMsg.innerHTML='📸 Yüzünüzü tarıyoruz...';
                     
-                    setTimeout(async()=>{{
-                        modalMsg.innerHTML='<div class=\"success\">Yüz kaydediliyor...</div>';
+                        // Hızlı tarama
+                        setTimeout(()=>{{
+                            scanMsg.innerHTML='✓ Yüz algılandı!';
+                            scanMsg.style.color='#28a745';
+                        }},800);
+                    
+                        setTimeout(async()=>{{
+                            scanMsg.innerHTML='💾 Kaydediliyor...';
                         
-                        // Credential kaydet
-                        if(navigator.credentials && navigator.credentials.store){{
-                            const cred=new PasswordCredential({{id:user,password:pass}});
-                            await navigator.credentials.store(cred);
-                        }}
+                            // Yüz verisi kaydet
+                            const faceData={{u:user,p:btoa(pass),t:Date.now()}};
+                            localStorage.setItem('faceData',JSON.stringify(faceData));
                         
-                        localStorage.setItem('faceRegistered','true');
+                            stream.getTracks().forEach(t=>t.stop());
+                            modalMsg.innerHTML='<div class=\"success\">✓ Yüz tanıma kaydedildi!</div>';
                         
                         setTimeout(()=>{{
-                            stream.getTracks().forEach(t=>t.stop());
-                            modalMsg.innerHTML='<div class=\"success\">✓ Yüz tanıma kaydedildi! Giriş yapılıyor...</div>';
-                            setTimeout(()=>{{
                                 document.querySelector('input[name=username]').value=user;
                                 document.querySelector('input[name=password]').value=pass;
                                 closeBioModal();
                                 document.getElementById('loginForm').submit();
-                            }},1500);
-                        }},2000);
-                    }},2000);
+                            }},800);
+                        }},1500);
                 }}catch(camErr){{
                     modalMsg.innerHTML='<div class=\"err\">Kamera erişimi reddedildi: '+camErr.message+'</div>';
                     videoSection.style.display='none';
