@@ -17,6 +17,7 @@
 
   let activeStream = null;
   const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+  const MATCH_THRESHOLD = 0.55;
 
   async function ensureModels() {
     if (!window.faceapi) throw new Error('face-api.js yüklenemedi');
@@ -28,14 +29,40 @@
     ]);
   }
 
-  async function getDescriptor() {
-    // Use TinyFaceDetector for speed
+  async function getDetection() {
     const det = await faceapi
       .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
       .withFaceLandmarks()
       .withFaceDescriptor();
+    return det || null;
+  }
+
+  async function getDescriptor() {
+    const det = await getDetection();
     if (!det || !det.descriptor) return null;
     return Array.from(det.descriptor);
+  }
+
+  async function waitForHeadTurn(direction) {
+    // direction: 'left' or 'right'
+    const maxMs = 3000;
+    const start = Date.now();
+    let baseX = null;
+    while (Date.now() - start < maxMs) {
+      const det = await getDetection();
+      if (det && det.landmarks) {
+        const nose = det.landmarks.getNose();
+        const x = nose && nose[3] ? nose[3].x : null; // nose tip approx
+        if (x != null) {
+          if (baseX == null) baseX = x;
+          const dx = x - baseX;
+          if (direction === 'left' && dx < -12) return true;
+          if (direction === 'right' && dx > 12) return true;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    return false;
   }
 
   function euclidean(a, b) {
@@ -161,7 +188,6 @@
     }
 
     const ok = await quickFrameCheck();
-    stopStream(stream);
     if (!ok) {
       scanMsg.innerHTML = '<div class="err">Yüz algılanamadı. Daha aydınlık bir ortamda tekrar deneyin.</div>';
       setTimeout(() => {
@@ -172,32 +198,44 @@
       return;
     }
 
-    // Face descriptor match required
+    // Face descriptor match + challenge required
     try {
       await ensureModels();
-      const stream2 = await startCameraSafe();
-      if (!stream2) throw new Error('Kamera açılamadı');
+      // Random challenge: left or right
+      const dir = Math.random() < 0.5 ? 'left' : 'right';
+      scanMsg.innerHTML = dir === 'left' ? '↩️ Başınızı sola çevirin' : '↪️ Başınızı sağa çevirin';
+      const turned = await waitForHeadTurn(dir);
+      if (!turned) {
+        scanMsg.innerHTML = '<div class="err">Hareket doğrulaması başarısız.</div>';
+        setTimeout(closeBioModal, 1400);
+        stopStream();
+        return;
+      }
+      scanMsg.innerHTML = '✅ Hareket doğrulandı, yüz eşleşmesi yapılıyor...';
       const desc = await getDescriptor();
-      stopStream(stream2);
       if (!desc) {
         scanMsg.innerHTML = '<div class="err">Yüz tespit edilemedi.</div>';
         setTimeout(closeBioModal, 1200);
+        stopStream();
         return;
       }
       if (!faceData.d || !Array.isArray(faceData.d)) {
         scanMsg.innerHTML = '<div class="err">Kayıtlı yüz bulunamadı. Lütfen yeniden kaydedin.</div>';
         setTimeout(closeBioModal, 1200);
+        stopStream();
         return;
       }
       const dist = euclidean(desc, faceData.d);
-      if (dist > 0.6) {
+      if (dist > MATCH_THRESHOLD) {
         scanMsg.innerHTML = '<div class="err">Yüz eşleşmedi (' + dist.toFixed(3) + ').</div>';
         setTimeout(closeBioModal, 1400);
+        stopStream();
         return;
       }
     } catch (err) {
       scanMsg.innerHTML = '<div class="err">Doğrulama hatası: ' + err.message + '</div>';
       setTimeout(closeBioModal, 1400);
+      stopStream();
       return;
     }
 
