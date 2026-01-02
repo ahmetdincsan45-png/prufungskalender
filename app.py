@@ -1283,6 +1283,12 @@ def stats():
                         min-height: 100vh;
                         position: relative;
                         color: var(--text-primary);
+                        overflow-x: hidden;
+                        width: 100%;
+                    }}
+                    html {{
+                        overflow-x: hidden;
+                        max-width: 100%;
                     }}
                     /* Premium Toolbar */
                     .toolbar {{
