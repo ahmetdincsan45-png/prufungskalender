@@ -23,6 +23,12 @@
             background-attachment: fixed;
             position: relative;
             overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        html {
+            margin: 0;
+            padding: 0;
         }
         .container-fluid {
             background: rgba(255, 255, 255, 0.93);
@@ -410,8 +416,8 @@
         html, body { touch-action: manipulation; }
     </style>
 </head>
-<body>
-    <div class="container-fluid mt-4">
+<body style="padding: 0; margin: 0;">
+    <div class="container-fluid" style="margin-top: 0; padding-top: 15px; padding-bottom: 15px;">
         <div class="row">
             <div class="col-12">
                 <h1 class="text-center mb-4">
