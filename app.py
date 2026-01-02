@@ -1305,24 +1305,19 @@ def stats():
                     }}
                     .toolbar-title {{
                         font-weight: 700;
-                        color: var(--primary);
+                        color: var(--text-secondary);
                         display: flex;
                         align-items: center;
-                        gap: 12px;
+                        gap: 10px;
                         font-size: 1.25em;
-                        background: linear-gradient(135deg, var(--primary), var(--accent));
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        background-clip: text;
                         font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
                     }}
                     .toolbar-title::before {{
                         content: '📈';
-                        background: linear-gradient(135deg, var(--primary), var(--accent));
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        background-clip: text;
                         font-size: 1.3em;
+                        display: inline-block;
+                        line-height: 1;
+                    }}
                     }}
                     .kebab {{
                         position: relative;
