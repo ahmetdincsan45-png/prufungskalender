@@ -1231,19 +1231,19 @@ def stats():
                 sid = db_map.get(key_l)
                 if sid is not None:
                     items_html_parts.append(
-                        f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
-                        f"<span style='font-weight:600;color:#333'>{name}</span>"
+                        f"<li style='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--border-color);border-radius:10px;margin:8px 0;background:linear-gradient(135deg, var(--bg-lighter), rgba(102, 126, 234, 0.02));transition:all 0.2s ease;'>"
+                        f"<span style='font-weight:600;color:var(--text-secondary)'>{name}</span>"
                         f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
                         f"<input type='hidden' name='subject_id' value='{sid}'/>"
-                        f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
+                        f"<button type='submit' style='background:linear-gradient(135deg, #dc3545, #c82333);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.2s ease;box-shadow:0 2px 4px rgba(220, 53, 69, 0.2)' onmouseover=\"this.style.boxShadow='0 4px 12px rgba(220, 53, 69, 0.35)';this.style.transform='translateY(-2px)'\" onmouseout=\"this.style.boxShadow='0 2px 4px rgba(220, 53, 69, 0.2)';this.style.transform='translateY(0)'\">Sil</button>"
                         f"</form>"
                         f"</li>"
                     )
                 else:
                     items_html_parts.append(
-                        f"<li style='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #eee;border-radius:8px;margin:6px 0;background:#fff'>"
-                        f"<span style='font-weight:600;color:#333'>{name}</span>"
-                        f"<span class='small' style='color:#666;background:#f1f3f5;border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px'>Varsayılan</span>"
+                        f"<li style='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--border-color);border-radius:10px;margin:8px 0;background:linear-gradient(135deg, var(--bg-lighter), rgba(102, 126, 234, 0.02));'>"
+                        f"<span style='font-weight:600;color:var(--text-secondary)'>{name}</span>"
+                        f"<span class='small' style='color:var(--text-muted);background:linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));border:1px solid rgba(102, 126, 234, 0.2);border-radius:8px;padding:6px 10px;font-weight:600'>Varsayılan</span>"
                         f"</li>"
                     )
             items_html = "".join(items_html_parts)
@@ -1257,35 +1257,62 @@ def stats():
                 <title>Stats</title>
                 <style>
                     * {{ box-sizing: border-box; }}
-                    body {{ 
-                        font-family: system-ui, -apple-system, sans-serif; 
-                        padding: 0; 
-                        max-width: 1000px; 
-                        margin: 0 auto; 
-                        background: #f5f5f5;
-                        position: relative;
+                    :root {{
+                        --primary: #667eea;
+                        --primary-dark: #5568d3;
+                        --accent: #764ba2;
+                        --success: #28a745;
+                        --danger: #dc3545;
+                        --warning: #ffc107;
+                        --bg-light: #f8f9fa;
+                        --bg-lighter: #ffffff;
+                        --text-primary: #1a1a1a;
+                        --text-secondary: #555555;
+                        --text-muted: #999999;
+                        --border-color: #eeeeee;
+                        --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+                        --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+                        --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
                     }}
-                    /* Top Toolbar */
+                    body {{ 
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                        padding: 0; 
+                        max-width: 1200px; 
+                        margin: 0 auto; 
+                        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                        min-height: 100vh;
+                        position: relative;
+                        color: var(--text-primary);
+                    }}
+                    /* Premium Toolbar */
                     .toolbar {{
                         position: sticky;
                         top: 0;
                         z-index: 1000;
-                        background: #ffffff;
+                        background: var(--bg-lighter);
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        padding: 12px 15px;
-                        box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-                        border-bottom: 1px solid #eee;
-                        position: relative;
+                        padding: 16px 20px;
+                        box-shadow: var(--shadow-md);
+                        border-bottom: 1px solid var(--border-color);
+                        backdrop-filter: blur(10px);
+                        animation: slideDown 0.3s ease-out;
+                    }}
+                    @keyframes slideDown {{
+                        from {{ transform: translateY(-100%); opacity: 0; }}
+                        to {{ transform: translateY(0); opacity: 1; }}
                     }}
                     .toolbar-title {{
-                        font-weight: 600;
-                        color: #333;
+                        font-weight: 700;
+                        background: linear-gradient(135deg, var(--primary), var(--accent));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
                         display: flex;
                         align-items: center;
-                        gap: 8px;
-                        font-size: 1.1em;
+                        gap: 12px;
+                        font-size: 1.25em;
                     }}
                     .kebab {{
                         position: relative;
@@ -1295,118 +1322,270 @@ def stats():
                         border: none;
                         font-size: 28px;
                         line-height: 1;
-                        padding: 8px 10px;
+                        padding: 8px 12px;
                         cursor: pointer;
-                        color: #333;
+                        color: var(--text-secondary);
                         touch-action: manipulation;
-                        -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+                        -webkit-tap-highlight-color: transparent;
+                        transition: all 0.2s ease;
+                        border-radius: 8px;
+                    }}
+                    .kebab-btn:hover {{
+                        background: var(--bg-light);
+                        color: var(--primary);
                     }}
                     .kebab-btn:active {{
-                        background: rgba(0,0,0,0.05);
-                        border-radius: 6px;
+                        background: var(--border-color);
+                        transform: scale(0.95);
                     }}
                     .menu {{
                         position: absolute;
                         right: 0;
-                        top: 44px;
-                        background: #fff;
-                        border: 1px solid #eee;
-                        border-radius: 10px;
-                        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-                        min-width: 190px;
+                        top: 50px;
+                        background: var(--bg-lighter);
+                        border: 1px solid var(--border-color);
+                        border-radius: 12px;
+                        box-shadow: var(--shadow-lg);
+                        min-width: 200px;
                         display: none;
                         overflow: hidden;
+                        animation: popIn 0.25s ease-out;
+                    }}
+                    @keyframes popIn {{
+                        from {{ transform: scale(0.9) translateY(-10px); opacity: 0; }}
+                        to {{ transform: scale(1) translateY(0); opacity: 1; }}
                     }}
                     .menu.open {{ display: block; }}
                     .menu a {{
                         display: flex;
                         align-items: center;
-                        gap: 8px;
-                        padding: 12px 14px;
+                        gap: 10px;
+                        padding: 14px 16px;
                         text-decoration: none;
-                        color: #333;
+                        color: var(--text-secondary);
                         font-weight: 600;
-                        border-bottom: 1px solid #f5f5f5;
+                        border-bottom: 1px solid var(--border-color);
                         font-size: 0.95em;
+                        transition: all 0.15s ease;
                     }}
                     .menu a:last-child {{ border-bottom: none; }}
-                    .menu a:hover {{ background: #f8f9fa; }}
-                    .menu a:active {{ background: #e8eaed; }}
-                    .menu .danger {{ color: #c82333; }}
-                    .content {{ position: relative; z-index: 1; padding: 15px; }}
-                    h1 {{ color: #333; font-size: 1.4em; margin: 0 0 15px 0; position: relative; z-index: 1; }}
-                    h2 {{ color: #555; margin-top: 25px; font-size: 1.15em; position: relative; z-index: 1; }}
-                    .chart-container {{ background: white; padding: 15px; border-radius: 8px; 
-                                        box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 15px 0; 
-                                        overflow-x: auto; position: relative; z-index: 1; 
-                                        -webkit-overflow-scrolling: touch; }}
+                    .menu a:hover {{ 
+                        background: var(--bg-light);
+                        color: var(--primary);
+                        padding-left: 20px;
+                    }}
+                    .menu a:active {{ background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); }}
+                    .menu .danger {{ color: var(--danger); }}
+                    .menu .danger:hover {{ background: rgba(220, 53, 69, 0.1); }}
+                    .content {{ position: relative; z-index: 1; padding: 20px; }}
+                    h1 {{ 
+                        color: var(--text-primary); 
+                        font-size: 1.6em; 
+                        margin: 0 0 20px 0; 
+                        position: relative; 
+                        z-index: 1;
+                        font-weight: 700;
+                    }}
+                    h2 {{ 
+                        color: var(--text-secondary); 
+                        margin-top: 28px; 
+                        margin-bottom: 12px;
+                        font-size: 1.2em; 
+                        position: relative; 
+                        z-index: 1;
+                        font-weight: 600;
+                    }}
+                    .chart-container {{ 
+                        background: var(--bg-lighter); 
+                        padding: 20px; 
+                        border-radius: 12px; 
+                        box-shadow: var(--shadow-md); 
+                        margin: 20px 0; 
+                        overflow-x: auto; 
+                        position: relative; 
+                        z-index: 1; 
+                        -webkit-overflow-scrolling: touch;
+                        border: 1px solid var(--border-color);
+                    }}
                     .chart-scroll {{ min-width: 600px; }}
-                    table {{ width: 100%; border-collapse: collapse; margin-top: 15px; background: white; 
-                             border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-                             font-size: 0.9em; position: relative; z-index: 1; }}
-                    th, td {{ padding: 10px 8px; text-align: left; border-bottom: 1px solid #f0f0f0; }}
-                    th {{ background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }}
-                    .small {{ font-size: 0.8em; color: #666; }}
-                    tr:hover {{ background: #f8f9fa; }}
-                    .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; position: relative; z-index: 1; }}
-                    .card {{ background:#fff; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); margin:12px 0; position: relative; z-index: 1; }}
-                    .row-flex {{ display:flex; gap:12px; flex-wrap:wrap; }}
-                    .row-flex .col {{ flex:1 1 320px; min-width: 100%; }}
-                    .input-inline {{ display:flex; gap:8px; align-items:center; flex-wrap: wrap; }}
-                    .input-inline input[type=text] {{ flex:1; min-width: 150px; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:.95em; }}
-                    .input-inline button {{ padding:12px 16px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; white-space: nowrap; }}
-                    .input-inline button:hover {{ background:#0b5ed7; }}
-                    .input-inline button:active {{ background:#0a58ca; }}
-                    ul.clean {{ list-style:none; padding:0; margin:0; }}
-                    .content {{ position: relative; z-index: 1; padding: 15px; }}
-                    .stat {{ background: white; padding: 18px; border-radius: 8px; 
-                             box-shadow: 0 1px 3px rgba(0,0,0,.1); margin: 12px 0; display: flex; 
-                             justify-content: space-between; align-items: center; position: relative; z-index: 1; }}
-                    .stat-label {{ font-weight: 600; color: #555; font-size: 0.95em; }}
-                    .stat-value {{ font-size: 1.8em; font-weight: 700; color: #667eea; }}
-                    h1, h2 {{ color: #333; margin-top: 25px; position: relative; z-index: 1; }}
-                    h3 {{ margin: 0 0 10px 0; font-size: 1.05em; color: #555; }}
+                    table {{ 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-top: 15px; 
+                        background: var(--bg-lighter); 
+                        border-radius: 10px; 
+                        overflow: hidden; 
+                        box-shadow: var(--shadow-sm); 
+                        font-size: 0.9em; 
+                        position: relative; 
+                        z-index: 1;
+                        border: 1px solid var(--border-color);
+                    }}
+                    th, td {{ 
+                        padding: 12px 10px; 
+                        text-align: left; 
+                        border-bottom: 1px solid var(--border-color); 
+                    }}
+                    th {{ 
+                        background: linear-gradient(135deg, var(--primary), var(--accent));
+                        color: white;
+                        font-weight: 700; 
+                        position: sticky; 
+                        top: 0;
+                    }}
+                    .small {{ 
+                        font-size: 0.8em; 
+                        color: var(--text-muted); 
+                    }}
+                    tr:hover {{ 
+                        background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), transparent);
+                    }}
+                    .table-container {{ 
+                        overflow-x: auto; 
+                        -webkit-overflow-scrolling: touch; 
+                        margin-bottom: 120px; 
+                        position: relative; 
+                        z-index: 1;
+                        border-radius: 10px;
+                    }}
+                    .card {{ 
+                        background: var(--bg-lighter); 
+                        padding: 20px; 
+                        border-radius: 12px; 
+                        box-shadow: var(--shadow-md); 
+                        margin: 16px 0; 
+                        position: relative; 
+                        z-index: 1;
+                        border: 1px solid var(--border-color);
+                        transition: all 0.3s ease;
+                        animation: fadeInUp 0.4s ease-out;
+                    }}
+                    @keyframes fadeInUp {{
+                        from {{ transform: translateY(20px); opacity: 0; }}
+                        to {{ transform: translateY(0); opacity: 1; }}
+                    }}
+                    .card:hover {{ 
+                        box-shadow: var(--shadow-lg);
+                        transform: translateY(-2px);
+                    }}
+                    .row-flex {{ display: flex; gap: 16px; flex-wrap: wrap; }}
+                    .row-flex .col {{ flex: 1 1 320px; min-width: 100%; }}
+                    .input-inline {{ display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }}
+                    .input-inline input[type=text] {{ 
+                        flex: 1; 
+                        min-width: 150px; 
+                        padding: 12px 14px; 
+                        border: 2px solid var(--border-color); 
+                        border-radius: 10px; 
+                        font-size: 0.95em;
+                        background: var(--bg-lighter);
+                        color: var(--text-primary);
+                        transition: all 0.2s ease;
+                    }}
+                    .input-inline input[type=text]:focus {{
+                        outline: none;
+                        border-color: var(--primary);
+                        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                    }}
+                    .input-inline button {{ 
+                        padding: 12px 20px; 
+                        border: none; 
+                        border-radius: 10px; 
+                        background: linear-gradient(135deg, var(--primary), var(--accent));
+                        color: white; 
+                        font-weight: 700; 
+                        cursor: pointer; 
+                        white-space: nowrap;
+                        transition: all 0.2s ease;
+                        box-shadow: var(--shadow-sm);
+                    }}
+                    .input-inline button:hover {{ 
+                        box-shadow: var(--shadow-md);
+                        transform: translateY(-2px);
+                    }}
+                    .input-inline button:active {{ 
+                        transform: translateY(0);
+                    }}
+                    ul.clean {{ list-style: none; padding: 0; margin: 0; }}
+                    .stat {{ 
+                        background: linear-gradient(135deg, var(--bg-lighter), rgba(102, 126, 234, 0.02)); 
+                        padding: 20px; 
+                        border-radius: 12px; 
+                        box-shadow: var(--shadow-md); 
+                        margin: 14px 0; 
+                        display: flex; 
+                        justify-content: space-between; 
+                        align-items: center; 
+                        position: relative; 
+                        z-index: 1;
+                        border: 1px solid var(--border-color);
+                        transition: all 0.3s ease;
+                        animation: slideIn 0.4s ease-out;
+                    }}
+                    @keyframes slideIn {{
+                        from {{ transform: translateX(-20px); opacity: 0; }}
+                        to {{ transform: translateX(0); opacity: 1; }}
+                    }}
+                    .stat:hover {{
+                        box-shadow: var(--shadow-lg);
+                        transform: translateX(8px);
+                    }}
+                    .stat-label {{ 
+                        font-weight: 600; 
+                        color: var(--text-secondary); 
+                        font-size: 0.95em;
+                    }}
+                    .stat-value {{ 
+                        font-size: 2em; 
+                        font-weight: 800; 
+                        background: linear-gradient(135deg, var(--primary), var(--accent));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                    }}
+                    h1, h2 {{ color: var(--text-primary); margin-top: 25px; position: relative; z-index: 1; }}
+                    h3 {{ margin: 0 0 12px 0; font-size: 1.1em; color: var(--text-secondary); font-weight: 600; }}
                     @media (max-width: 768px) {{
-                        .toolbar-title {{ font-size: 1em; }}
-                        .content {{ padding: 12px; }}
-                        h1 {{ font-size: 1.2em; margin: 0 0 12px 0; }}
-                        h2 {{ font-size: 1em; margin-top: 18px; }}
-                        .stat {{ padding: 14px; margin: 10px 0; }}
+                        .toolbar-title {{ font-size: 1.1em; }}
+                        .content {{ padding: 16px; }}
+                        h1 {{ font-size: 1.3em; margin: 0 0 16px 0; }}
+                        h2 {{ font-size: 1.1em; margin-top: 20px; }}
+                        .stat {{ padding: 16px; margin: 12px 0; gap: 12px; }}
                         .stat-label {{ font-size: 0.9em; }}
-                        .stat-value {{ font-size: 1.5em; }}
+                        .stat-value {{ font-size: 1.6em; }}
                         .stat-label, .stat-value {{ white-space: nowrap; }}
-                        .card {{ padding: 12px; margin: 10px 0; }}
-                        .row-flex {{ gap: 10px; }}
+                        .card {{ padding: 16px; margin: 12px 0; }}
+                        .row-flex {{ gap: 12px; }}
                         .row-flex .col {{ flex: 1 1 100%; min-width: 100%; }}
                         table {{ font-size: 0.85em; }}
-                        th, td {{ padding: 8px 6px; }}
-                        .input-inline {{ gap: 6px; }}
-                        .input-inline input[type=text] {{ padding: 10px; font-size: 16px; }}
-                        .input-inline button {{ padding: 10px 14px; font-size: 0.95em; }}
+                        th, td {{ padding: 10px 8px; }}
+                        .input-inline {{ gap: 8px; }}
+                        .input-inline input[type=text] {{ padding: 12px; font-size: 16px; }}
+                        .input-inline button {{ padding: 12px 16px; font-size: 0.95em; }}
                     }}
                     @media (max-width: 480px) {{
                         body {{ padding: 0; }}
-                        .toolbar {{ padding: 10px 12px; gap: 8px; }}
-                        .toolbar-title {{ font-size: 0.9em; }}
+                        .toolbar {{ padding: 12px 14px; gap: 10px; }}
+                        .toolbar-title {{ font-size: 1em; }}
                         .kebab-btn {{ font-size: 24px; padding: 6px 8px; }}
-                        .content {{ padding: 10px; }}
-                        h1 {{ font-size: 1.1em; margin: 0 0 10px 0; }}
-                        h2 {{ font-size: 0.95em; margin-top: 15px; margin-bottom: 10px; }}
-                        h3 {{ font-size: 0.95em; }}
-                        .stat {{ padding: 12px; margin: 8px 0; gap: 8px; }}
-                        .stat-label {{ font-size: 0.85em; }}
-                        .stat-value {{ font-size: 1.3em; }}
-                        .card {{ padding: 10px; margin: 8px 0; }}
+                        .content {{ padding: 12px; }}
+                        h1 {{ font-size: 1.15em; margin: 0 0 14px 0; }}
+                        h2 {{ font-size: 1em; margin-top: 16px; margin-bottom: 10px; }}
+                        h3 {{ font-size: 1em; }}
+                        .stat {{ padding: 14px; margin: 10px 0; gap: 10px; flex-direction: column; align-items: flex-start; }}
+                        .stat-label {{ font-size: 0.9em; }}
+                        .stat-value {{ font-size: 1.5em; align-self: flex-end; }}
+                        .card {{ padding: 14px; margin: 10px 0; }}
                         .row-flex {{ gap: 0; flex-direction: column; }}
                         .row-flex .col {{ min-width: 100%; }}
-                        table {{ font-size: 0.75em; }}
-                        th, td {{ padding: 6px 4px; }}
+                        table {{ font-size: 0.8em; }}
+                        th, td {{ padding: 8px 6px; }}
                         .small {{ font-size: 0.7em; }}
-                        .input-inline {{ gap: 4px; flex-direction: column; }}
+                        .input-inline {{ gap: 6px; flex-direction: column; }}
                         .input-inline input[type=text] {{ width: 100%; padding: 12px; font-size: 16px; }}
-                        .input-inline button {{ width: 100%; padding: 12px; font-size: 0.9em; }}
+                        .input-inline button {{ width: 100%; padding: 12px; font-size: 0.95em; }}
                         .menu {{ min-width: 160px; font-size: 0.9em; }}
-                        .menu a {{ padding: 10px 12px; }}
+                        .menu a {{ padding: 12px 14px; }}
                     }}
                 </style>
             </head>
