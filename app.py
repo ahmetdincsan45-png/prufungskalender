@@ -1405,6 +1405,37 @@ def stats():
                         position: relative; 
                         z-index: 1;
                         font-weight: 600;
+                        cursor: pointer;
+                        user-select: none;
+                        padding: 12px 16px;
+                        background: var(--bg-lighter);
+                        border-radius: 10px;
+                        border: 1px solid var(--border-color);
+                        transition: all 0.2s ease;
+                    }}
+                    h2:hover {{
+                        background: var(--bg-light);
+                        border-color: var(--primary);
+                    }}
+                    h2::after {{
+                        content: '▼';
+                        float: right;
+                        transition: transform 0.3s ease;
+                        font-size: 0.8em;
+                        color: var(--text-muted);
+                    }}
+                    h2.collapsed::after {{
+                        transform: rotate(-90deg);
+                    }}
+                    .section-content {{
+                        max-height: 2000px;
+                        overflow: hidden;
+                        transition: max-height 0.4s ease, opacity 0.3s ease;
+                        opacity: 1;
+                    }}
+                    .section-content.hidden {{
+                        max-height: 0;
+                        opacity: 0;
                     }}
                     .chart-container {{ 
                         background: var(--bg-lighter); 
@@ -1614,15 +1645,18 @@ def stats():
                     </div>
                 </div>
                 <div class="content">
-                <h1>Genel Bakış</h1>
+                <h1 data-toggle="section1">Genel Bakış</h1>
+                <div id="section1" class="section-content">
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
                 <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
                 <div class="stat"><span class="stat-label">Son 7 Gün</span><span class="stat-value">{last_7_days}</span></div>
                 <div class="stat"><span class="stat-label">Benzersiz IP</span><span class="stat-value">{unique_ips}</span></div>
+                </div>
                 
                 
                 
-                <h2>📚 Ders Havuzu</h2>
+                <h2 data-toggle="section2">📚 Ders Havuzu</h2>
+                <div id="section2" class="section-content">
                 <div class="card">
                     <div class="row-flex">
                         <div class="col">
@@ -1639,8 +1673,10 @@ def stats():
                         </div>
                     </div>
                 </div>
+                </div>
                 
-                <h2>🕐 Son 20 Ziyaret</h2>
+                <h2 data-toggle="section3">🕐 Son 20 Ziyaret</h2>
+                <div id="section3" class="section-content">
                 <div class="table-container">
                     <table>
                         <tr><th>Zaman</th><th>IP</th><th>Sayfa</th></tr>
@@ -1652,6 +1688,22 @@ def stats():
                 </div>
                 </div>
                 <script>
+                    // Accordion toggle
+                    (function(){
+                        const headers = document.querySelectorAll('[data-toggle]');
+                        headers.forEach(header => {
+                            header.addEventListener('click', function() {
+                                const targetId = this.getAttribute('data-toggle');
+                                const content = document.getElementById(targetId);
+                                if (content) {
+                                    content.classList.toggle('hidden');
+                                    this.classList.toggle('collapsed');
+                                }
+                            });
+                        });
+                    })();
+                    
+                    // Kebab menu
                     (function(){
                         const btn = document.getElementById('kebabBtn');
                         const menu = document.getElementById('kebabMenu');
