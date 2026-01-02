@@ -310,10 +310,34 @@
                     window.location.href = '/';
                     return;
                 }
+                
+                // Offline Mode: İnternet yoksa verileri cache'e kaydet
+                if (!navigator.onLine && typeof savePendingExam === 'function') {
+                    e.preventDefault();
+                    savePendingExam(subject, date)
+                        .then(() => {
+                            alert('✅ Offline olarak kaydedildi. İnternet bağlantısı sağlandığında senkron edilecek.');
+                            window.location.href = '/';
+                        })
+                        .catch(() => {
+                            alert('Hata oluştu. Lütfen tekrar deneyin.');
+                        });
+                }
             });
             // İlk durumda güncelle
             updateSubmitState();
         });
+    </script>
+    
+    <!-- Offline Mode Scripts -->
+    <script src="/static/offline.js"></script>
+    <script>
+        // Service Worker Kaydı
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js').catch(error => {
+                console.warn('Service Worker registration failed:', error);
+            });
+        }
     </script>
 </body>
 </html>

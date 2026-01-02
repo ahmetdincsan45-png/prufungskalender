@@ -45,6 +45,19 @@ def apple_touch_icon():
 def apple_touch_icon_pre():
     return send_from_directory('static', 'apple-touch-icon.png', mimetype='image/png')
 
+# Service Worker Route
+@app.route('/static/sw.js')
+def service_worker():
+    response = send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    response.headers['Cache-Control'] = 'max-age=3600'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
+# Offline Page Route
+@app.route('/offline.html')
+def offline():
+    return send_from_directory('static', 'offline.html', mimetype='text/html')
+
 # ---- Stats Auth Helpers ----
 def get_admin_credentials():
     with get_db_connection() as conn:

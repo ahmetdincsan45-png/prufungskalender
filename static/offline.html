@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prüfungskalender - Offline</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f5f6fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .offline-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 400px;
+        }
+        .icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        .message {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .status-online {
+            color: #28a745;
+        }
+        .status-offline {
+            color: #dc3545;
+        }
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background: #5568d3;
+        }
+        .button:active {
+            transform: translateY(1px);
+        }
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="icon">📴</div>
+        <h1>Çevrimdışı Mod</h1>
+        <div class="message">
+            İnternet bağlantısı yok. Daha önce yüklenmiş veriler görüntülenebilir.
+        </div>
+        <div class="status" id="status">
+            <span class="dot status-offline"></span>
+            <span id="status-text">İnternet Yok</span>
+        </div>
+        <button class="button" onclick="tryReload()">Yeniden Bağlan</button>
+    </div>
+
+    <script>
+        // Bağlantı durumunu kontrol et
+        function updateStatus() {
+            const statusEl = document.getElementById('status');
+            const statusText = document.getElementById('status-text');
+            
+            if (navigator.onLine) {
+                statusEl.innerHTML = '<span class="dot status-online"></span><span>İnternet Bağlı!</span>';
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            } else {
+                statusEl.innerHTML = '<span class="dot status-offline"></span><span>İnternet Yok</span>';
+            }
+        }
+        
+        function tryReload() {
+            window.location.href = '/';
+        }
+        
+        // 2 sn'de bir kontrol et
+        setInterval(updateStatus, 2000);
+        updateStatus();
+        
+        // Event listener
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+    </script>
+</body>
+</html>

@@ -87,6 +87,20 @@
             color: #856404;
             font-size: 0.85rem; /* yazıları küçült */
         }
+        /* Offline Mode Indicator */
+        @keyframes slideIn {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .offline-indicator {
+            animation: slideIn 0.3s ease-out;
+        }
         /* Nächste Prüfung geri sayım metnini bir tık küçült (≈14px) */
         #countdownText { font-size: 0.875rem; }
         /* Alarm ikonuna sallanma animasyonu (çalar saat efekti) */
@@ -788,8 +802,38 @@
                 requestAnimationFrame(function(){
                     updateFerienDayNumbers();
                 });
+                
+                // Offline Mode: Events'i cache'e ekle
+                if (typeof cacheExams === 'function') {
+                    cacheExams(events).catch(e => console.warn('Cache hatası:', e));
+                }
             });
         });
+    </script>
+    
+    <!-- Offline Mode Scripts -->
+    <script src="/static/offline.js"></script>
+    <script>
+        // Service Worker Kaydı
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(registration => {
+                    console.log('✅ Service Worker registered');
+                })
+                .catch(error => {
+                    console.warn('Service Worker registration failed:', error);
+                });
+        }
+        
+        // API subjects'i cache'e ekle
+        fetch('/api/subjects')
+            .then(r => r.json())
+            .then(data => {
+                if (typeof cacheSubjects === 'function') {
+                    cacheSubjects(data.subjects);
+                }
+            })
+            .catch(e => console.warn('Subjects fetch:', e));
     </script>
 </body>
 </html>
