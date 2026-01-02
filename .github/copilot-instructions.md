@@ -5,7 +5,6 @@ This repo is a Flask + SQLite web app for managing class exams with a FullCalend
 ## Big Picture
 - Backend: Flask app in [app.py](app.py), SQLite DB selected by `SQLITE_DB_PATH` or falls back to `/var/data/prufungskalender.db` (Render) or `/tmp/prufungskalender.db`.
 - Frontend: Jinja templates in [templates/index.html](templates/index.html), [templates/add.html](templates/add.html), [templates/delete.html](templates/delete.html). FullCalendar + Bootstrap.
-- Biometric auth: Optional face recognition login using [face-api.js](https://github.com/justadudewhohacks/face-api.js) in [static/face.js](static/face.js); face descriptors stored in browser localStorage.
 - Data model: tables `exams`, `visits`, `subjects`, `admin_credentials` created on first run; see initializers in [app.py](app.py#L229-L309).
 - Holidays: Background ranges merged into calendar from external APIs with caching and local JSON fallbacks in `/var/data/ferien_cache`, `/var/data/feiertage_cache`, `/var/data/ferien_fallback`, seeded from [ferien_fallback_seed/](ferien_fallback_seed).
 
@@ -25,7 +24,6 @@ This repo is a Flask + SQLite web app for managing class exams with a FullCalend
 - Admin area (requires session-based login at [/stats/login](app.py#L63-L157)):
   - [/stats](app.py#L771-L1521): Flask session auth (`session['stats_authed']`). Manage `subjects`, view visits, send report, logout.
   - [/stats/logout](app.py#L185-L189): Clear session and redirect to login.
-  - [/stats/verify-credentials](app.py#L157-L185): POST endpoint for biometric registration; validates username/password before allowing face capture.
   - [/stats/delete-past](app.py#L687-L735): Delete past exams (requires `@login_required` decorator checking session).
   - [/stats/subjects/add](app.py), [/stats/subjects/delete](app.py): Manage subject pool from stats page.
   - [/send-report](app.py): Sends weekly email report (uses Gmail SMTP settings in [app.py](app.py#L29-L33)).
@@ -37,7 +35,6 @@ This repo is a Flask + SQLite web app for managing class exams with a FullCalend
 - Requests to external APIs (`ferien-api.de`, `date.nager.at`) have short timeouts; cached JSONs are used if online fetch fails; local fallbacks loaded from [ferien_fallback_seed](ferien_fallback_seed).
 - Visit logging: every non-static request stores `ip`, `user_agent`, `path` into `visits` unless bot-like; deduplicates same IP within 7 days; your changes should preserve this lightweight logging.
 - Auth: Stats auth is Flask session-based (`session['stats_authed']`); `@login_required` decorator wraps protected routes. Helper `get_admin_credentials()` returns `(username, password_hash)` from `admin_credentials` table.
-- Biometric login: [static/face.js](static/face.js) uses face-api.js models from CDN; face descriptors stored in browser localStorage; server validates credentials via `/stats/verify-credentials` before allowing face registration.
 
 ## Developer Workflows
 - Initialize DB: done once via `init_db()` before requests; prints the resolved `DB_PATH`. Use `/health` to verify.
