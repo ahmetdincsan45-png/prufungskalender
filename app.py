@@ -1596,7 +1596,7 @@ def stats():
             </head>
             <body>
                 <div class="toolbar">
-                    <div class="toolbar-title"></div>
+                    <div class="toolbar-title">Ziyaretçi İstatistikleri</div>
                     <div class="kebab">
                         <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
                         <div class="menu" id="kebabMenu">
