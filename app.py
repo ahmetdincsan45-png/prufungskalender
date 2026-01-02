@@ -230,6 +230,19 @@ def init_db():
                 )
             """)
             
+            # Email raporu zamanlama tablosu
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS email_schedule (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL,
+                    frequency TEXT NOT NULL DEFAULT 'weekly',
+                    day_of_week INTEGER DEFAULT 1,
+                    enabled INTEGER DEFAULT 1,
+                    last_sent TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
             # Visits tablosunu sıfırla (yeni sistem için temiz başlangıç)
             conn.execute("DELETE FROM visits")
 
@@ -1207,6 +1220,10 @@ def stats():
             recent = conn.execute(
                 "SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20"
             ).fetchall()
+            
+            # Email schedule verisi
+            email_schedule = conn.execute("SELECT * FROM email_schedule ORDER BY id DESC LIMIT 1").fetchone()
+            
             # Ders listesi (yönetim) - varsayılan + DB birleşik gösterim
             sub_rows = conn.execute("SELECT id, name FROM subjects ORDER BY name COLLATE NOCASE").fetchall()
             default_pool = ['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion','Musik']
@@ -1675,6 +1692,43 @@ def stats():
                 </div>
                 </div>
                 
+                <h2 data-toggle="section4">📧 Email Raporu Ayarları</h2>
+                <div id="section4" class="section-content">
+                <div class="card">
+                    <h3>Otomatik Haftalık Rapor</h3>
+                    <form method="post" action="/stats/schedule-email">
+                        <div class="input-inline" style="flex-direction:column;align-items:stretch;gap:12px">
+                            <div>
+                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">Email Adresi</label>
+                                <input type="email" name="email" placeholder="ornek@email.com" 
+                                       value="{email_schedule['email'] if email_schedule else ''}" 
+                                       style="width:100%" required>
+                            </div>
+                            <div>
+                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">Gönderim Günü</label>
+                                <select name="day_of_week" style="width:100%;padding:12px 14px;border:2px solid var(--border-color);border-radius:10px;font-size:0.95em;background:var(--bg-lighter);color:var(--text-primary)">
+                                    <option value="1" {'selected' if email_schedule and email_schedule['day_of_week'] == 1 else ''}>Pazartesi</option>
+                                    <option value="2" {'selected' if email_schedule and email_schedule['day_of_week'] == 2 else ''}>Salı</option>
+                                    <option value="3" {'selected' if email_schedule and email_schedule['day_of_week'] == 3 else ''}>Çarşamba</option>
+                                    <option value="4" {'selected' if email_schedule and email_schedule['day_of_week'] == 4 else ''}>Perşembe</option>
+                                    <option value="5" {'selected' if email_schedule and email_schedule['day_of_week'] == 5 else ''}>Cuma</option>
+                                    <option value="6" {'selected' if email_schedule and email_schedule['day_of_week'] == 6 else ''}>Cumartesi</option>
+                                    <option value="0" {'selected' if email_schedule and email_schedule['day_of_week'] == 0 else ''}>Pazar</option>
+                                </select>
+                            </div>
+                            <div style="display:flex;gap:10px;align-items:center">
+                                <input type="checkbox" name="enabled" id="emailEnabled" value="1" 
+                                       {'checked' if email_schedule and email_schedule['enabled'] else ''} 
+                                       style="width:auto;margin:0">
+                                <label for="emailEnabled" style="margin:0;font-weight:600;color:var(--text-secondary)">Aktif</label>
+                            </div>
+                            <button type="submit" style="width:100%">💾 Kaydet</button>
+                            {f"<div class='small' style='margin-top:6px;color:var(--success)'>✓ Son gönderim: {{email_schedule['last_sent'] or 'Henüz gönderilmedi'}}</div>" if email_schedule else ""}
+                        </div>
+                    </form>
+                </div>
+                </div>
+                
                 <h2 data-toggle="section3">🕐 Son 20 Ziyaret</h2>
                 <div id="section3" class="section-content">
                 <div class="table-container">
@@ -1830,6 +1884,38 @@ def stats_subjects_delete():
             conn.commit()
     except Exception:
         pass
+    return redirect(url_for('stats'))
+
+@login_required
+@app.route('/stats/schedule-email', methods=['POST'])
+def schedule_email():
+    """Email raporu zamanlamasını kaydet"""
+    email = (request.form.get('email') or '').strip()
+    day_of_week = int(request.form.get('day_of_week', 1))
+    enabled = 1 if request.form.get('enabled') else 0
+    
+    if not email:
+        return redirect(url_for('stats'))
+    
+    try:
+        with get_db_connection() as conn:
+            # Mevcut kaydı güncelle veya yeni kayıt ekle
+            existing = conn.execute("SELECT id FROM email_schedule LIMIT 1").fetchone()
+            if existing:
+                conn.execute("""
+                    UPDATE email_schedule 
+                    SET email = ?, day_of_week = ?, enabled = ?
+                    WHERE id = ?
+                """, (email, day_of_week, enabled, existing[0]))
+            else:
+                conn.execute("""
+                    INSERT INTO email_schedule (email, day_of_week, enabled)
+                    VALUES (?, ?, ?)
+                """, (email, day_of_week, enabled))
+            conn.commit()
+    except Exception as e:
+        print(f"Email schedule error: {e}")
+    
     return redirect(url_for('stats'))
 
 # -------------------- Stats JSON Endpoint --------------------
@@ -1989,6 +2075,117 @@ def send_report():
         """
     else:
         return "Email gönderme başarısız", 500
+
+@app.route("/cron/send-weekly-report")
+def cron_send_weekly_report():
+    """Otomatik haftalık rapor gönderimi (external cron servisi tarafından çağrılır)"""
+    # Güvenlik: Sadece belirli IP'lerden veya token ile erişim
+    token = request.args.get('token')
+    expected_token = os.getenv('CRON_TOKEN', 'default_cron_token_2026')
+    
+    if token != expected_token:
+        return "Unauthorized", 403
+    
+    try:
+        with get_db_connection() as conn:
+            schedule = conn.execute("""
+                SELECT email, day_of_week, enabled, last_sent 
+                FROM email_schedule 
+                WHERE enabled = 1 
+                LIMIT 1
+            """).fetchone()
+            
+            if not schedule:
+                return "No active schedule", 200
+            
+            # Bugünün gününü kontrol et (0=Pazar, 1=Pazartesi, ...)
+            today = datetime.now().weekday()  # 0=Pazartesi
+            # SQLite'da 0=Pazar, 1=Pazartesi olarak kaydettik
+            target_day = schedule['day_of_week']
+            # Convert: SQLite format (0=Pazar, 1=Pazartesi) -> Python weekday (0=Pazartesi, 6=Pazar)
+            if target_day == 0:  # Pazar
+                target_weekday = 6
+            else:
+                target_weekday = target_day - 1
+            
+            # Eğer bugün hedef gün değilse çık
+            if today != target_weekday:
+                return f"Not scheduled today (today={today}, target={target_weekday})", 200
+            
+            # Son gönderimden 6 gün geçmiş mi kontrol et (haftada 1 kez)
+            if schedule['last_sent']:
+                last_sent_dt = datetime.fromisoformat(schedule['last_sent'])
+                if (datetime.now() - last_sent_dt).days < 6:
+                    return "Already sent this week", 200
+            
+            # Rapor gönder
+            success = send_weekly_report_to(schedule['email'])
+            
+            if success:
+                # Last_sent'i güncelle
+                conn.execute("""
+                    UPDATE email_schedule 
+                    SET last_sent = ? 
+                    WHERE email = ?
+                """, (datetime.now().isoformat(), schedule['email']))
+                conn.commit()
+                return "Report sent successfully", 200
+            else:
+                return "Failed to send report", 500
+                
+    except Exception as e:
+        return f"Error: {e}", 500
+
+def send_weekly_report_to(recipient_email):
+    """Belirli bir email adresine rapor gönder"""
+    try:
+        with get_db_connection() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
+            today = conn.execute("SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')").fetchone()[0]
+            last_7_days = conn.execute("SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')").fetchone()[0]
+            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
+            upcoming = conn.execute("""
+                SELECT subject, date, start_time FROM exams 
+                WHERE date >= date('now') 
+                ORDER BY date ASC 
+                LIMIT 10
+            """).fetchall()
+        
+        # Email içeriği
+        body = f"""
+        📊 Prüfungskalender - Haftalık Rapor
+        
+        === Ziyaretçi İstatistikleri ===
+        Toplam Ziyaret: {total}
+        Bugün: {today}
+        Son 7 Gün: {last_7_days}
+        Benzersiz IP: {unique_ips}
+        
+        === Yaklaşan Sınavlar ===
+        """
+        
+        if upcoming:
+            for exam in upcoming:
+                body += f"\n• {exam['subject']} - {exam['date']} {exam['start_time']}"
+        else:
+            body += "\nHenüz sınav eklenmemiş."
+        
+        body += "\n\n---\nPrüfungskalender Otomatik Rapor Sistemi"
+        
+        # Email gönder
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['Subject'] = f'Haftalık Rapor - {datetime.now().strftime("%d.%m.%Y")}'
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = recipient_email
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+        
+        return True
+    except Exception as e:
+        print(f"Email error: {e}")
+        return False
 
 @app.route("/logout")
 def logout():
