@@ -86,101 +86,27 @@ def stats_login():
             * {{ margin:0; padding:0; box-sizing:border-box; }}
             html, body {{ height:100%; overflow:hidden; }}
             body {{ font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; background:#f5f6fa; padding:16px; }}
-            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; transition:transform 0.3s ease; position:relative; }}
-            .box.keyboard-open {{ transform:translateY(-80px); }}
+            .box {{ background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); width:100%; max-width:360px; }}
             h2 {{ margin:0 0 16px; font-size:1.2em; color:#333; text-align:center; }}
             .row {{ margin:10px 0; }}
             input {{ width:100%; padding:12px; font-size:16px; border:1px solid #ddd; border-radius:8px; }}
             button {{ width:100%; padding:12px; border:none; border-radius:8px; background:#667eea; color:#fff; font-weight:600; cursor:pointer; }}
             button:active {{ background:#5568d3; }}
             .err {{ color:#dc3545; font-size:.9em; margin-bottom:10px; text-align:center; }}
-            .success {{ color:#28a745; font-size:.9em; margin-bottom:10px; text-align:center; }}
-            .bio-btn {{ margin-top:12px; background:#f5f6fa; color:#667eea; border:1px solid #667eea; }}
-            .camera-icon {{ position:absolute; top:20px; right:20px; width:44px; height:44px; background:#667eea; border-radius:50%; display:none; align-items:center; justify-content:center; color:#fff; font-size:20px; cursor:pointer; box-shadow:0 4px 12px rgba(102,126,234,.3); transition:transform .2s; }}
-            .camera-icon:hover {{ transform:scale(1.1); }}
-            .camera-icon:active {{ transform:scale(0.95); }}
-            .modal {{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.7); align-items:center; justify-content:center; z-index:1000; }}
-            .modal.show {{ display:flex; }}
-            .modal-content {{ background:#fff; padding:24px; border-radius:12px; width:90%; max-width:360px; text-align:center; }}
-            .modal-content h3 {{ margin:0 0 16px; text-align:center; }}
-            .btn-group {{ display:flex; gap:8px; margin-top:16px; }}
-            .btn-group button {{ flex:1; }}
-            .btn-cancel {{ background:#6c757d; }}
-            .video-container {{ margin:16px 0; border-radius:12px; overflow:hidden; background:#000; position:relative; }}
-            .video-container video {{ width:100%; height:auto; display:block; transform:scaleX(-1); }}
-            .camera-overlay {{ position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #28a745; border-radius:12px; animation:pulse 1s infinite; }}
-            .face-circle {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:160px; height:200px; border:4px solid #28a745; border-radius:50%; animation:scan 1.5s ease-in-out infinite; }}
-            #captureCanvas {{ display:none; }}
-            @keyframes pulse {{ 0%, 100% {{ opacity:1; }} 50% {{ opacity:0.3; }} }}
-            @keyframes scan {{ 0%, 100% {{ border-color:#28a745; }} 50% {{ border-color:#ffc107; }} }}
             @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
         </style></head><body>
-        <div class='box' id='loginBox'>
-            <div class='camera-icon' id='cameraIcon' title='Yüz Tanıma ile Giriş'>📷</div>
+        <div class='box'>
             <h2>🔒 Stats Giriş</h2>
             {error_html}
-            <form method='post' id='loginForm' autocomplete='on'>
+            <form method='post' autocomplete='on'>
                 <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' autocomplete='username' required></div>
-                <div class='row'><input type='password' name='password' placeholder='Şifre' id='password' autocomplete='current-password' required></div>
+                <div class='row'><input type='password' name='password' placeholder='Şifre' autocomplete='current-password' required></div>
                 <div class='row'><button type='submit'>Giriş</button></div>
-                <div class='row'><button type='button' class='bio-btn' id='bioBtn'>🔐 Yüz Tanıma Kaydet</button></div>
             </form>
         </div>
-        <div class='modal' id='bioModal'>
-            <div class='modal-content'>
-                <h3>Yüz Tanıma Kaydı</h3>
-                <div id='modalMsg'>Önce kimliğinizi doğrulayın:</div>
-                <form id='bioRegForm' style='display:block'>
-                    <div class='row'><input type='text' id='bioUser' placeholder='Kullanıcı adı' required></div>
-                    <div class='row'><input type='password' id='bioPass' placeholder='Şifre' required></div>
-                    <div class='btn-group'>
-                        <button type='button' class='btn-cancel' onclick='closeBioModal()'>İptal</button>
-                        <button type='submit'>Devam</button>
-                    </div>
-                </form>
-                <div id='videoSection' style='display:none'>
-                    <div class='video-container' id='videoContainer'>
-                        <video id='video' autoplay playsinline muted></video>
-                        <div class='face-circle' id='faceCircle'></div>
-                    </div>
-                    <canvas id='captureCanvas' width='320' height='240'></canvas>
-                    <div id='scanMsg' style='margin-top:16px; color:#28a745; font-size:0.95em; font-weight:600;'>📸 Yüzünüzü tarıyoruz...</div>
-                </div>
-            </div>
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-        <script src="/static/face.js"></script>
         </body></html>
         """
     )
-
-@app.route('/stats/verify-credentials', methods=['POST'])
-def stats_verify_credentials():
-    """Biometric kayıt için kullanıcı adı/şifre doğrulama"""
-    try:
-        data = request.get_json()
-        in_user = (data.get('username') or '').strip()
-        in_pass = (data.get('password') or '').strip()
-        
-        if not in_user or not in_pass:
-            return jsonify({'success': False, 'error': 'Kullanıcı adı ve şifre gerekli'})
-        
-        admin_user, admin_hash = get_admin_credentials()
-        
-        if not admin_user or not admin_hash:
-            return jsonify({'success': False, 'error': 'Sistem hatası: Admin bilgileri bulunamadı'})
-        
-        user_match = (admin_user or '').strip().lower() == in_user.lower()
-        pass_ok = bool(admin_hash) and check_password_hash(admin_hash, in_pass)
-        
-        if user_match and pass_ok:
-            return jsonify({'success': True})
-        elif not user_match:
-            return jsonify({'success': False, 'error': f'Kullanıcı adı hatalı. Beklenen: {admin_user}'})
-        else:
-            return jsonify({'success': False, 'error': 'Şifre hatalı'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': f'Hata: {str(e)}'})
 
 @app.route('/stats/logout', methods=['POST', 'GET'])
 def stats_logout():
