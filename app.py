@@ -1261,7 +1261,7 @@ def stats():
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        padding: 10px 15px;
+                        padding: 12px 15px;
                         box-shadow: 0 1px 6px rgba(0,0,0,0.08);
                         border-bottom: 1px solid #eee;
                         position: relative;
@@ -1272,6 +1272,7 @@ def stats():
                         display: flex;
                         align-items: center;
                         gap: 8px;
+                        font-size: 1.1em;
                     }}
                     .kebab {{
                         position: relative;
@@ -1279,16 +1280,22 @@ def stats():
                     .kebab-btn {{
                         background: none;
                         border: none;
-                        font-size: 22px;
+                        font-size: 28px;
                         line-height: 1;
-                        padding: 6px 10px;
+                        padding: 8px 10px;
                         cursor: pointer;
                         color: #333;
+                        touch-action: manipulation;
+                        -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+                    }}
+                    .kebab-btn:active {{
+                        background: rgba(0,0,0,0.05);
+                        border-radius: 6px;
                     }}
                     .menu {{
                         position: absolute;
                         right: 0;
-                        top: 36px;
+                        top: 44px;
                         background: #fff;
                         border: 1px solid #eee;
                         border-radius: 10px;
@@ -1302,21 +1309,24 @@ def stats():
                         display: flex;
                         align-items: center;
                         gap: 8px;
-                        padding: 10px 12px;
+                        padding: 12px 14px;
                         text-decoration: none;
                         color: #333;
                         font-weight: 600;
                         border-bottom: 1px solid #f5f5f5;
+                        font-size: 0.95em;
                     }}
                     .menu a:last-child {{ border-bottom: none; }}
                     .menu a:hover {{ background: #f8f9fa; }}
+                    .menu a:active {{ background: #e8eaed; }}
                     .menu .danger {{ color: #c82333; }}
                     .content {{ position: relative; z-index: 1; padding: 15px; }}
-                    h1 {{ color: #333; font-size: 1.5em; margin: 0 0 15px 0; position: relative; z-index: 1; }}
-                    h2 {{ color: #555; margin-top: 25px; font-size: 1.2em; position: relative; z-index: 1; }}
+                    h1 {{ color: #333; font-size: 1.4em; margin: 0 0 15px 0; position: relative; z-index: 1; }}
+                    h2 {{ color: #555; margin-top: 25px; font-size: 1.15em; position: relative; z-index: 1; }}
                     .chart-container {{ background: white; padding: 15px; border-radius: 8px; 
                                         box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 15px 0; 
-                                        overflow-x: auto; position: relative; z-index: 1; }}
+                                        overflow-x: auto; position: relative; z-index: 1; 
+                                        -webkit-overflow-scrolling: touch; }}
                     .chart-scroll {{ min-width: 600px; }}
                     table {{ width: 100%; border-collapse: collapse; margin-top: 15px; background: white; 
                              border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
@@ -1326,29 +1336,64 @@ def stats():
                     .small {{ font-size: 0.8em; color: #666; }}
                     tr:hover {{ background: #f8f9fa; }}
                     .table-container {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 120px; position: relative; z-index: 1; }}
-                    .card {{ background:#fff; padding:12px 15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); margin:12px 0; position: relative; z-index: 1; }}
+                    .card {{ background:#fff; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); margin:12px 0; position: relative; z-index: 1; }}
                     .row-flex {{ display:flex; gap:12px; flex-wrap:wrap; }}
-                    .row-flex .col {{ flex:1 1 320px; }}
-                    .input-inline {{ display:flex; gap:8px; align-items:center; }}
-                    .input-inline input[type=text] {{ flex:1; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:.95em; }}
-                    .input-inline button {{ padding:10px 14px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; }}
+                    .row-flex .col {{ flex:1 1 320px; min-width: 100%; }}
+                    .input-inline {{ display:flex; gap:8px; align-items:center; flex-wrap: wrap; }}
+                    .input-inline input[type=text] {{ flex:1; min-width: 150px; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:.95em; }}
+                    .input-inline button {{ padding:12px 16px; border:none; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; white-space: nowrap; }}
                     .input-inline button:hover {{ background:#0b5ed7; }}
+                    .input-inline button:active {{ background:#0a58ca; }}
                     ul.clean {{ list-style:none; padding:0; margin:0; }}
                     .content {{ position: relative; z-index: 1; padding: 15px; }}
-                    .stat {{ background: white; padding: 15px; border-radius: 8px; 
-                             box-shadow: 0 1px 3px rgba(0,0,0,.1); margin: 10px 0; display: flex; 
+                    .stat {{ background: white; padding: 18px; border-radius: 8px; 
+                             box-shadow: 0 1px 3px rgba(0,0,0,.1); margin: 12px 0; display: flex; 
                              justify-content: space-between; align-items: center; position: relative; z-index: 1; }}
-                    .stat-label {{ font-weight: 600; color: #555; }}
+                    .stat-label {{ font-weight: 600; color: #555; font-size: 0.95em; }}
                     .stat-value {{ font-size: 1.8em; font-weight: 700; color: #667eea; }}
                     h1, h2 {{ color: #333; margin-top: 25px; position: relative; z-index: 1; }}
-                    @media (max-width: 600px) {{
-                        .content {{ padding: 10px; }}
-                        h1 {{ font-size: 1.3em; }}
-                        h2 {{ font-size: 1.1em; margin-top: 20px; }}
-                        .stat {{ padding: 10px 12px; }}
-                        .stat-value {{ font-size: 1.3em; }}
-                        table {{ font-size: 0.8em; }}
+                    h3 {{ margin: 0 0 10px 0; font-size: 1.05em; color: #555; }}
+                    @media (max-width: 768px) {{
+                        .toolbar-title {{ font-size: 1em; }}
+                        .content {{ padding: 12px; }}
+                        h1 {{ font-size: 1.2em; margin: 0 0 12px 0; }}
+                        h2 {{ font-size: 1em; margin-top: 18px; }}
+                        .stat {{ padding: 14px; margin: 10px 0; }}
+                        .stat-label {{ font-size: 0.9em; }}
+                        .stat-value {{ font-size: 1.5em; }}
+                        .stat-label, .stat-value {{ white-space: nowrap; }}
+                        .card {{ padding: 12px; margin: 10px 0; }}
+                        .row-flex {{ gap: 10px; }}
+                        .row-flex .col {{ flex: 1 1 100%; min-width: 100%; }}
+                        table {{ font-size: 0.85em; }}
                         th, td {{ padding: 8px 6px; }}
+                        .input-inline {{ gap: 6px; }}
+                        .input-inline input[type=text] {{ padding: 10px; font-size: 16px; }}
+                        .input-inline button {{ padding: 10px 14px; font-size: 0.95em; }}
+                    }}
+                    @media (max-width: 480px) {{
+                        body {{ padding: 0; }}
+                        .toolbar {{ padding: 10px 12px; gap: 8px; }}
+                        .toolbar-title {{ font-size: 0.9em; }}
+                        .kebab-btn {{ font-size: 24px; padding: 6px 8px; }}
+                        .content {{ padding: 10px; }}
+                        h1 {{ font-size: 1.1em; margin: 0 0 10px 0; }}
+                        h2 {{ font-size: 0.95em; margin-top: 15px; margin-bottom: 10px; }}
+                        h3 {{ font-size: 0.95em; }}
+                        .stat {{ padding: 12px; margin: 8px 0; gap: 8px; }}
+                        .stat-label {{ font-size: 0.85em; }}
+                        .stat-value {{ font-size: 1.3em; }}
+                        .card {{ padding: 10px; margin: 8px 0; }}
+                        .row-flex {{ gap: 0; flex-direction: column; }}
+                        .row-flex .col {{ min-width: 100%; }}
+                        table {{ font-size: 0.75em; }}
+                        th, td {{ padding: 6px 4px; }}
+                        .small {{ font-size: 0.7em; }}
+                        .input-inline {{ gap: 4px; flex-direction: column; }}
+                        .input-inline input[type=text] {{ width: 100%; padding: 12px; font-size: 16px; }}
+                        .input-inline button {{ width: 100%; padding: 12px; font-size: 0.9em; }}
+                        .menu {{ min-width: 160px; font-size: 0.9em; }}
+                        .menu a {{ padding: 10px 12px; }}
                     }}
                 </style>
             </head>
