@@ -1214,6 +1214,59 @@ def stats():
             # Benzersiz IP sayısı
             unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
             
+            # Tarayıcı/Cihaz istatistikleri
+            browser_stats = {}
+            device_stats = {'mobile': 0, 'desktop': 0}
+            
+            all_agents = conn.execute("SELECT user_agent FROM visits WHERE user_agent IS NOT NULL").fetchall()
+            for row in all_agents:
+                ua = (row[0] or '').lower()
+                # Tarayıcı tespiti
+                if 'chrome' in ua and 'edg' not in ua:
+                    browser_stats['Chrome'] = browser_stats.get('Chrome', 0) + 1
+                elif 'safari' in ua and 'chrome' not in ua:
+                    browser_stats['Safari'] = browser_stats.get('Safari', 0) + 1
+                elif 'firefox' in ua:
+                    browser_stats['Firefox'] = browser_stats.get('Firefox', 0) + 1
+                elif 'edg' in ua:
+                    browser_stats['Edge'] = browser_stats.get('Edge', 0) + 1
+                else:
+                    browser_stats['Diğer'] = browser_stats.get('Diğer', 0) + 1
+                
+                # Cihaz tespiti
+                if any(x in ua for x in ['mobile', 'android', 'iphone', 'ipad']):
+                    device_stats['mobile'] += 1
+                else:
+                    device_stats['desktop'] += 1
+            
+            # Sınav istatistikleri
+            total_exams = conn.execute("SELECT COUNT(*) FROM exams").fetchone()[0]
+            upcoming_exams = conn.execute("SELECT COUNT(*) FROM exams WHERE date >= date('now')").fetchone()[0]
+            past_exams = conn.execute("SELECT COUNT(*) FROM exams WHERE date < date('now')").fetchone()[0]
+            this_month_exams = conn.execute("""
+                SELECT COUNT(*) FROM exams 
+                WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+            """).fetchone()[0]
+            
+            # Tarayıcı ve cihaz istatistiklerini HTML formatına çevir
+            browser_html = ""
+            total_browsers = sum(browser_stats.values()) or 1
+            for browser, count in sorted(browser_stats.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count / total_browsers) * 100
+                browser_html += f'<div class="stat"><span class="stat-label">{browser}</span><span class="stat-value">{count} ({percentage:.1f}%)</span></div>'
+            if not browser_html:
+                browser_html = '<div class="small" style="color:#999">Henüz veri yok</div>'
+            
+            device_html = ""
+            total_devices = sum(device_stats.values()) or 1
+            for device, count in sorted(device_stats.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count / total_devices) * 100
+                device_icon = "📱" if device == "mobile" else "💻"
+                device_name = "Mobil" if device == "mobile" else "Masaüstü"
+                device_html += f'<div class="stat"><span class="stat-label">{device_icon} {device_name}</span><span class="stat-value">{count} ({percentage:.1f}%)</span></div>'
+            if not device_html:
+                device_html = '<div class="small" style="color:#999">Henüz veri yok</div>'
+            
             # Saatlik dağılım kaldırıldı (kullanıcı talebi)
             
             # Son 20 ziyaret
@@ -1290,6 +1343,18 @@ def stats():
                         --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
                         --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
                         --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+                    }}
+                    body.dark-mode {{
+                        --primary: #8b9fe8;
+                        --primary-dark: #7a8ed7;
+                        --accent: #9d6bc2;
+                        --bg-light: #2a2d3a;
+                        --bg-lighter: #1e1f2b;
+                        --text-primary: #e4e4e7;
+                        --text-secondary: #a1a1aa;
+                        --text-muted: #71717a;
+                        --border-color: #3a3d4a;
+                        background: linear-gradient(135deg, #1e1f2b 0%, #2a2d3a 100%);
                     }}
                     body {{ 
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
@@ -1604,6 +1669,78 @@ def stats():
                     }}
                     h1, h2 {{ color: var(--text-primary); margin-top: 25px; position: relative; z-index: 1; }}
                     h3 {{ margin: 0 0 12px 0; font-size: 1.1em; color: var(--text-secondary); font-weight: 600; }}
+                    /* Stats Cards */
+                    .stats-grid {{
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                        gap: 16px;
+                        margin: 20px 0;
+                    }}
+                    .stat-card {{
+                        background: linear-gradient(135deg, var(--bg-lighter), rgba(102, 126, 234, 0.05));
+                        padding: 24px;
+                        border-radius: 12px;
+                        border: 1px solid var(--border-color);
+                        text-align: center;
+                        transition: all 0.3s ease;
+                        box-shadow: var(--shadow-sm);
+                    }}
+                    .stat-card:hover {{
+                        transform: translateY(-4px);
+                        box-shadow: var(--shadow-lg);
+                    }}
+                    .stat-card-value {{
+                        font-size: 2.5em;
+                        font-weight: 800;
+                        background: linear-gradient(135deg, var(--primary), var(--accent));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                        margin: 8px 0;
+                    }}
+                    .stat-card-label {{
+                        font-size: 0.9em;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }}
+                    .stat-card-icon {{
+                        font-size: 2em;
+                        margin-bottom: 8px;
+                    }}
+                    /* Dark Mode Toggle */
+                    .theme-toggle {{
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        z-index: 9999;
+                        background: var(--primary);
+                        color: white;
+                        border: none;
+                        width: 56px;
+                        height: 56px;
+                        border-radius: 50%;
+                        font-size: 24px;
+                        cursor: pointer;
+                        box-shadow: var(--shadow-lg);
+                        transition: all 0.3s ease;
+                    }}
+                    .theme-toggle:hover {{
+                        transform: scale(1.1) rotate(180deg);
+                    }}
+                    .theme-toggle:active {{
+                        transform: scale(0.95);
+                    }}
+                    /* Browser & Device Stats */
+                    .browser-stats, .device-stats {{
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                    }}
+                    .browser-stats .stat, .device-stats .stat {{
+                        animation: none; /* Override slideIn for these specific stats */
+                    }}
                     @media (max-width: 768px) {{
                         .toolbar-title {{ font-size: 1.1em; }}
                         .content {{ padding: 16px; }}
@@ -1662,6 +1799,30 @@ def stats():
                     </div>
                 </div>
                 <div class="content">
+                <!-- İstatistik Özeti Kartları -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-icon">📊</div>
+                        <div class="stat-card-value">{total_exams}</div>
+                        <div class="stat-card-label">Toplam Sınav</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">📅</div>
+                        <div class="stat-card-value">{upcoming_exams}</div>
+                        <div class="stat-card-label">Yaklaşan</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">✅</div>
+                        <div class="stat-card-value">{past_exams}</div>
+                        <div class="stat-card-label">Geçmiş</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">🗓️</div>
+                        <div class="stat-card-value">{this_month_exams}</div>
+                        <div class="stat-card-label">Bu Ay</div>
+                    </div>
+                </div>
+                
                 <h1 data-toggle="section1">Genel Bakış</h1>
                 <div id="section1" class="section-content">
                 <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
@@ -1670,7 +1831,19 @@ def stats():
                 <div class="stat"><span class="stat-label">Benzersiz IP</span><span class="stat-value">{unique_ips}</span></div>
                 </div>
                 
-                
+                <h2 data-toggle="section5">🌐 Tarayıcı ve Cihaz İstatistikleri</h2>
+                <div id="section5" class="section-content">
+                    <div class="card">
+                        <h3 style="margin:0 0 12px 0;font-size:1.05em;color:#555">Tarayıcı Dağılımı</h3>
+                        <div class="browser-stats">
+                            {browser_html}
+                        </div>
+                        <h3 style="margin:16px 0 12px 0;font-size:1.05em;color:#555">Cihaz Tipi</h3>
+                        <div class="device-stats">
+                            {device_html}
+                        </div>
+                    </div>
+                </div>
                 
                 <h2 data-toggle="section2">📚 Ders Havuzu</h2>
                 <div id="section2" class="section-content">
@@ -1769,7 +1942,33 @@ def stats():
                         document.addEventListener('click', close);
                         window.addEventListener('resize', close);
                     })();
+                    
+                    // Dark Mode Toggle
+                    (function() {{
+                        const themeToggle = document.getElementById('themeToggle');
+                        const icon = themeToggle.querySelector('.theme-icon');
+                        
+                        // Kayıtlı tema tercihini yükle
+                        const savedTheme = localStorage.getItem('theme');
+                        if (savedTheme === 'dark') {{
+                            document.body.classList.add('dark-mode');
+                            icon.textContent = '☀️';
+                        }}
+                        
+                        // Toggle butonu click event
+                        themeToggle.addEventListener('click', function() {{
+                            document.body.classList.toggle('dark-mode');
+                            const isDark = document.body.classList.contains('dark-mode');
+                            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                            icon.textContent = isDark ? '☀️' : '🌙';
+                        }});
+                    }})();
                 </script>
+                
+                <!-- Dark Mode Toggle Button -->
+                <button id="themeToggle" class="theme-toggle" aria-label="Tema Değiştir">
+                    <span class="theme-icon">🌙</span>
+                </button>
             </body>
             </html>
             """
