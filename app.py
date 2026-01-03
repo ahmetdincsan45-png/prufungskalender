@@ -1944,25 +1944,25 @@ def stats():
                     })();
                     
                     // Dark Mode Toggle
-                    (function() {{
+                    (function() {
                         const themeToggle = document.getElementById('themeToggle');
                         const icon = themeToggle.querySelector('.theme-icon');
                         
                         // Kayıtlı tema tercihini yükle
                         const savedTheme = localStorage.getItem('theme');
-                        if (savedTheme === 'dark') {{
+                        if (savedTheme === 'dark') {
                             document.body.classList.add('dark-mode');
                             icon.textContent = '☀️';
-                        }}
+                        }
                         
                         // Toggle butonu click event
-                        themeToggle.addEventListener('click', function() {{
+                        themeToggle.addEventListener('click', function() {
                             document.body.classList.toggle('dark-mode');
                             const isDark = document.body.classList.contains('dark-mode');
                             localStorage.setItem('theme', isDark ? 'dark' : 'light');
                             icon.textContent = isDark ? '☀️' : '🌙';
-                        }});
-                    }})();
+                        });
+                    })();
                 </script>
                 
                 <!-- Dark Mode Toggle Button -->
