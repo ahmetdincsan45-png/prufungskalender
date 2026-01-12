@@ -102,27 +102,26 @@
                                     <tr>
                                         <th>Datum</th>
                                         <th>Name</th>
-                                        <th class="text-end">Aktion</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for p in plans %}
                                     <tr>
                                         <td><strong>{{ p.date | strftime('%d.%m.%Y') }}</strong></td>
-                                        <td>{{ p.parent_name }}</td>
-                                        <td class="text-end">
-                                            {% set pid = p.id|string %}
-                                            {% if deletable and deletable.get(pid) %}
-                                            <form method="post" action="/obst/delete" style="margin:0;display:inline">
-                                                <input type="hidden" name="obst_id" value="{{ p.id }}">
-                                                <input type="hidden" name="token" value="{{ deletable.get(pid) }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bi bi-trash"></i> Löschen
-                                                </button>
-                                            </form>
-                                            {% else %}
-                                            <span class="text-muted small">&nbsp;</span>
-                                            {% endif %}
+                                        <td>
+                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                                <span>{{ p.parent_name }}</span>
+                                                {% set pid = p.id|string %}
+                                                {% if deletable and deletable.get(pid) %}
+                                                <form method="post" action="/obst/delete" style="margin:0;display:inline">
+                                                    <input type="hidden" name="obst_id" value="{{ p.id }}">
+                                                    <input type="hidden" name="token" value="{{ deletable.get(pid) }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
