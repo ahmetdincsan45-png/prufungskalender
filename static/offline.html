@@ -87,15 +87,15 @@
 <body>
     <div class="offline-container">
         <div class="icon">📴</div>
-        <h1>Çevrimdışı Mod</h1>
+        <h1>Offline-Modus</h1>
         <div class="message">
-            İnternet bağlantısı yok. Daha önce yüklenmiş veriler görüntülenebilir.
+            Keine Internetverbindung. Bereits geladene Daten können angezeigt werden.
         </div>
         <div class="status" id="status">
             <span class="dot status-offline"></span>
-            <span id="status-text">İnternet Yok</span>
+            <span id="status-text">Offline</span>
         </div>
-        <button class="button" onclick="tryReload()">Yeniden Bağlan</button>
+        <button class="button" onclick="tryReload()">Erneut versuchen</button>
     </div>
 
     <script>
@@ -105,12 +105,12 @@
             const statusText = document.getElementById('status-text');
             
             if (navigator.onLine) {
-                statusEl.innerHTML = '<span class="dot status-online"></span><span>İnternet Bağlı!</span>';
+                statusEl.innerHTML = '<span class="dot status-online"></span><span>Online!</span>';
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 1000);
             } else {
-                statusEl.innerHTML = '<span class="dot status-offline"></span><span>İnternet Yok</span>';
+                statusEl.innerHTML = '<span class="dot status-offline"></span><span>Offline</span>';
             }
         }
         

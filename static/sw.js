@@ -162,12 +162,12 @@ async function syncOfflineData() {
       clients.forEach(client => {
         client.postMessage({
           type: 'SYNC_COMPLETE',
-          message: 'Offline veriler senkron edildi'
+          message: 'Offline-Daten wurden synchronisiert'
         });
       });
     }
   } catch (error) {
-    console.error('Sync hatası:', error);
+    console.error('Sync-Fehler:', error);
   }
 }
 

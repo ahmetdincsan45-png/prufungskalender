@@ -130,7 +130,7 @@
                             </label>
                             <input type="text" class="form-control" id="date_display" placeholder="TT.MM.JJJJ" autocomplete="off" required>
                             <input type="hidden" id="date" name="date" required>
-                            <div class="form-text">Nur heutige oder zukünftige Termine.</div>
+                            <div class="form-text">Nur heutige oder zukünftige Datumsangaben.</div>
                             <div id="dateWarning" class="alert alert-danger mt-2 py-2 px-3 d-none" style="font-size:0.85rem">
                                 Ungültiges Datum. Bitte ein zukünftiges Datum wählen.
                             </div>
@@ -316,11 +316,11 @@
                     e.preventDefault();
                     savePendingExam(subject, date)
                         .then(() => {
-                            alert('✅ Offline olarak kaydedildi. İnternet bağlantısı sağlandığında senkron edilecek.');
+                            alert('✅ Offline gespeichert. Wird synchronisiert, sobald eine Internetverbindung besteht.');
                             window.location.href = '/';
                         })
                         .catch(() => {
-                            alert('Hata oluştu. Lütfen tekrar deneyin.');
+                            alert('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
                         });
                 }
             });

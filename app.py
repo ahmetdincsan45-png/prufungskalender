@@ -27,6 +27,29 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app)
 
+# Obst (meyve günü) için izin verilen tarihler (YYYY-MM-DD)
+OBST_ALLOWED_DATES = {
+    '2026-02-03',
+    '2026-02-10',
+    '2026-02-24',
+    '2026-03-03',
+    '2026-03-10',
+    '2026-03-17',
+    '2026-06-09',
+    '2026-06-16',
+    '2026-06-23',
+    '2026-06-30',
+    '2026-07-07',
+}
+
+# -------------------- Jinja2 filtre --------------------
+@app.template_filter('strftime')
+def _jinja2_filter_datetime(date_string, format='%d.%m.%Y'):
+    try:
+        return datetime.strptime(date_string, '%Y-%m-%d').strftime(format)
+    except Exception:
+        return date_string
+
 # Email konfigürasyonu
 EMAIL_ADDRESS = "ahmetdincsan45@gmail.com"
 EMAIL_PASSWORD = "jdygziqeduesbplk"
@@ -85,7 +108,7 @@ def stats_login():
             session['stats_authed'] = True
             session['stats_user'] = admin_user
             return redirect(url_for('stats'))
-        error_msg = "Hatalı kullanıcı adı veya şifre"
+        error_msg = "Falscher Benutzername oder falsches Passwort."
     else:
         error_msg = None
     error_html = f"<div class='err'>{error_msg}</div>" if error_msg else ""
@@ -94,7 +117,7 @@ def stats_login():
         <!DOCTYPE html>
         <html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'>
         <meta name='apple-mobile-web-app-capable' content='yes'>
-        <title>Stats Giriş</title>
+        <title>Stats Login</title>
         <style>
             * {{ margin:0; padding:0; box-sizing:border-box; }}
             html, body {{ height:100%; overflow:hidden; }}
@@ -109,12 +132,12 @@ def stats_login():
             @media (max-height:600px) {{ .box {{ padding:16px; }} h2 {{ font-size:1.1em; margin-bottom:12px; }} }}
         </style></head><body>
         <div class='box'>
-            <h2>🔒 Stats Giriş</h2>
+            <h2>🔒 Stats Login</h2>
             {error_html}
             <form method='post' autocomplete='on'>
-                <div class='row'><input type='text' name='username' placeholder='Kullanıcı adı' value='{request.form.get('username','')}' autocomplete='username' required></div>
-                <div class='row'><input type='password' name='password' placeholder='Şifre' autocomplete='current-password' required></div>
-                <div class='row'><button type='submit'>Giriş</button></div>
+                <div class='row'><input type='text' name='username' placeholder='Benutzername' value='{request.form.get('username','')}' autocomplete='username' required></div>
+                <div class='row'><input type='password' name='password' placeholder='Passwort' autocomplete='current-password' required></div>
+                <div class='row'><button type='submit'>Anmelden</button></div>
             </form>
         </div>
         </body></html>
@@ -242,6 +265,18 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            # Obst (meyve günü) planlama tablosu: her tarih için 1 veli
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS obst_schedule (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    parent_name TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(date)
+                )
+                """
+            )
             
             # Visits tablosunu sıfırla (yeni sistem için temiz başlangıç)
             conn.execute("DELETE FROM visits")
@@ -342,6 +377,40 @@ def events():
                     'backgroundColor': color,
                     'borderColor': color
                 })
+
+        # Obst (meyve günü) planları: takvimde tam gün etkinlik olarak göster
+        # FullCalendar görünüm aralığı ile filtrelemeye çalış
+        start_arg = (request.args.get('start') or '')[:10]
+        end_arg = (request.args.get('end') or '')[:10]
+        try:
+            with get_db_connection() as conn:
+                if start_arg and end_arg:
+                    obst_rows = conn.execute(
+                        "SELECT date, parent_name FROM obst_schedule WHERE date >= ? AND date < ? ORDER BY date",
+                        (start_arg, end_arg),
+                    ).fetchall()
+                else:
+                    obst_rows = conn.execute(
+                        "SELECT date, parent_name FROM obst_schedule ORDER BY date",
+                    ).fetchall()
+        except Exception:
+            obst_rows = []
+
+        for row in obst_rows:
+            try:
+                d = (row['date'] if isinstance(row, sqlite3.Row) else row[0])
+                name = (row['parent_name'] if isinstance(row, sqlite3.Row) else row[1])
+                end_ex = (datetime.strptime(d, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+                events_list.append({
+                    'title': f"Obst: {name}",
+                    'start': d,
+                    'end': end_ex,
+                    'allDay': True,
+                    'backgroundColor': '#ffc107',
+                    'borderColor': '#ffc107'
+                })
+            except Exception:
+                continue
         # Bayern ferien-api.de'den güncel tatil tarihlerini çek, olmazsa yedek kullan
         backup_ferien = [
             {"start": "2025-03-03", "end": "2025-03-08"},
@@ -355,8 +424,6 @@ def events():
         ferien_event_count = 0
         # Görünüm aralığına göre ilgili yılları belirle
         years_to_fetch = set()
-        start_arg = (request.args.get('start') or '')[:10]
-        end_arg = (request.args.get('end') or '')[:10]
         try:
             if start_arg and end_arg:
                 start_year = datetime.strptime(start_arg, "%Y-%m-%d").year
@@ -546,6 +613,74 @@ def events():
         print(f"❌ Events error: {e}")
         return jsonify([])
 
+@app.route('/obst', methods=['GET', 'POST'])
+def obst():
+    error = None
+    if request.method == 'POST':
+        parent_name = (request.form.get('parent_name') or '').strip()
+        date = (request.form.get('date') or '').strip()
+
+        if not parent_name:
+            error = 'Bitte gib deinen Namen ein.'
+        elif not date:
+            error = 'Bitte wähle ein Datum aus.'
+        else:
+            try:
+                dt = datetime.strptime(date, '%Y-%m-%d').date()
+                if dt < datetime.now().date():
+                    error = 'Bitte wähle ein Datum ab heute.'
+                elif date not in OBST_ALLOWED_DATES:
+                    error = 'Dieses Datum ist nicht verfügbar. Bitte wähle ein vorgesehenes Datum aus.'
+            except Exception:
+                error = 'Ungültiges Datumsformat.'
+
+        if not error:
+            try:
+                with get_db_connection() as conn:
+                    # Ek kontrol: UI dışında bir şekilde aynı tarih post edilirse reddet
+                    existing = conn.execute(
+                        "SELECT 1 FROM obst_schedule WHERE date = ? LIMIT 1",
+                        (date,),
+                    ).fetchone()
+                    if existing:
+                        error = 'Für dieses Datum gibt es bereits einen Eintrag.'
+                        raise RuntimeError("obst_date_already_taken")
+                    conn.execute(
+                        "INSERT INTO obst_schedule (date, parent_name) VALUES (?, ?)",
+                        (date, parent_name[:200]),
+                    )
+                    conn.commit()
+                return redirect(url_for('obst', ok='1'))
+            except sqlite3.IntegrityError:
+                error = 'Für dieses Datum gibt es bereits einen Eintrag.'
+            except RuntimeError as e:
+                if str(e) == 'obst_date_already_taken':
+                    pass
+                else:
+                    error = 'Beim Speichern ist ein Fehler aufgetreten.'
+            except Exception:
+                error = 'Beim Speichern ist ein Fehler aufgetreten.'
+
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        with get_db_connection() as conn:
+            plans = conn.execute(
+                "SELECT id, date, parent_name FROM obst_schedule WHERE date >= ? ORDER BY date LIMIT 30",
+                (today,),
+            ).fetchall()
+
+            taken_rows = conn.execute(
+                "SELECT date FROM obst_schedule",
+            ).fetchall()
+            taken_dates = {r['date'] for r in taken_rows}
+    except Exception:
+        plans = []
+        taken_dates = set()
+
+    ok = (request.args.get('ok') == '1')
+    # Sadece izinli + henüz seçilmemiş tarihler
+    allowed_dates = sorted([d for d in OBST_ALLOWED_DATES if d not in taken_dates])
+    return render_template('obst.html', error=error, ok=ok, plans=plans, allowed_dates=allowed_dates)
 @app.route("/add", methods=["GET", "POST"])
 def add_exam():
     if request.method == "POST":
@@ -655,14 +790,14 @@ def stats_delete_past():
             f"<tr><td>{r['id']}</td><td>{r['subject']}</td><td>{r['date']}</td>"
             f"<td><form method='post' style='display:inline'>"
             f"<input type='hidden' name='exam_id' value='{r['id']}'/>"
-            f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Sil</button>"
+            f"<button type='submit' style='background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer'>Löschen</button>"
             f"</form></td></tr>" for r in rows
         ])
         return f"""
         <!DOCTYPE html>
         <html><head><meta charset='UTF-8'>
         <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Geçmiş Sınavlar</title>
+        <title>Vergangene Prüfungen</title>
         <style>
             body {{ font-family: system-ui, -apple-system, sans-serif; padding: 12px; background: #f5f5f5; }}
             h1 {{ font-size: 1.3em; margin: 0 0 12px 0; }}
@@ -673,7 +808,7 @@ def stats_delete_past():
         </style>
         </head><body>
             <a class='back' href='/stats'>← Stats</a>
-            <h1>⌛ Geçmiş Sınavlar (Silme)</h1>
+            <h1>⌛ Vergangene Prüfungen (Löschen)</h1>
             <table>
                 <tr><th>ID</th><th>Fach</th><th>Datum</th><th>Aktion</th></tr>
                 {items}
@@ -681,7 +816,7 @@ def stats_delete_past():
         </body></html>
         """
     except Exception as e:
-        return f"Error: {e}", 500
+        return f"Fehler: {e}", 500
 
 # Sağlık kontrolü (log ve yol teyidi için)
 @app.route("/health")
@@ -878,7 +1013,7 @@ def stats():
                     <h2>🔒 Stats</h2>
                     <form method="get" id="loginForm">
                                                 <div class="input-group">
-                                                        <input type="password" name="p" id="password" placeholder="Şifre" autofocus required>
+                                                        <input type="password" name="p" id="password" placeholder="Passwort" autofocus required>
                                                         <span class="toggle-password" aria-hidden="true">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
                                                                     <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
@@ -887,7 +1022,7 @@ def stats():
                                                         </span>
                                                 </div>
                         <button type="submit" class="submit-btn" id="submitBtn">
-                            <span class="btn-text">Giriş</span>
+                            <span class="btn-text">Anmelden</span>
                             <div class="spinner"></div>
                         </button>
                     </form>
@@ -972,7 +1107,7 @@ def stats():
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Giriş</title>
+            <title>Login</title>
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
@@ -1106,10 +1241,10 @@ def stats():
                     <form method="post" id="loginForm">
                         <input type="hidden" name="login_attempt" value="1" />
                         <div class="input-group">
-                            <input type="text" name="username" id="username" placeholder="Kullanıcı Adı" required autocomplete="username">
+                            <input type="text" name="username" id="username" placeholder="Benutzername" required autocomplete="username">
                         </div>
                                                 <div class="input-group">
-                                                        <input type="password" name="password" id="password" placeholder="Şifre" required autocomplete="current-password">
+                                                        <input type="password" name="password" id="password" placeholder="Passwort" required autocomplete="current-password">
                                                         <span class="toggle-password" aria-hidden="true">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
                                                                     <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
@@ -1118,30 +1253,30 @@ def stats():
                                                         </span>
                                                 </div>
                         <button type="submit" class="submit-btn" id="submitBtn">
-                            <span class="btn-text">Giriş</span>
+                            <span class="btn-text">Anmelden</span>
                             <div class="spinner"></div>
                         </button>
                     </form>
-                    <button class="change-toggle" id="changeToggle" style="margin-top:18px;background:none;border:none;color:#667eea;cursor:pointer;font-weight:600">Bilgileri Değiştir ▾</button>
+                    <button class="change-toggle" id="changeToggle" style="margin-top:18px;background:none;border:none;color:#667eea;cursor:pointer;font-weight:600">Zugangsdaten ändern ▾</button>
                     <div id="changePanel" style="display:none;margin-top:15px;animation:fadeInUp 0.4s ease-out">
                         <form method="post" action="/stats/update-credentials" id="changeForm">
                             <div class="input-group">
-                                <input type="password" name="current_password" placeholder="Mevcut Şifre" required autocomplete="current-password">
+                                <input type="password" name="current_password" placeholder="Aktuelles Passwort" required autocomplete="current-password">
                             </div>
                             <div class="input-group">
-                                <input type="text" name="new_username" placeholder="Yeni Kullanıcı Adı (opsiyonel)" autocomplete="username">
+                                <input type="text" name="new_username" placeholder="Neuer Benutzername (optional)" autocomplete="username">
                             </div>
                             <div class="input-group">
-                                <input type="password" name="new_password" placeholder="Yeni Şifre (opsiyonel)" autocomplete="new-password">
+                                <input type="password" name="new_password" placeholder="Neues Passwort (optional)" autocomplete="new-password">
                             </div>
                             <div class="input-group">
-                                <input type="password" name="new_password_repeat" placeholder="Yeni Şifre Tekrar" autocomplete="new-password">
+                                <input type="password" name="new_password_repeat" placeholder="Neues Passwort wiederholen" autocomplete="new-password">
                             </div>
                             <button type="submit" class="submit-btn" style="margin-top:5px">
-                                <span class="btn-text">Kaydet</span>
+                                <span class="btn-text">Speichern</span>
                                 <div class="spinner"></div>
                             </button>
-                            <div style="font-size:0.75em;color:#666;margin-top:6px">En az 8 karakter, harf + rakam önerilir.</div>
+                            <div style="font-size:0.75em;color:#666;margin-top:6px">Mindestens 8 Zeichen, Buchstaben + Zahlen empfohlen.</div>
                         </form>
                     </div>
                 </div>
@@ -1231,7 +1366,7 @@ def stats():
                 elif 'edg' in ua:
                     browser_stats['Edge'] = browser_stats.get('Edge', 0) + 1
                 else:
-                    browser_stats['Diğer'] = browser_stats.get('Diğer', 0) + 1
+                    browser_stats['Andere'] = browser_stats.get('Andere', 0) + 1
                 
                 # Cihaz tespiti
                 if any(x in ua for x in ['mobile', 'android', 'iphone', 'ipad']):
@@ -1255,17 +1390,17 @@ def stats():
                 percentage = (count / total_browsers) * 100
                 browser_html += f'<div class="stat"><span class="stat-label">{browser}</span><span class="stat-value">{count} ({percentage:.1f}%)</span></div>'
             if not browser_html:
-                browser_html = '<div class="small" style="color:#999">Henüz veri yok</div>'
+                browser_html = '<div class="small" style="color:#999">Noch keine Daten</div>'
             
             device_html = ""
             total_devices = sum(device_stats.values()) or 1
             for device, count in sorted(device_stats.items(), key=lambda x: x[1], reverse=True):
                 percentage = (count / total_devices) * 100
                 device_icon = "📱" if device == "mobile" else "💻"
-                device_name = "Mobil" if device == "mobile" else "Masaüstü"
+                device_name = "Mobil" if device == "mobile" else "Desktop"
                 device_html += f'<div class="stat"><span class="stat-label">{device_icon} {device_name}</span><span class="stat-value">{count} ({percentage:.1f}%)</span></div>'
             if not device_html:
-                device_html = '<div class="small" style="color:#999">Henüz veri yok</div>'
+                device_html = '<div class="small" style="color:#999">Noch keine Daten</div>'
             
             # Saatlik dağılım kaldırıldı (kullanıcı talebi)
             
@@ -1294,7 +1429,7 @@ def stats():
                     seen.add(lk)
                     merged_names.append(key)
             merged_names.sort(key=lambda s: s.lower())
-            # Stats listesinde göstermek için HTML öğelerini hazırla
+            # HTML-Elemente für die Stats-Liste vorbereiten
             items_html_parts = []
             for name in merged_names:
                 key_l = (name or '').strip().lower()
@@ -1305,7 +1440,7 @@ def stats():
                         f"<span style='font-weight:600;color:var(--text-secondary)'>{name}</span>"
                         f"<form method='post' action='/stats/subjects/delete' style='margin:0'>"
                         f"<input type='hidden' name='subject_id' value='{sid}'/>"
-                        f"<button type='submit' style='background:linear-gradient(135deg, #dc3545, #c82333);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.2s ease;box-shadow:0 2px 4px rgba(220, 53, 69, 0.2)' onmouseover=\"this.style.boxShadow='0 4px 12px rgba(220, 53, 69, 0.35)';this.style.transform='translateY(-2px)'\" onmouseout=\"this.style.boxShadow='0 2px 4px rgba(220, 53, 69, 0.2)';this.style.transform='translateY(0)'\">Sil</button>"
+                        f"<button type='submit' style='background:linear-gradient(135deg, #dc3545, #c82333);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.2s ease;box-shadow:0 2px 4px rgba(220, 53, 69, 0.2)' onmouseover=\"this.style.boxShadow='0 4px 12px rgba(220, 53, 69, 0.35)';this.style.transform='translateY(-2px)'\" onmouseout=\"this.style.boxShadow='0 2px 4px rgba(220, 53, 69, 0.2)';this.style.transform='translateY(0)'\">Löschen</button>"
                         f"</form>"
                         f"</li>"
                     )
@@ -1313,10 +1448,48 @@ def stats():
                     items_html_parts.append(
                         f"<li style='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--border-color);border-radius:10px;margin:8px 0;background:linear-gradient(135deg, var(--bg-lighter), rgba(102, 126, 234, 0.02));'>"
                         f"<span style='font-weight:600;color:var(--text-secondary)'>{name}</span>"
-                        f"<span class='small' style='color:var(--text-muted);background:linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));border:1px solid rgba(102, 126, 234, 0.2);border-radius:8px;padding:6px 10px;font-weight:600'>Varsayılan</span>"
+                        f"<span class='small' style='color:var(--text-muted);background:linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));border:1px solid rgba(102, 126, 234, 0.2);border-radius:8px;padding:6px 10px;font-weight:600'>Standard</span>"
                         f"</li>"
                     )
             items_html = "".join(items_html_parts)
+
+            # Obst planları (stats sayfasından silme)
+            try:
+                obst_rows = conn.execute(
+                    "SELECT id, date, parent_name FROM obst_schedule ORDER BY date ASC LIMIT 80"
+                ).fetchall()
+            except Exception:
+                obst_rows = []
+
+            obst_items_parts = []
+            for r in obst_rows:
+                try:
+                    display_date = _jinja2_filter_datetime(r['date'], '%d.%m.%Y')
+                except Exception:
+                    display_date = r['date']
+                obst_items_parts.append(
+                    "<tr>"
+                    f"<td><strong>{display_date}</strong></td>"
+                    f"<td>{(r['parent_name'] or '')}</td>"
+                    "<td style='text-align:right'>"
+                    "<form method='post' action='/stats/obst/delete' style='margin:0;display:inline'>"
+                    f"<input type='hidden' name='obst_id' value='{r['id']}'/>"
+                    "<button type='submit' style='background:linear-gradient(135deg, #dc3545, #c82333);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700;transition:all 0.2s ease;box-shadow:0 2px 4px rgba(220, 53, 69, 0.2)' onmouseover=\"this.style.boxShadow='0 4px 12px rgba(220, 53, 69, 0.35)';this.style.transform='translateY(-2px)'\" onmouseout=\"this.style.boxShadow='0 2px 4px rgba(220, 53, 69, 0.2)';this.style.transform='translateY(0)'\">Löschen</button>"
+                    "</form>"
+                    "</td>"
+                    "</tr>"
+                )
+            obst_table_html = "".join(obst_items_parts)
+
+            # Letzten Versand für die Anzeige vorbereiten (ohne Jinja-Template-Ausdrücke)
+            email_last_sent_html = ""
+            if email_schedule:
+                last_sent_value = email_schedule['last_sent'] or "Noch nicht gesendet"
+                email_last_sent_html = (
+                    "<div class='small' style='margin-top:6px;color:var(--success)'>"
+                    f"✓ Letzter Versand: {last_sent_value}"
+                    "</div>"
+                )
             
             html = f"""
             <!DOCTYPE html>
@@ -1787,14 +1960,14 @@ def stats():
             </head>
             <body>
                 <div class="toolbar">
-                    <div class="toolbar-title">Ziyaretçi İstatistikleri</div>
+                    <div class="toolbar-title">Besucherstatistiken</div>
                     <div class="kebab">
                         <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
                         <div class="menu" id="kebabMenu">
-                            <a href="/">⌂ Ana Sayfa</a>
-                            <a href="/send-report">@ Mail</a>
-                            <a href="/stats/delete-past">✕ Sil</a>
-                            <a href="/stats/logout" class="danger">⎋ Çıkış</a>
+                            <a href="/">⌂ Startseite</a>
+                            <a href="/send-report">@ E-Mail</a>
+                            <a href="/stats/delete-past">✕ Löschen</a>
+                            <a href="/stats/logout" class="danger">⎋ Abmelden</a>
                         </div>
                     </div>
                 </div>
@@ -1804,109 +1977,123 @@ def stats():
                     <div class="stat-card">
                         <div class="stat-card-icon">📊</div>
                         <div class="stat-card-value">{total_exams}</div>
-                        <div class="stat-card-label">Toplam Sınav</div>
+                        <div class="stat-card-label">Prüfungen gesamt</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-icon">📅</div>
                         <div class="stat-card-value">{upcoming_exams}</div>
-                        <div class="stat-card-label">Yaklaşan</div>
+                        <div class="stat-card-label">Bevorstehend</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-icon">✅</div>
                         <div class="stat-card-value">{past_exams}</div>
-                        <div class="stat-card-label">Geçmiş</div>
+                        <div class="stat-card-label">Vergangen</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-icon">🗓️</div>
                         <div class="stat-card-value">{this_month_exams}</div>
-                        <div class="stat-card-label">Bu Ay</div>
+                        <div class="stat-card-label">Diesen Monat</div>
                     </div>
                 </div>
                 
-                <h1 data-toggle="section1">Genel Bakış</h1>
+                <h1 data-toggle="section1">Übersicht</h1>
                 <div id="section1" class="section-content">
-                <div class="stat"><span class="stat-label">Toplam Ziyaret</span><span class="stat-value">{total}</span></div>
-                <div class="stat"><span class="stat-label">Bugün</span><span class="stat-value">{today}</span></div>
-                <div class="stat"><span class="stat-label">Son 7 Gün</span><span class="stat-value">{last_7_days}</span></div>
-                <div class="stat"><span class="stat-label">Benzersiz IP</span><span class="stat-value">{unique_ips}</span></div>
+                <div class="stat"><span class="stat-label">Besuche gesamt</span><span class="stat-value">{total}</span></div>
+                <div class="stat"><span class="stat-label">Heute</span><span class="stat-value">{today}</span></div>
+                <div class="stat"><span class="stat-label">Letzte 7 Tage</span><span class="stat-value">{last_7_days}</span></div>
+                <div class="stat"><span class="stat-label">Eindeutige IPs</span><span class="stat-value">{unique_ips}</span></div>
                 </div>
                 
-                <h2 data-toggle="section5">🌐 Tarayıcı ve Cihaz İstatistikleri</h2>
+                <h2 data-toggle="section5">🌐 Browser- und Geräte-Statistiken</h2>
                 <div id="section5" class="section-content">
                     <div class="card">
-                        <h3 style="margin:0 0 12px 0;font-size:1.05em;color:#555">Tarayıcı Dağılımı</h3>
+                        <h3 style="margin:0 0 12px 0;font-size:1.05em;color:#555">Browser-Verteilung</h3>
                         <div class="browser-stats">
                             {browser_html}
                         </div>
-                        <h3 style="margin:16px 0 12px 0;font-size:1.05em;color:#555">Cihaz Tipi</h3>
+                        <h3 style="margin:16px 0 12px 0;font-size:1.05em;color:#555">Gerätetyp</h3>
                         <div class="device-stats">
                             {device_html}
                         </div>
                     </div>
                 </div>
                 
-                <h2 data-toggle="section2">📚 Ders Havuzu</h2>
+                <h2 data-toggle="section2">📚 Fächer-Pool</h2>
                 <div id="section2" class="section-content">
                 <div class="card">
                     <div class="row-flex">
                         <div class="col">
-                            <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Yeni Ders Ekle</h3>
+                            <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Neues Fach hinzufügen</h3>
                             <form method="post" action="/stats/subjects/add" class="input-inline">
-                                <input type="text" name="subject_name" placeholder="Örn: Biologie" maxlength="64" required>
-                                <button type="submit">Ekle</button>
+                                <input type="text" name="subject_name" placeholder="z.B. Biologie" maxlength="64" required>
+                                <button type="submit">Hinzufügen</button>
                             </form>
-                            <div class="small" style="margin-top:6px;color:#666">Eklenen dersler, anasayfadaki ekleme diyalogunda görünecek.</div>
+                            <div class="small" style="margin-top:6px;color:#666">Hinzugefügte Fächer erscheinen im Hinzufügen-Dialog auf der Startseite.</div>
                         </div>
                         <div class="col">
-                            <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Mevcut Dersler</h3>
-                            <ul class="clean">{items_html or "<li style='color:#666'>Henüz ders eklenmemiş.</li>"}</ul>
+                            <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Vorhandene Fächer</h3>
+                            <ul class="clean">{items_html or "<li style='color:#666'>Noch keine Fächer hinzugefügt.</li>"}</ul>
                         </div>
                     </div>
                 </div>
                 </div>
+
+                <h2 data-toggle="section6">🍎 Obst-Planung</h2>
+                <div id="section6" class="section-content">
+                <div class="card">
+                    <h3 style="margin:0 0 8px 0;font-size:1.05em;color:#555">Einträge verwalten</h3>
+                    <div class="small" style="margin-bottom:10px;color:#666">Hier kannst du Obst-Einträge löschen (z.B. Testeinträge).</div>
+                    <div class="table-container" style="margin-bottom:0">
+                        <table>
+                            <tr><th>Datum</th><th>Name</th><th style="text-align:right">Aktion</th></tr>
+                            {obst_table_html or "<tr><td colspan='3' class='small' style='color:#999'>Keine Einträge</td></tr>"}
+                        </table>
+                    </div>
+                </div>
+                </div>
                 
-                <h2 data-toggle="section4">📧 Email Raporu Ayarları</h2>
+                <h2 data-toggle="section4">📧 E-Mail-Report-Einstellungen</h2>
                 <div id="section4" class="section-content">
                 <div class="card">
-                    <h3>Otomatik Haftalık Rapor</h3>
+                    <h3>Automatischer Wochenbericht</h3>
                     <form method="post" action="/stats/schedule-email">
                         <div class="input-inline" style="flex-direction:column;align-items:stretch;gap:12px">
                             <div>
-                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">Email Adresi</label>
-                                <input type="email" name="email" placeholder="ornek@email.com" 
+                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">E-Mail-Adresse</label>
+                                <input type="email" name="email" placeholder="beispiel@email.com" 
                                        value="{email_schedule['email'] if email_schedule else ''}" 
                                        style="width:100%" required>
                             </div>
                             <div>
-                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">Gönderim Günü</label>
+                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">Versandtag</label>
                                 <select name="day_of_week" style="width:100%;padding:12px 14px;border:2px solid var(--border-color);border-radius:10px;font-size:0.95em;background:var(--bg-lighter);color:var(--text-primary)">
-                                    <option value="1" {'selected' if email_schedule and email_schedule['day_of_week'] == 1 else ''}>Pazartesi</option>
-                                    <option value="2" {'selected' if email_schedule and email_schedule['day_of_week'] == 2 else ''}>Salı</option>
-                                    <option value="3" {'selected' if email_schedule and email_schedule['day_of_week'] == 3 else ''}>Çarşamba</option>
-                                    <option value="4" {'selected' if email_schedule and email_schedule['day_of_week'] == 4 else ''}>Perşembe</option>
-                                    <option value="5" {'selected' if email_schedule and email_schedule['day_of_week'] == 5 else ''}>Cuma</option>
-                                    <option value="6" {'selected' if email_schedule and email_schedule['day_of_week'] == 6 else ''}>Cumartesi</option>
-                                    <option value="0" {'selected' if email_schedule and email_schedule['day_of_week'] == 0 else ''}>Pazar</option>
+                                    <option value="1" {'selected' if email_schedule and email_schedule['day_of_week'] == 1 else ''}>Montag</option>
+                                    <option value="2" {'selected' if email_schedule and email_schedule['day_of_week'] == 2 else ''}>Dienstag</option>
+                                    <option value="3" {'selected' if email_schedule and email_schedule['day_of_week'] == 3 else ''}>Mittwoch</option>
+                                    <option value="4" {'selected' if email_schedule and email_schedule['day_of_week'] == 4 else ''}>Donnerstag</option>
+                                    <option value="5" {'selected' if email_schedule and email_schedule['day_of_week'] == 5 else ''}>Freitag</option>
+                                    <option value="6" {'selected' if email_schedule and email_schedule['day_of_week'] == 6 else ''}>Samstag</option>
+                                    <option value="0" {'selected' if email_schedule and email_schedule['day_of_week'] == 0 else ''}>Sonntag</option>
                                 </select>
                             </div>
                             <div style="display:flex;gap:10px;align-items:center">
                                 <input type="checkbox" name="enabled" id="emailEnabled" value="1" 
                                        {'checked' if email_schedule and email_schedule['enabled'] else ''} 
                                        style="width:auto;margin:0">
-                                <label for="emailEnabled" style="margin:0;font-weight:600;color:var(--text-secondary)">Aktif</label>
+                                <label for="emailEnabled" style="margin:0;font-weight:600;color:var(--text-secondary)">Aktiv</label>
                             </div>
-                            <button type="submit" style="width:100%">💾 Kaydet</button>
-                            {f"<div class='small' style='margin-top:6px;color:var(--success)'>✓ Son gönderim: {{email_schedule['last_sent'] or 'Henüz gönderilmedi'}}</div>" if email_schedule else ""}
+                            <button type="submit" style="width:100%">💾 Speichern</button>
+                            {email_last_sent_html}
                         </div>
                     </form>
                 </div>
                 </div>
                 
-                <h2 data-toggle="section3">🕐 Son 20 Ziyaret</h2>
+                <h2 data-toggle="section3">🕐 Letzte 20 Besuche</h2>
                 <div id="section3" class="section-content">
                 <div class="table-container">
                     <table>
-                        <tr><th>Zaman</th><th>IP</th><th>Sayfa</th></tr>
+                        <tr><th>Zeit</th><th>IP</th><th>Seite</th></tr>
             """
             for r in recent:
                 html += f"<tr><td class='small'>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td></tr>"
@@ -1966,7 +2153,7 @@ def stats():
                 </script>
                 
                 <!-- Dark Mode Toggle Button -->
-                <button id="themeToggle" class="theme-toggle" aria-label="Tema Değiştir">
+                <button id="themeToggle" class="theme-toggle" aria-label="Theme wechseln">
                     <span class="theme-icon">🌙</span>
                 </button>
             </body>
@@ -1974,7 +2161,7 @@ def stats():
             """
             return html
     except Exception as e:
-        return f"Error: {e}", 500
+        return f"Fehler: {e}", 500
 
 # Basit tarayıcılar 401 kodlu sayfaları boş gösterebileceği için
 # yukarıda tanımlanan `stats_login` rotası aynı formu 200 OK ile sunar.
@@ -1989,17 +2176,17 @@ def update_credentials():
 def admin_reset():
     token_env = os.getenv('ADMIN_RESET_TOKEN')
     if not token_env:
-        return "Reset kapalı (ADMIN_RESET_TOKEN yok)", 403
+        return "Reset deaktiviert (ADMIN_RESET_TOKEN fehlt)", 403
     token = (request.form.get('token') or '').strip()
     if token != token_env:
-        return "Yetkisiz", 403
+        return "Nicht autorisiert", 403
     new_username = (request.form.get('new_username') or '').strip()
     new_password = (request.form.get('new_password') or '').strip()
     if not new_username or not new_password:
-        return "Eksik bilgi", 400
+        return "Fehlende Angaben", 400
     import re
     if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
-        return "Geçersiz kullanıcı adı", 400
+        return "Ungültiger Benutzername", 400
     pwd_hash = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
     with get_db_connection() as conn:
         row = conn.execute("SELECT id FROM admin_credentials LIMIT 1").fetchone()
@@ -2009,7 +2196,7 @@ def admin_reset():
         else:
             conn.execute("INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)", (new_username, pwd_hash))
         conn.commit()
-    return "Reset OK. /stats sayfasında giriş yapabilirsiniz.", 200
+    return "Reset OK. Du kannst dich unter /stats anmelden.", 200
 
 # --- Admin Bootstrap (ilk kurulumda token gerektirmez) ---
 @app.route('/admin/bootstrap', methods=['POST'])
@@ -2020,29 +2207,29 @@ def admin_bootstrap():
     with get_db_connection() as conn:
         row = conn.execute("SELECT id FROM admin_credentials LIMIT 1").fetchone()
         if row:
-            return "Zaten admin tanımlı", 403
+            return "Admin ist bereits eingerichtet", 403
     new_username = (request.form.get('new_username') or '').strip()
     new_password = (request.form.get('new_password') or '').strip()
     if not new_username or not new_password:
-        return "Eksik bilgi", 400
+        return "Fehlende Angaben", 400
     import re
     if not re.fullmatch(r'[A-Za-z0-9_]{3,32}', new_username):
-        return "Geçersiz kullanıcı adı", 400
+        return "Ungültiger Benutzername", 400
     pwd_hash = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
     with get_db_connection() as conn:
         conn.execute("INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)", (new_username, pwd_hash))
         conn.commit()
-    return "Bootstrap OK. /stats ile giriş yapabilirsiniz.", 200
+    return "Bootstrap OK. Du kannst dich unter /stats anmelden.", 200
 
 # --- Admin Info (env token korumalı, sadece username ve güncelleme zamanı) ---
 @app.route('/admin/info', methods=['GET'])
 def admin_info():
     token_env = os.getenv('ADMIN_INFO_TOKEN') or os.getenv('ADMIN_RESET_TOKEN')
     if not token_env:
-        return "Info kapalı (ADMIN_INFO_TOKEN yok)", 403
+        return "Info deaktiviert (ADMIN_INFO_TOKEN fehlt)", 403
     token = (request.args.get('token') or request.form.get('token') or '').strip()
     if token != token_env:
-        return "Yetkisiz", 403
+        return "Nicht autorisiert", 403
     with get_db_connection() as conn:
         row = conn.execute("SELECT username, updated_at FROM admin_credentials LIMIT 1").fetchone()
     username = row['username'] if row else None
@@ -2051,7 +2238,7 @@ def admin_info():
         "username": username,
         "updated_at": updated,
         "password_visible": False,
-        "note": "Şifre hash'li tutulur; görüntülenemez. /admin/reset ile güncelleyebilirsiniz."
+        "note": "Das Passwort wird als Hash gespeichert und kann nicht angezeigt werden. Du kannst es über /admin/reset aktualisieren."
     })
 
 @login_required
@@ -2085,10 +2272,26 @@ def stats_subjects_delete():
         pass
     return redirect(url_for('stats'))
 
+
+@login_required
+@app.route('/stats/obst/delete', methods=['POST'])
+def stats_obst_delete():
+    oid_raw = (request.form.get('obst_id') or '').strip()
+    oid = int(oid_raw) if oid_raw.isdigit() else 0
+    if oid <= 0:
+        return redirect(url_for('stats'))
+    try:
+        with get_db_connection() as conn:
+            conn.execute("DELETE FROM obst_schedule WHERE id = ?", (oid,))
+            conn.commit()
+    except Exception:
+        pass
+    return redirect(url_for('stats'))
+
 @login_required
 @app.route('/stats/schedule-email', methods=['POST'])
 def schedule_email():
-    """Email raporu zamanlamasını kaydet"""
+    """E-Mail-Report-Zeitplan speichern."""
     email = (request.form.get('email') or '').strip()
     day_of_week = int(request.form.get('day_of_week', 1))
     enabled = 1 if request.form.get('enabled') else 0
@@ -2141,7 +2344,7 @@ def stats_json():
 
 # -------------------- Email Raporu --------------------
 def send_weekly_report():
-    """Haftalık istatistik raporunu mail olarak gönder"""
+    """Wöchentlichen Statistikbericht per E-Mail senden."""
     try:
         with get_db_connection() as conn:
             # İstatistikleri topla
@@ -2165,7 +2368,7 @@ def send_weekly_report():
             
             daily_html = ""
             for row in daily_stats:
-                daily_html += f"<tr><td>{row[0]}</td><td><strong>{row[1]}</strong> ziyaret</td></tr>"
+                daily_html += f"<tr><td>{row[0]}</td><td><strong>{row[1]}</strong> Besuche</td></tr>"
         
         # HTML email içeriği
         html_content = f"""
@@ -2187,37 +2390,37 @@ def send_weekly_report():
         </head>
         <body>
             <div class="container">
-                <h1>📊 Haftalık Ziyaretçi Raporu</h1>
-                <p>Merhaba! İşte son 7 günün istatistikleri:</p>
+                <h1>📊 Wöchentlicher Besucherbericht</h1>
+                <p>Hallo! Hier sind die Statistiken der letzten 7 Tage:</p>
                 
                 <div class="stat-box">
-                    <div>Toplam Ziyaret</div>
+                    <div>Besuche gesamt</div>
                     <strong>{total}</strong>
                 </div>
                 
                 <div class="stat-box">
-                    <div>Son 7 Gün</div>
+                    <div>Letzte 7 Tage</div>
                     <strong>{last_7_days}</strong>
                 </div>
                 
                 <div class="stat-box">
-                    <div>Bugün</div>
+                    <div>Heute</div>
                     <strong>{today}</strong>
                 </div>
                 
                 <div class="stat-box">
-                    <div>Benzersiz Ziyaretçi</div>
+                    <div>Eindeutige Besucher</div>
                     <strong>{unique_ips}</strong>
                 </div>
                 
-                <h2 style="color: #555; margin-top: 30px;">📅 Günlük Detay</h2>
+                <h2 style="color: #555; margin-top: 30px;">📅 Tägliche Übersicht</h2>
                 <table>
-                    <tr><th>Tarih</th><th>Ziyaret</th></tr>
+                    <tr><th>Datum</th><th>Besuche</th></tr>
                     {daily_html}
                 </table>
                 
                 <div class="footer">
-                    <p>Bu rapor otomatik olarak oluşturulmuştur.</p>
+                    <p>Dieser Bericht wurde automatisch erstellt.</p>
                     <p>Prüfungskalender © {datetime.now().year}</p>
                 </div>
             </div>
@@ -2227,7 +2430,7 @@ def send_weekly_report():
         
         # Email oluştur
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'📊 Haftalık Rapor - {datetime.now().strftime("%d.%m.%Y")}'
+        msg['Subject'] = f'📊 Wochenbericht - {datetime.now().strftime("%d.%m.%Y")}'
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = RECIPIENT_EMAIL
         
@@ -2241,7 +2444,7 @@ def send_weekly_report():
         
         return True
     except Exception as e:
-        print(f"❌ Email gönderme hatası: {e}")
+        print(f"❌ E-Mail-Sendefehler: {e}")
         return False
 
 @app.route("/send-report")
@@ -2265,15 +2468,15 @@ def send_report():
         <body>
             <div class="box">
                 <div class="success">✅</div>
-                <h2>Rapor Gönderildi!</h2>
-                <p>Email adresinizi kontrol edin.</p>
-                <p style="color: #999;">3 saniye içinde geri dönülüyor...</p>
+                    <h2>Bericht gesendet!</h2>
+                    <p>Bitte überprüfe deine E-Mail.</p>
+                    <p style="color: #999;">Weiterleitung in 3 Sekunden...</p>
             </div>
         </body>
         </html>
         """
     else:
-        return "Email gönderme başarısız", 500
+        return "E-Mail-Versand fehlgeschlagen", 500
 
 @app.route("/cron/send-weekly-report")
 def cron_send_weekly_report():
@@ -2283,7 +2486,7 @@ def cron_send_weekly_report():
     expected_token = os.getenv('CRON_TOKEN', 'default_cron_token_2026')
     
     if token != expected_token:
-        return "Unauthorized", 403
+        return "Nicht autorisiert", 403
     
     try:
         with get_db_connection() as conn:
@@ -2295,7 +2498,7 @@ def cron_send_weekly_report():
             """).fetchone()
             
             if not schedule:
-                return "No active schedule", 200
+                return "Kein aktiver Zeitplan", 200
             
             # Bugünün gününü kontrol et (0=Pazar, 1=Pazartesi, ...)
             today = datetime.now().weekday()  # 0=Pazartesi
@@ -2309,13 +2512,13 @@ def cron_send_weekly_report():
             
             # Eğer bugün hedef gün değilse çık
             if today != target_weekday:
-                return f"Not scheduled today (today={today}, target={target_weekday})", 200
+                return f"Heute nicht geplant (heute={today}, ziel={target_weekday})", 200
             
             # Son gönderimden 6 gün geçmiş mi kontrol et (haftada 1 kez)
             if schedule['last_sent']:
                 last_sent_dt = datetime.fromisoformat(schedule['last_sent'])
                 if (datetime.now() - last_sent_dt).days < 6:
-                    return "Already sent this week", 200
+                    return "Diese Woche bereits gesendet", 200
             
             # Rapor gönder
             success = send_weekly_report_to(schedule['email'])
@@ -2328,15 +2531,15 @@ def cron_send_weekly_report():
                     WHERE email = ?
                 """, (datetime.now().isoformat(), schedule['email']))
                 conn.commit()
-                return "Report sent successfully", 200
+                return "Bericht erfolgreich gesendet", 200
             else:
-                return "Failed to send report", 500
+                return "Berichtversand fehlgeschlagen", 500
                 
     except Exception as e:
         return f"Error: {e}", 500
 
 def send_weekly_report_to(recipient_email):
-    """Belirli bir email adresine rapor gönder"""
+    """Bericht an eine bestimmte E-Mail-Adresse senden."""
     try:
         with get_db_connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
@@ -2352,28 +2555,28 @@ def send_weekly_report_to(recipient_email):
         
         # Email içeriği
         body = f"""
-        📊 Prüfungskalender - Haftalık Rapor
+        📊 Prüfungskalender - Wochenbericht
         
-        === Ziyaretçi İstatistikleri ===
-        Toplam Ziyaret: {total}
-        Bugün: {today}
-        Son 7 Gün: {last_7_days}
-        Benzersiz IP: {unique_ips}
+        === Besucherstatistiken ===
+        Besuche gesamt: {total}
+        Heute: {today}
+        Letzte 7 Tage: {last_7_days}
+        Eindeutige IPs: {unique_ips}
         
-        === Yaklaşan Sınavlar ===
+        === Bevorstehende Prüfungen ===
         """
         
         if upcoming:
             for exam in upcoming:
                 body += f"\n• {exam['subject']} - {exam['date']} {exam['start_time']}"
         else:
-            body += "\nHenüz sınav eklenmemiş."
+            body += "\nNoch keine Prüfungen eingetragen."
         
-        body += "\n\n---\nPrüfungskalender Otomatik Rapor Sistemi"
+        body += "\n\n---\nPrüfungskalender – Automatisches Berichtssystem"
         
         # Email gönder
         msg = MIMEText(body, 'plain', 'utf-8')
-        msg['Subject'] = f'Haftalık Rapor - {datetime.now().strftime("%d.%m.%Y")}'
+        msg['Subject'] = f'Wochenbericht - {datetime.now().strftime("%d.%m.%Y")}'
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = recipient_email
         
@@ -2402,12 +2605,3 @@ if __name__ == "__main__":
         _port = 5000
     # Reloader'ı kapatmak bazı yerel ortamlarda bağlantı istikrarını artırır
     app.run(debug=True, host="0.0.0.0", port=_port, use_reloader=False)
-
-# -------------------- Jinja2 filtre --------------------
-@app.template_filter('strftime')
-def _jinja2_filter_datetime(date_string, format='%d.%m.%Y'):
-    from datetime import datetime
-    try:
-        return datetime.strptime(date_string, '%Y-%m-%d').strftime(format)
-    except Exception:
-        return date_string

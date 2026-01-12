@@ -1,54 +1,53 @@
 # AI Coding Agent Instructions for Prüfungskalender
 
-This repo is a Flask + SQLite web app for managing class exams with a FullCalendar UI and a small admin area. Use these notes to be productive quickly and safely in this codebase.
+A Flask + SQLite web app for managing Bavarian school exams with FullCalendar UI, admin stats area, and offline support. Designed for Render deployment with persistent disk.
 
 ## Big Picture
-- Backend: Flask app in [app.py](app.py), SQLite DB selected by `SQLITE_DB_PATH` or falls back to `/var/data/prufungskalender.db` (Render) or `/tmp/prufungskalender.db`.
-- Frontend: Jinja templates in [templates/index.html](templates/index.html), [templates/add.html](templates/add.html), [templates/delete.html](templates/delete.html). FullCalendar + Bootstrap.
-- Data model: tables `exams`, `visits`, `subjects`, `admin_credentials` created on first run; see initializers in [app.py](app.py#L229-L309).
-- Holidays: Background ranges merged into calendar from external APIs with caching and local JSON fallbacks in `/var/data/ferien_cache`, `/var/data/feiertage_cache`, `/var/data/ferien_fallback`, seeded from [ferien_fallback_seed/](ferien_fallback_seed).
+- **Backend**: [app.py](app.py) (2400+ lines); initializes all tables on first request via `@app.before_request` hook.
+- **Database**: SQLite with WAL mode, automatic fallback path logic: `SQLITE_DB_PATH` env > `/var/data/prufungskalender.db` (Render) > `/tmp/prufungskalender.db` (dev).
+- **Tables**: `exams` (id, subject, grade, date, start_time, end_time); `visits` (IP dedup within 7 days); `subjects` (teacher-managed pool); `admin_credentials`; `email_schedule`.
+- **Frontend**: [templates/index.html](templates/index.html), [add.html](templates/add.html), [delete.html](templates/delete.html)—Jinja + FullCalendar + Bootstrap.
+- **Holidays**: Background ranges from external APIs (`ferien-api.de`, `date.nager.at`) cached to disk, fallback to local JSON in [ferien_fallback_seed/](ferien_fallback_seed), weekday-only rendering.
 
-## Run, Build, Deploy
-- Local dev:
-  - Create venv and install deps from [requirements.txt](requirements.txt).
-  - Run with `python app.py` (dev server prints DB path). Health check at [/health](app.py#L735-L746).
-- Render deploy: see [render.yaml](render.yaml): `gunicorn app:app`, persistent disk at `/var/data`, `PYTHON_VERSION=3.11`, `SQLITE_DB_PATH=/var/data/prufungskalender.db`.
+## Initialization & Environment
+- **First Request**: `@app.before_request` calls `init_db()` once (guarded by `_init_lock`); prints resolved `DB_PATH` to console.
+- **Seed Fallback**: `seed_fallback_if_needed()` copies `ferien_fallback_seed/BY_*.json` to persistent disk on first run—idempotent, one-time operation.
+- **Database Config**: WAL mode, `synchronous=NORMAL`, `busy_timeout=5s`, `foreign_keys=ON`, `check_same_thread=False` (safe for gunicorn).
+- **Path Resolution**: `DB_PATH` follows env → prod disk → dev temp; creates `DATA_DIR` and cache directories automatically.
+- **Visit Logging**: Lightweight background tracking—every non-static, non-bot request stores IP/UA/path once per IP per 7 days (dedup on `@app.before_request`).
 
-## Routes & Behaviors
-- [/](app.py#L354-L373): Renders next upcoming exam; "after 18:00" cutoff uses Europe/Berlin if `zoneinfo` available.
-- [/events](app.py#L373-L597): Returns exam events and weekday-only background ranges for holidays.
-  - Event shape: `{id,title,start,end,backgroundColor,borderColor}`; past exams colored `#dc3545` (red), future `#007bff` (blue).
-  - Background ranges use `{start,end,rendering:'background',display:'background',backgroundColor:'#f0f0f0'}` and skip weekends.
-- [/add](app.py#L597-L639): Accepts `subjects` (comma-separated) and `date` (`YYYY-MM-DD`). Past dates are redirected to index. Inserts one `exams` row per subject.
-- [/delete](app.py#L639-L687): Lists future exams plus last 10 past; allows deleting future exams only from this page.
-- Admin area (requires session-based login at [/stats/login](app.py#L63-L157)):
-  - [/stats](app.py#L771-L1521): Flask session auth (`session['stats_authed']`). Manage `subjects`, view visits, send report, logout.
-  - [/stats/logout](app.py#L185-L189): Clear session and redirect to login.
-  - [/stats/delete-past](app.py#L687-L735): Delete past exams (requires `@login_required` decorator checking session).
-  - [/stats/subjects/add](app.py), [/stats/subjects/delete](app.py): Manage subject pool from stats page.
-  - [/send-report](app.py): Sends weekly email report (uses Gmail SMTP settings in [app.py](app.py#L29-L33)).
-  - [/admin/reset](app.py), [/admin/info](app.py): Protected by env tokens (`ADMIN_RESET_TOKEN`, `ADMIN_INFO_TOKEN`).
+## Critical Routes
+- [/](app.py#L306-L323): Index page; renders next upcoming exam with "after 18:00" cutoff using Europe/Berlin timezone when `zoneinfo` available.
+- [/events](app.py#L325-L547): JSON calendar events + weekday-only holiday backgrounds; past exams colored red (#dc3545), future blue (#007bff).
+- [/add](app.py#L549-L589): Add exam(s); accepts comma-separated subjects + YYYY-MM-DD date, redirects past dates to index, inserts one row per subject.
+- [/delete](app.py#L591-L637): List future exams + last 10 past; allows delete only for future exams.
+- [/health](app.py#L687-L697): DB health check; returns JSON with DB_PATH and WAL status.
+- [/stats](app.py#L723-L1980): Admin dashboard (session auth); manage subjects, view visits, send reports, logout.
+- [/send-report](app.py#L2247-L2276): Manual weekly email trigger (SMTP: ahmetdincsan45@gmail.com, pass from app.py:L29-L33).
+- [/admin/reset](app.py#L1988-L2013) & [/admin/info](app.py#L2038-L2056): Protected by env tokens (`ADMIN_RESET_TOKEN`, `ADMIN_INFO_TOKEN`).
 
 ## Conventions & Patterns
-- Dates: `YYYY-MM-DD` strings; times default to `08:00`/`16:00` if not provided. Jinja `strftime` filter in [app.py](app.py#L1916-L1936).
-- Grade defaults to `4A`; subject lists merge defaults and DB (see `/api/subjects` in [app.py](app.py#L746-L771)).
-- Requests to external APIs (`ferien-api.de`, `date.nager.at`) have short timeouts; cached JSONs are used if online fetch fails; local fallbacks loaded from [ferien_fallback_seed](ferien_fallback_seed).
-- Visit logging: every non-static request stores `ip`, `user_agent`, `path` into `visits` unless bot-like; deduplicates same IP within 7 days; your changes should preserve this lightweight logging.
-- Auth: Stats auth is Flask session-based (`session['stats_authed']`); `@login_required` decorator wraps protected routes. Helper `get_admin_credentials()` returns `(username, password_hash)` from `admin_credentials` table.
+- **Dates & Times**: All dates as `YYYY-MM-DD` strings; times default to `08:00`/`16:00` if not provided.
+- **Grade Default**: Defaults to `4A`; subject list merges hardcoded defaults `['Mathematik','Deutsch','HSU','Englisch','Ethik','Religion','Musik']` with DB pool (see [/api/subjects](app.py#L698-L721)).
+- **External APIs**: Requests to `ferien-api.de` and `date.nager.at` have short timeouts; cached JSONs on disk used if fetch fails; local [ferien_fallback_seed/](ferien_fallback_seed) loaded as final fallback.
+- **Visit Logging**: Non-static, non-bot requests trigger lightweight IP/UA/path logging with 7-day dedup (see [before_request](app.py#L270-L299)).
+- **Auth**: Session-based (`session['stats_authed']`); use `@login_required` decorator on protected routes; `get_admin_credentials()` returns username and password_hash from DB.
+- **Calendar Events**: JSON format `{id,title,start,end,backgroundColor,borderColor}`; background ranges use `{start,end,rendering:'background',display:'background',backgroundColor:'#f0f0f0'}` with weekday-only filtering.
 
 ## Developer Workflows
-- Initialize DB: done once via `init_db()` before requests; prints the resolved `DB_PATH`. Use `/health` to verify.
-- Adding features:
-  - Add new routes in [app.py](app.py) and corresponding UI in [templates](templates). Keep JSON shapes and calendar background behavior consistent with `/events`.
-  - If new data columns are needed, update `CREATE TABLE IF NOT EXISTS` clauses and any SELECTs emitting JSON for the calendar or admin.
-  - When adding holiday sources, follow the cache+fallback pattern in `/events`.
-- Email: SMTP credentials are currently hardcoded in [app.py](app.py#L29-L33). Prefer environment variables for new integrations.
-- Protected routes: Use `@login_required` decorator above route definition; checks `session.get('stats_authed')` and redirects to login if False.
+- **Initialize DB**: Done automatically on first request via `@app.before_request`; prints resolved `DB_PATH`. Use [/health](app.py#L687-L697) to verify DB and WAL status.
+- **Local Development**: Run `python app.py`; check console output for DB path confirmation.
+- **Adding Features**:
+  - Add new routes in [app.py](app.py) and corresponding UI in [templates/](templates). Keep JSON event shapes and calendar behavior consistent with `/events`.
+  - When adding DB columns, update `CREATE TABLE IF NOT EXISTS` clauses and any SELECTs emitting JSON for calendar or admin views.
+  - Follow cache+fallback pattern for new API integrations (see holiday fetching in `/events`).
+- **Email Configuration**: SMTP credentials hardcoded at [app.py:L29-L33](app.py#L29-L33); migrate to env vars for production use.
+- **Protected Routes**: Use `@login_required` decorator; checks `session.get('stats_authed')` and redirects to login if missing.
 
 ## Known Mismatches with README
 - README lists `/export.csv` and class filters not present in [app.py](app.py). Treat README "features" as legacy/aspirational; trust current routes in code.
 
 ## Example Changes
-- CSV export: implement `GET /export.csv` emitting columns `date,start_time,end_time,grade,subject` from `exams`. Link a "CSV Dışa Aktar" button in [templates/index.html](templates/index.html) if desired.
+- **CSV export**: Implement `GET /export.csv` emitting columns `date,start_time,end_time,grade,subject` from `exams`. Link a "CSV Dışa Aktar" button in [templates/index.html](templates/index.html) if desired.
 
-Use `/health` and the dev server logs to validate DB path and WAL mode after changes. Keep edits minimal, follow existing patterns, and maintain caching + fallbacks for reliability.
+Use [/health](app.py#L687-L697) and dev server logs to validate DB path and WAL mode after changes. Keep edits minimal, follow existing patterns, and maintain caching + fallbacks for reliability.

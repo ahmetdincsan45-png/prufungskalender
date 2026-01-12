@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Obst Planung - Prüfungskalender</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        html, body { touch-action: manipulation; }
+        .form-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .bi { font-style: normal; }
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .form-container { max-width: 100%; padding: 20px; margin: 10px; }
+            h1 { font-size: 1.8rem !important; }
+            .btn { padding: 10px 15px; font-size: 0.9rem; }
+        }
+        @media (max-width: 576px) {
+            .container { padding: 5px; }
+            .form-container { padding: 15px; margin: 5px; }
+            h1 { font-size: 1.5rem !important; }
+            .btn { width: 100%; margin: 5px 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="bi bi-basket2"></i> Obst Planung
+                </h1>
+
+                <div class="form-container">
+                    {% if ok %}
+                    <div class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle"></i> Dein Eintrag wurde gespeichert.
+                    </div>
+                    {% endif %}
+
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="parent_name" class="form-label fw-bold">
+                                <i class="bi bi-person"></i> Dein Name *
+                            </label>
+                            <input type="text" class="form-control" id="parent_name" name="parent_name" maxlength="200" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="date_display" class="form-label fw-bold">
+                                <i class="bi bi-calendar"></i> Datum *
+                            </label>
+                            <select class="form-select" id="date" name="date" required>
+                                <option value="" selected disabled>Bitte Datum auswählen</option>
+                                {% for d in allowed_dates %}
+                                    <option value="{{ d }}">{{ d | strftime('%d.%m.%Y') }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Nur die vorgesehenen Datumsangaben sind auswählbar.</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left"></i> Zurück
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-check-circle"></i> Speichern
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="bi bi-list-check"></i> Kommende Obst-Planungen</h5>
+                    {% if plans and plans|length > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in plans %}
+                                    <tr>
+                                        <td><strong>{{ p.date | strftime('%d.%m.%Y') }}</strong></td>
+                                        <td>{{ p.parent_name }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">Noch keine Einträge.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

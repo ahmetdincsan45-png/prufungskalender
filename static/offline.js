@@ -114,7 +114,7 @@ async function savePendingExam(subject, date) {
     store.add({ subject, date, timestamp: Date.now() });
     
     trans.oncomplete = () => {
-      console.log('✅ Offline exam kaydedildi:', subject);
+      console.log('✅ Offline gespeichert:', subject);
       resolve();
     };
     trans.onerror = () => reject(trans.error);
@@ -128,7 +128,7 @@ if ('serviceWorker' in navigator) {
       // Sync event listener
       navigator.serviceWorker.addEventListener('message', event => {
         if (event.data.type === 'SYNC_COMPLETE') {
-          console.log('🔄 Background sync tamamlandı');
+          console.log('🔄 Hintergrund-Synchronisierung abgeschlossen');
           // Sayfayı yenile (sessiz)
           location.reload();
         }
@@ -139,24 +139,24 @@ if ('serviceWorker' in navigator) {
 
 // İnternet durumu dinleme
 window.addEventListener('online', async () => {
-  console.log('📡 İnternet bağlandı!');
-  showMinimalNotification('📡 Bağlantı geri geldi');
+  console.log('📡 Online!');
+  showMinimalNotification('📡 Verbindung wiederhergestellt');
   
   // Background sync tetikle
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
     try {
       const registration = await navigator.serviceWorker.ready;
       await registration.sync.register('sync-exams');
-      console.log('🔄 Sync tetiklendi');
+      console.log('🔄 Sync ausgelöst');
     } catch (error) {
-      console.error('Sync hatası:', error);
+      console.error('Sync-Fehler:', error);
     }
   }
 });
 
 window.addEventListener('offline', () => {
-  console.log('📴 İnternet kesildi - Offline Mode');
-  showMinimalNotification('📴 Çevrimdışı Mod');
+  console.log('📴 Offline-Modus');
+  showMinimalNotification('📴 Offline-Modus');
 });
 
 // Minimal Notification (3 sn sonra kapanır)
