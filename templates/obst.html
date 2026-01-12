@@ -49,6 +49,12 @@
                     </div>
                     {% endif %}
 
+                    {% if deleted %}
+                    <div class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle"></i> Dein Eintrag wurde gelöscht.
+                    </div>
+                    {% endif %}
+
                     {% if error %}
                     <div class="alert alert-danger" role="alert">
                         <i class="bi bi-exclamation-triangle"></i> {{ error }}
@@ -96,6 +102,7 @@
                                     <tr>
                                         <th>Datum</th>
                                         <th>Name</th>
+                                        <th class="text-end">Aktion</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -103,6 +110,20 @@
                                     <tr>
                                         <td><strong>{{ p.date | strftime('%d.%m.%Y') }}</strong></td>
                                         <td>{{ p.parent_name }}</td>
+                                        <td class="text-end">
+                                            {% set pid = p.id|string %}
+                                            {% if deletable and deletable.get(pid) %}
+                                            <form method="post" action="/obst/delete" style="margin:0;display:inline">
+                                                <input type="hidden" name="obst_id" value="{{ p.id }}">
+                                                <input type="hidden" name="token" value="{{ deletable.get(pid) }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Löschen
+                                                </button>
+                                            </form>
+                                            {% else %}
+                                            <span class="text-muted small">&nbsp;</span>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

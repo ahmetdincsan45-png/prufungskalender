@@ -17,6 +17,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import hashlib
+import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # -------------------- Flask --------------------
@@ -272,11 +273,21 @@ def init_db():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT NOT NULL,
                     parent_name TEXT NOT NULL,
+                    delete_token TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(date)
                 )
                 """
             )
+
+            # Migration: delete_token sütunu (idempotent)
+            try:
+                cols = conn.execute("PRAGMA table_info(obst_schedule)").fetchall()
+                col_names = {c['name'] for c in cols} if cols else set()
+                if 'delete_token' not in col_names:
+                    conn.execute("ALTER TABLE obst_schedule ADD COLUMN delete_token TEXT")
+            except Exception:
+                pass
             
             # Visits tablosunu sıfırla (yeni sistem için temiz başlangıç)
             conn.execute("DELETE FROM visits")
@@ -645,11 +656,26 @@ def obst():
                     if existing:
                         error = 'Für dieses Datum gibt es bereits einen Eintrag.'
                         raise RuntimeError("obst_date_already_taken")
-                    conn.execute(
-                        "INSERT INTO obst_schedule (date, parent_name) VALUES (?, ?)",
-                        (date, parent_name[:200]),
+
+                    delete_token = secrets.token_urlsafe(24)
+                    cur = conn.execute(
+                        "INSERT INTO obst_schedule (date, parent_name, delete_token) VALUES (?, ?, ?)",
+                        (date, parent_name[:200], delete_token),
                     )
+                    new_id = cur.lastrowid
                     conn.commit()
+
+                # Nur dieser Browser darf den Eintrag später löschen.
+                try:
+                    tokens = session.get('obst_delete_tokens')
+                    if not isinstance(tokens, dict):
+                        tokens = {}
+                    if new_id:
+                        tokens[str(new_id)] = delete_token
+                        session['obst_delete_tokens'] = tokens
+                        session.modified = True
+                except Exception:
+                    pass
                 return redirect(url_for('obst', ok='1'))
             except sqlite3.IntegrityError:
                 error = 'Für dieses Datum gibt es bereits einen Eintrag.'
@@ -678,9 +704,58 @@ def obst():
         taken_dates = set()
 
     ok = (request.args.get('ok') == '1')
+    deleted = (request.args.get('deleted') == '1')
+
+    deletable = {}
+    try:
+        tokens = session.get('obst_delete_tokens')
+        if isinstance(tokens, dict):
+            deletable = {str(k): str(v) for k, v in tokens.items()}
+    except Exception:
+        deletable = {}
     # Sadece izinli + henüz seçilmemiş tarihler
     allowed_dates = sorted([d for d in OBST_ALLOWED_DATES if d not in taken_dates])
-    return render_template('obst.html', error=error, ok=ok, plans=plans, allowed_dates=allowed_dates)
+    return render_template('obst.html', error=error, ok=ok, deleted=deleted, plans=plans, allowed_dates=allowed_dates, deletable=deletable)
+
+
+@app.route('/obst/delete', methods=['POST'])
+def obst_delete():
+    oid_raw = (request.form.get('obst_id') or '').strip()
+    token = (request.form.get('token') or '').strip()
+    oid = int(oid_raw) if oid_raw.isdigit() else 0
+    if oid <= 0 or not token:
+        return redirect(url_for('obst'))
+
+    # Nur löschen, wenn Token zu diesem Browser gehört
+    try:
+        tokens = session.get('obst_delete_tokens')
+        if not isinstance(tokens, dict) or tokens.get(str(oid)) != token:
+            return redirect(url_for('obst'))
+    except Exception:
+        return redirect(url_for('obst'))
+
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute(
+                "SELECT id FROM obst_schedule WHERE id = ? AND delete_token = ? LIMIT 1",
+                (oid, token),
+            ).fetchone()
+            if row:
+                conn.execute("DELETE FROM obst_schedule WHERE id = ?", (oid,))
+                conn.commit()
+    except Exception:
+        pass
+
+    try:
+        tokens = session.get('obst_delete_tokens')
+        if isinstance(tokens, dict):
+            tokens.pop(str(oid), None)
+            session['obst_delete_tokens'] = tokens
+            session.modified = True
+    except Exception:
+        pass
+
+    return redirect(url_for('obst', deleted='1'))
 @app.route("/add", methods=["GET", "POST"])
 def add_exam():
     if request.method == "POST":
