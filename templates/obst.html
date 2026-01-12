@@ -107,14 +107,14 @@
                                 <tbody>
                                     {% for p in plans %}
                                     <tr>
-                                        <td><strong>{{ p.date | strftime('%d.%m.%Y') }}</strong></td>
+                                        <td><strong>{{ p['date'] | strftime('%d.%m.%Y') }}</strong></td>
                                         <td>
                                             <div class="d-flex align-items-center justify-content-between gap-2">
-                                                <span>{{ p.parent_name }}</span>
-                                                {% set pid = p.id|string %}
+                                                <span>{{ p['parent_name'] }}</span>
+                                                {% set pid = p['id']|string %}
                                                 {% if deletable and deletable.get(pid) %}
                                                 <form method="post" action="/obst/delete" style="margin:0;display:inline">
-                                                    <input type="hidden" name="obst_id" value="{{ p.id }}">
+                                                    <input type="hidden" name="obst_id" value="{{ p['id'] }}">
                                                     <input type="hidden" name="token" value="{{ deletable.get(pid) }}">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                                         <i class="bi bi-trash"></i>
