@@ -5,7 +5,7 @@ A Flask + SQLite web app for managing Bavarian school exams with FullCalendar UI
 ## Big Picture
 - **Backend**: [app.py](app.py) (2400+ lines); initializes all tables on first request via `@app.before_request` hook.
 - **Database**: SQLite with WAL mode, automatic fallback path logic: `SQLITE_DB_PATH` env > `/var/data/prufungskalender.db` (Render) > `/tmp/prufungskalender.db` (dev).
-- **Tables**: `exams` (id, subject, grade, date, start_time, end_time); `visits` (IP dedup within 7 days); `subjects` (teacher-managed pool); `admin_credentials`; `email_schedule`.
+- **Tables**: `exams` (id, subject, grade, date, start_time, end_time); `subjects` (teacher-managed pool); `admin_credentials`; `obst_schedule`.
 - **Frontend**: [templates/index.html](templates/index.html), [add.html](templates/add.html), [delete.html](templates/delete.html)—Jinja + FullCalendar + Bootstrap.
 - **Holidays**: Background ranges from external APIs (`ferien-api.de`, `date.nager.at`) cached to disk, fallback to local JSON in [ferien_fallback_seed/](ferien_fallback_seed), weekday-only rendering.
 
@@ -14,7 +14,7 @@ A Flask + SQLite web app for managing Bavarian school exams with FullCalendar UI
 - **Seed Fallback**: `seed_fallback_if_needed()` copies `ferien_fallback_seed/BY_*.json` to persistent disk on first run—idempotent, one-time operation.
 - **Database Config**: WAL mode, `synchronous=NORMAL`, `busy_timeout=5s`, `foreign_keys=ON`, `check_same_thread=False` (safe for gunicorn).
 - **Path Resolution**: `DB_PATH` follows env → prod disk → dev temp; creates `DATA_DIR` and cache directories automatically.
-- **Visit Logging**: Lightweight background tracking—every non-static, non-bot request stores IP/UA/path once per IP per 7 days (dedup on `@app.before_request`).
+- **Visit Logging**: Removed (no IP/UA logging).
 
 ## Critical Routes
 - [/](app.py#L306-L323): Index page; renders next upcoming exam with "after 18:00" cutoff using Europe/Berlin timezone when `zoneinfo` available.
@@ -22,8 +22,8 @@ A Flask + SQLite web app for managing Bavarian school exams with FullCalendar UI
 - [/add](app.py#L549-L589): Add exam(s); accepts comma-separated subjects + YYYY-MM-DD date, redirects past dates to index, inserts one row per subject.
 - [/delete](app.py#L591-L637): List future exams + last 10 past; allows delete only for future exams.
 - [/health](app.py#L687-L697): DB health check; returns JSON with DB_PATH and WAL status.
-- [/stats](app.py#L723-L1980): Admin dashboard (session auth); manage subjects, view visits, send reports, logout.
-- [/send-report](app.py#L2247-L2276): Manual weekly email trigger (SMTP: ahmetdincsan45@gmail.com, pass from app.py:L29-L33).
+- [/stats](app.py#L723-L1980): Admin dashboard (session auth); manage subjects, obst entries, logout.
+- Email reports removed.
 - [/admin/reset](app.py#L1988-L2013) & [/admin/info](app.py#L2038-L2056): Protected by env tokens (`ADMIN_RESET_TOKEN`, `ADMIN_INFO_TOKEN`).
 
 ## Conventions & Patterns

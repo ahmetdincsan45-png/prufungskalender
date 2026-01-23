@@ -13,9 +13,6 @@ from functools import wraps
 from flask_cors import CORS
 import requests
 import json
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import hashlib
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -50,11 +47,6 @@ def _jinja2_filter_datetime(date_string, format='%d.%m.%Y'):
         return datetime.strptime(date_string, '%Y-%m-%d').strftime(format)
     except Exception:
         return date_string
-
-# Email konfigürasyonu
-EMAIL_ADDRESS = "ahmetdincsan45@gmail.com"
-EMAIL_PASSWORD = "jdygziqeduesbplk"
-RECIPIENT_EMAIL = "ahmetdincsan45@gmail.com"
 
 # Favicon ve Apple Touch Icon rotaları
 @app.route('/favicon.ico')
@@ -226,15 +218,6 @@ def init_db():
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_exams_date ON exams(date)")
             except Exception:
                 pass
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS visits (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    ip TEXT,
-                    user_agent TEXT,
-                    path TEXT
-                )
-            """)
             # Ders havuzu tablosu (stats sayfasından yönetilecek)
             conn.execute(
                 """
@@ -251,19 +234,6 @@ def init_db():
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # Email raporu zamanlama tablosu
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS email_schedule (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT NOT NULL,
-                    frequency TEXT NOT NULL DEFAULT 'weekly',
-                    day_of_week INTEGER DEFAULT 1,
-                    enabled INTEGER DEFAULT 1,
-                    last_sent TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             # Obst (meyve günü) planlama tablosu: her tarih için 1 veli
@@ -288,10 +258,13 @@ def init_db():
                     conn.execute("ALTER TABLE obst_schedule ADD COLUMN delete_token TEXT")
             except Exception:
                 pass
-            
-            # Visits tablosunu sıfırla (yeni sistem için temiz başlangıç)
-            conn.execute("DELETE FROM visits")
 
+            # Artık kullanılmayan tabloları kaldır (idempotent)
+            try:
+                conn.execute("DROP TABLE IF EXISTS visits")
+                conn.execute("DROP TABLE IF EXISTS email_schedule")
+            except Exception:
+                pass
             # Admin kaydı yoksa seed
             existing_admin = conn.execute("SELECT id FROM admin_credentials LIMIT 1").fetchone()
             if not existing_admin:
@@ -316,37 +289,7 @@ def init_db():
 @app.before_request
 def ensure_inited():
     init_db()
-    # Her istekte ziyaret kaydet (bots hariç basit filtreleme)
-    if request.endpoint and not request.path.startswith('/static'):
-        try:
-            # Kendi IP'ni filtrele
-            ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            if ip:
-                ip = ip.split(',')[0].strip()
-            if ip == '217.233.108.177':
-                return  # Kendi ziyaretlerini sayma
-            
-            user_agent = request.headers.get('User-Agent', '')
-            # Bot kontrolü (basit)
-            bot_keywords = ['bot', 'crawler', 'spider', 'scraper']
-            is_bot = any(keyword in user_agent.lower() for keyword in bot_keywords)
-            if not is_bot:
-                with get_db_connection() as conn:
-                    # Aynı IP son 7 gün içinde kayıt edilmiş mi kontrol et
-                    existing = conn.execute(
-                        "SELECT id FROM visits WHERE ip = ? AND timestamp >= datetime('now', '-7 days') LIMIT 1",
-                        (ip,)
-                    ).fetchone()
-                    
-                    # Yoksa kaydet
-                    if not existing:
-                        conn.execute(
-                            "INSERT INTO visits (ip, user_agent, path) VALUES (?, ?, ?)",
-                            (ip, user_agent[:500], request.path)
-                        )
-                        conn.commit()
-        except Exception:
-            pass  # Sessizce devam et
+
 
 # -------------------- Routes --------------------
 @app.route("/")
@@ -1411,44 +1354,6 @@ def stats():
     # Authenticated - Stats sayfasını göster
     try:
         with get_db_connection() as conn:
-            # Toplam ziyaret sayısı
-            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
-            # Bugünkü ziyaretler
-            today = conn.execute(
-                "SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')"
-            ).fetchone()[0]
-            # Son 7 gün
-            last_7_days = conn.execute(
-                "SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')"
-            ).fetchone()[0]
-            # Benzersiz IP sayısı
-            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
-            
-            # Tarayıcı/Cihaz istatistikleri
-            browser_stats = {}
-            device_stats = {'mobile': 0, 'desktop': 0}
-            
-            all_agents = conn.execute("SELECT user_agent FROM visits WHERE user_agent IS NOT NULL").fetchall()
-            for row in all_agents:
-                ua = (row[0] or '').lower()
-                # Tarayıcı tespiti
-                if 'chrome' in ua and 'edg' not in ua:
-                    browser_stats['Chrome'] = browser_stats.get('Chrome', 0) + 1
-                elif 'safari' in ua and 'chrome' not in ua:
-                    browser_stats['Safari'] = browser_stats.get('Safari', 0) + 1
-                elif 'firefox' in ua:
-                    browser_stats['Firefox'] = browser_stats.get('Firefox', 0) + 1
-                elif 'edg' in ua:
-                    browser_stats['Edge'] = browser_stats.get('Edge', 0) + 1
-                else:
-                    browser_stats['Andere'] = browser_stats.get('Andere', 0) + 1
-                
-                # Cihaz tespiti
-                if any(x in ua for x in ['mobile', 'android', 'iphone', 'ipad']):
-                    device_stats['mobile'] += 1
-                else:
-                    device_stats['desktop'] += 1
-            
             # Sınav istatistikleri
             total_exams = conn.execute("SELECT COUNT(*) FROM exams").fetchone()[0]
             upcoming_exams = conn.execute("SELECT COUNT(*) FROM exams WHERE date >= date('now')").fetchone()[0]
@@ -1457,35 +1362,6 @@ def stats():
                 SELECT COUNT(*) FROM exams 
                 WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
             """).fetchone()[0]
-            
-            # Tarayıcı ve cihaz istatistiklerini HTML formatına çevir
-            browser_html = ""
-            total_browsers = sum(browser_stats.values()) or 1
-            for browser, count in sorted(browser_stats.items(), key=lambda x: x[1], reverse=True):
-                percentage = (count / total_browsers) * 100
-                browser_html += f'<div class="stat"><span class="stat-label">{browser}</span><span class="stat-value">{count} ({percentage:.1f}%)</span></div>'
-            if not browser_html:
-                browser_html = '<div class="small" style="color:#999">Noch keine Daten</div>'
-            
-            device_html = ""
-            total_devices = sum(device_stats.values()) or 1
-            for device, count in sorted(device_stats.items(), key=lambda x: x[1], reverse=True):
-                percentage = (count / total_devices) * 100
-                device_icon = "📱" if device == "mobile" else "💻"
-                device_name = "Mobil" if device == "mobile" else "Desktop"
-                device_html += f'<div class="stat"><span class="stat-label">{device_icon} {device_name}</span><span class="stat-value">{count} ({percentage:.1f}%)</span></div>'
-            if not device_html:
-                device_html = '<div class="small" style="color:#999">Noch keine Daten</div>'
-            
-            # Saatlik dağılım kaldırıldı (kullanıcı talebi)
-            
-            # Son 20 ziyaret
-            recent = conn.execute(
-                "SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20"
-            ).fetchall()
-            
-            # Email schedule verisi
-            email_schedule = conn.execute("SELECT * FROM email_schedule ORDER BY id DESC LIMIT 1").fetchone()
             
             # Ders listesi (yönetim) - varsayılan + DB birleşik gösterim
             sub_rows = conn.execute("SELECT id, name FROM subjects ORDER BY name COLLATE NOCASE").fetchall()
@@ -1556,16 +1432,6 @@ def stats():
                 )
             obst_table_html = "".join(obst_items_parts)
 
-            # Letzten Versand für die Anzeige vorbereiten (ohne Jinja-Template-Ausdrücke)
-            email_last_sent_html = ""
-            if email_schedule:
-                last_sent_value = email_schedule['last_sent'] or "Noch nicht gesendet"
-                email_last_sent_html = (
-                    "<div class='small' style='margin-top:6px;color:var(--success)'>"
-                    f"✓ Letzter Versand: {last_sent_value}"
-                    "</div>"
-                )
-            
             html = f"""
             <!DOCTYPE html>
             <html>
@@ -2035,12 +1901,11 @@ def stats():
             </head>
             <body>
                 <div class="toolbar">
-                    <div class="toolbar-title">Besucherstatistiken</div>
+                    <div class="toolbar-title">Admin</div>
                     <div class="kebab">
                         <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
                         <div class="menu" id="kebabMenu">
                             <a href="/">⌂ Startseite</a>
-                            <a href="/send-report">@ E-Mail</a>
                             <a href="/stats/delete-past">✕ Löschen</a>
                             <a href="/stats/logout" class="danger">⎋ Abmelden</a>
                         </div>
@@ -2068,28 +1933,6 @@ def stats():
                         <div class="stat-card-icon">🗓️</div>
                         <div class="stat-card-value">{this_month_exams}</div>
                         <div class="stat-card-label">Diesen Monat</div>
-                    </div>
-                </div>
-                
-                <h1 data-toggle="section1">Übersicht</h1>
-                <div id="section1" class="section-content">
-                <div class="stat"><span class="stat-label">Besuche gesamt</span><span class="stat-value">{total}</span></div>
-                <div class="stat"><span class="stat-label">Heute</span><span class="stat-value">{today}</span></div>
-                <div class="stat"><span class="stat-label">Letzte 7 Tage</span><span class="stat-value">{last_7_days}</span></div>
-                <div class="stat"><span class="stat-label">Eindeutige IPs</span><span class="stat-value">{unique_ips}</span></div>
-                </div>
-                
-                <h2 data-toggle="section5">🌐 Browser- und Geräte-Statistiken</h2>
-                <div id="section5" class="section-content">
-                    <div class="card">
-                        <h3 style="margin:0 0 12px 0;font-size:1.05em;color:#555">Browser-Verteilung</h3>
-                        <div class="browser-stats">
-                            {browser_html}
-                        </div>
-                        <h3 style="margin:16px 0 12px 0;font-size:1.05em;color:#555">Gerätetyp</h3>
-                        <div class="device-stats">
-                            {device_html}
-                        </div>
                     </div>
                 </div>
                 
@@ -2126,56 +1969,9 @@ def stats():
                     </div>
                 </div>
                 </div>
-                
-                <h2 data-toggle="section4">📧 E-Mail-Report-Einstellungen</h2>
-                <div id="section4" class="section-content">
-                <div class="card">
-                    <h3>Automatischer Wochenbericht</h3>
-                    <form method="post" action="/stats/schedule-email">
-                        <div class="input-inline" style="flex-direction:column;align-items:stretch;gap:12px">
-                            <div>
-                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">E-Mail-Adresse</label>
-                                <input type="email" name="email" placeholder="beispiel@email.com" 
-                                       value="{email_schedule['email'] if email_schedule else ''}" 
-                                       style="width:100%" required>
-                            </div>
-                            <div>
-                                <label style="display:block;margin-bottom:6px;font-weight:600;color:var(--text-secondary)">Versandtag</label>
-                                <select name="day_of_week" style="width:100%;padding:12px 14px;border:2px solid var(--border-color);border-radius:10px;font-size:0.95em;background:var(--bg-lighter);color:var(--text-primary)">
-                                    <option value="1" {'selected' if email_schedule and email_schedule['day_of_week'] == 1 else ''}>Montag</option>
-                                    <option value="2" {'selected' if email_schedule and email_schedule['day_of_week'] == 2 else ''}>Dienstag</option>
-                                    <option value="3" {'selected' if email_schedule and email_schedule['day_of_week'] == 3 else ''}>Mittwoch</option>
-                                    <option value="4" {'selected' if email_schedule and email_schedule['day_of_week'] == 4 else ''}>Donnerstag</option>
-                                    <option value="5" {'selected' if email_schedule and email_schedule['day_of_week'] == 5 else ''}>Freitag</option>
-                                    <option value="6" {'selected' if email_schedule and email_schedule['day_of_week'] == 6 else ''}>Samstag</option>
-                                    <option value="0" {'selected' if email_schedule and email_schedule['day_of_week'] == 0 else ''}>Sonntag</option>
-                                </select>
-                            </div>
-                            <div style="display:flex;gap:10px;align-items:center">
-                                <input type="checkbox" name="enabled" id="emailEnabled" value="1" 
-                                       {'checked' if email_schedule and email_schedule['enabled'] else ''} 
-                                       style="width:auto;margin:0">
-                                <label for="emailEnabled" style="margin:0;font-weight:600;color:var(--text-secondary)">Aktiv</label>
-                            </div>
-                            <button type="submit" style="width:100%">💾 Speichern</button>
-                            {email_last_sent_html}
-                        </div>
-                    </form>
-                </div>
-                </div>
-                
-                <h2 data-toggle="section3">🕐 Letzte 20 Besuche</h2>
-                <div id="section3" class="section-content">
-                <div class="table-container">
-                    <table>
-                        <tr><th>Zeit</th><th>IP</th><th>Seite</th></tr>
             """
-            for r in recent:
-                html += f"<tr><td class='small'>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td></tr>"
             html += """
-                    </table>
-                </div>
-                </div>
+
                 <script>
                     // Accordion toggle
                     (function(){
@@ -2363,306 +2159,23 @@ def stats_obst_delete():
         pass
     return redirect(url_for('stats'))
 
-@login_required
-@app.route('/stats/schedule-email', methods=['POST'])
-def schedule_email():
-    """E-Mail-Report-Zeitplan speichern."""
-    email = (request.form.get('email') or '').strip()
-    day_of_week = int(request.form.get('day_of_week', 1))
-    enabled = 1 if request.form.get('enabled') else 0
-    
-    if not email:
-        return redirect(url_for('stats'))
-    
-    try:
-        with get_db_connection() as conn:
-            # Mevcut kaydı güncelle veya yeni kayıt ekle
-            existing = conn.execute("SELECT id FROM email_schedule LIMIT 1").fetchone()
-            if existing:
-                conn.execute("""
-                    UPDATE email_schedule 
-                    SET email = ?, day_of_week = ?, enabled = ?
-                    WHERE id = ?
-                """, (email, day_of_week, enabled, existing[0]))
-            else:
-                conn.execute("""
-                    INSERT INTO email_schedule (email, day_of_week, enabled)
-                    VALUES (?, ?, ?)
-                """, (email, day_of_week, enabled))
-            conn.commit()
-    except Exception as e:
-        print(f"Email schedule error: {e}")
-    
-    return redirect(url_for('stats'))
-
 # -------------------- Stats JSON Endpoint --------------------
 @login_required
 @app.route('/stats/json')
 def stats_json():
-    """İstemci uygulaması için JSON formatında istatistikler (aynı auth cookie)."""
+    """İstemci uygulaması için JSON formatında istatistikler (ziyaret/IP kaydı yok)."""
     try:
         with get_db_connection() as conn:
-            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
-            today = conn.execute("SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')").fetchone()[0]
-            last_7_days = conn.execute("SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')").fetchone()[0]
-            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
-            recent = conn.execute("SELECT timestamp, ip, path FROM visits ORDER BY id DESC LIMIT 20").fetchall()
+            total_exams = conn.execute("SELECT COUNT(*) FROM exams").fetchone()[0]
+            upcoming_exams = conn.execute("SELECT COUNT(*) FROM exams WHERE date >= date('now')").fetchone()[0]
+            past_exams = conn.execute("SELECT COUNT(*) FROM exams WHERE date < date('now')").fetchone()[0]
         return jsonify({
-            'total': total,
-            'today': today,
-            'last_7_days': last_7_days,
-            'unique_ips': unique_ips,
-            'recent': [ {'timestamp': r[0], 'ip': r[1], 'path': r[2]} for r in recent ]
+            'total_exams': total_exams,
+            'upcoming_exams': upcoming_exams,
+            'past_exams': past_exams
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-# -------------------- Email Raporu --------------------
-def send_weekly_report():
-    """Wöchentlichen Statistikbericht per E-Mail senden."""
-    try:
-        with get_db_connection() as conn:
-            # İstatistikleri topla
-            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
-            today = conn.execute(
-                "SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')"
-            ).fetchone()[0]
-            last_7_days = conn.execute(
-                "SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')"
-            ).fetchone()[0]
-            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
-            
-            # Son 7 günlük günlük detay
-            daily_stats = conn.execute("""
-                SELECT DATE(timestamp) as day, COUNT(*) as count
-                FROM visits
-                WHERE timestamp >= datetime('now', '-7 days')
-                GROUP BY day
-                ORDER BY day DESC
-            """).fetchall()
-            
-            daily_html = ""
-            for row in daily_stats:
-                daily_html += f"<tr><td>{row[0]}</td><td><strong>{row[1]}</strong> Besuche</td></tr>"
-        
-        # HTML email içeriği
-        html_content = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }}
-                .container {{ max-width: 600px; margin: 0 auto; background: white; 
-                             border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
-                h1 {{ color: #667eea; border-bottom: 3px solid #667eea; padding-bottom: 10px; }}
-                .stat-box {{ background: #f8f9fa; padding: 15px; margin: 10px 0; 
-                            border-radius: 8px; border-left: 4px solid #667eea; }}
-                .stat-box strong {{ color: #667eea; font-size: 1.5em; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-                th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #eee; }}
-                th {{ background: #f8f9fa; color: #555; }}
-                .footer {{ margin-top: 30px; text-align: center; color: #999; font-size: 0.9em; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>📊 Wöchentlicher Besucherbericht</h1>
-                <p>Hallo! Hier sind die Statistiken der letzten 7 Tage:</p>
-                
-                <div class="stat-box">
-                    <div>Besuche gesamt</div>
-                    <strong>{total}</strong>
-                </div>
-                
-                <div class="stat-box">
-                    <div>Letzte 7 Tage</div>
-                    <strong>{last_7_days}</strong>
-                </div>
-                
-                <div class="stat-box">
-                    <div>Heute</div>
-                    <strong>{today}</strong>
-                </div>
-                
-                <div class="stat-box">
-                    <div>Eindeutige Besucher</div>
-                    <strong>{unique_ips}</strong>
-                </div>
-                
-                <h2 style="color: #555; margin-top: 30px;">📅 Tägliche Übersicht</h2>
-                <table>
-                    <tr><th>Datum</th><th>Besuche</th></tr>
-                    {daily_html}
-                </table>
-                
-                <div class="footer">
-                    <p>Dieser Bericht wurde automatisch erstellt.</p>
-                    <p>Prüfungskalender © {datetime.now().year}</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Email oluştur
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'📊 Wochenbericht - {datetime.now().strftime("%d.%m.%Y")}'
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = RECIPIENT_EMAIL
-        
-        html_part = MIMEText(html_content, 'html', 'utf-8')
-        msg.attach(html_part)
-        
-        # Gmail SMTP ile gönder
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-        
-        return True
-    except Exception as e:
-        print(f"❌ E-Mail-Sendefehler: {e}")
-        return False
-
-@app.route("/send-report")
-def send_report():
-    """Manuel rapor gönderme endpoint'i (stats sayfasından erişilebilir)"""
-    success = send_weekly_report()
-    if success:
-        return """
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta http-equiv="refresh" content="3;url=/stats">
-            <style>
-                body { font-family: system-ui; display: flex; justify-content: center; 
-                       align-items: center; height: 100vh; background: #f5f5f5; }
-                .box { background: white; padding: 40px; border-radius: 12px; 
-                       box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-                .success { color: #28a745; font-size: 3em; }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <div class="success">✅</div>
-                    <h2>Bericht gesendet!</h2>
-                    <p>Bitte überprüfe deine E-Mail.</p>
-                    <p style="color: #999;">Weiterleitung in 3 Sekunden...</p>
-            </div>
-        </body>
-        </html>
-        """
-    else:
-        return "E-Mail-Versand fehlgeschlagen", 500
-
-@app.route("/cron/send-weekly-report")
-def cron_send_weekly_report():
-    """Otomatik haftalık rapor gönderimi (external cron servisi tarafından çağrılır)"""
-    # Güvenlik: Sadece belirli IP'lerden veya token ile erişim
-    token = request.args.get('token')
-    expected_token = os.getenv('CRON_TOKEN', 'default_cron_token_2026')
-    
-    if token != expected_token:
-        return "Nicht autorisiert", 403
-    
-    try:
-        with get_db_connection() as conn:
-            schedule = conn.execute("""
-                SELECT email, day_of_week, enabled, last_sent 
-                FROM email_schedule 
-                WHERE enabled = 1 
-                LIMIT 1
-            """).fetchone()
-            
-            if not schedule:
-                return "Kein aktiver Zeitplan", 200
-            
-            # Bugünün gününü kontrol et (0=Pazar, 1=Pazartesi, ...)
-            today = datetime.now().weekday()  # 0=Pazartesi
-            # SQLite'da 0=Pazar, 1=Pazartesi olarak kaydettik
-            target_day = schedule['day_of_week']
-            # Convert: SQLite format (0=Pazar, 1=Pazartesi) -> Python weekday (0=Pazartesi, 6=Pazar)
-            if target_day == 0:  # Pazar
-                target_weekday = 6
-            else:
-                target_weekday = target_day - 1
-            
-            # Eğer bugün hedef gün değilse çık
-            if today != target_weekday:
-                return f"Heute nicht geplant (heute={today}, ziel={target_weekday})", 200
-            
-            # Son gönderimden 6 gün geçmiş mi kontrol et (haftada 1 kez)
-            if schedule['last_sent']:
-                last_sent_dt = datetime.fromisoformat(schedule['last_sent'])
-                if (datetime.now() - last_sent_dt).days < 6:
-                    return "Diese Woche bereits gesendet", 200
-            
-            # Rapor gönder
-            success = send_weekly_report_to(schedule['email'])
-            
-            if success:
-                # Last_sent'i güncelle
-                conn.execute("""
-                    UPDATE email_schedule 
-                    SET last_sent = ? 
-                    WHERE email = ?
-                """, (datetime.now().isoformat(), schedule['email']))
-                conn.commit()
-                return "Bericht erfolgreich gesendet", 200
-            else:
-                return "Berichtversand fehlgeschlagen", 500
-                
-    except Exception as e:
-        return f"Error: {e}", 500
-
-def send_weekly_report_to(recipient_email):
-    """Bericht an eine bestimmte E-Mail-Adresse senden."""
-    try:
-        with get_db_connection() as conn:
-            total = conn.execute("SELECT COUNT(*) FROM visits").fetchone()[0]
-            today = conn.execute("SELECT COUNT(*) FROM visits WHERE DATE(timestamp) = DATE('now')").fetchone()[0]
-            last_7_days = conn.execute("SELECT COUNT(*) FROM visits WHERE timestamp >= datetime('now', '-7 days')").fetchone()[0]
-            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) FROM visits").fetchone()[0]
-            upcoming = conn.execute("""
-                SELECT subject, date, start_time FROM exams 
-                WHERE date >= date('now') 
-                ORDER BY date ASC 
-                LIMIT 10
-            """).fetchall()
-        
-        # Email içeriği
-        body = f"""
-        📊 Prüfungskalender - Wochenbericht
-        
-        === Besucherstatistiken ===
-        Besuche gesamt: {total}
-        Heute: {today}
-        Letzte 7 Tage: {last_7_days}
-        Eindeutige IPs: {unique_ips}
-        
-        === Bevorstehende Prüfungen ===
-        """
-        
-        if upcoming:
-            for exam in upcoming:
-                body += f"\n• {exam['subject']} - {exam['date']} {exam['start_time']}"
-        else:
-            body += "\nNoch keine Prüfungen eingetragen."
-        
-        body += "\n\n---\nPrüfungskalender – Automatisches Berichtssystem"
-        
-        # Email gönder
-        msg = MIMEText(body, 'plain', 'utf-8')
-        msg['Subject'] = f'Wochenbericht - {datetime.now().strftime("%d.%m.%Y")}'
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = recipient_email
-        
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-        
-        return True
-    except Exception as e:
-        print(f"Email error: {e}")
-        return False
 
 @app.route("/logout")
 def logout():
