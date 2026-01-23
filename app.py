@@ -1716,7 +1716,7 @@ def stats():
                     .table-container {{ 
                         overflow-x: auto; 
                         -webkit-overflow-scrolling: touch; 
-                        margin-bottom: 120px; 
+                        margin-bottom: 24px; 
                         position: relative; 
                         z-index: 1;
                         border-radius: 10px;
@@ -1858,25 +1858,33 @@ def stats():
                         font-size: 2em;
                         margin-bottom: 8px;
                     }}
-                    /* Dark Mode Toggle */
+                    /* Dark Mode Toggle (toolbar içinde, kebab yanında) */
+                    .toolbar-actions {{
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    }}
                     .theme-toggle {{
-                        position: fixed;
-                        bottom: 20px;
-                        right: 20px;
-                        z-index: 9999;
-                        background: var(--primary);
-                        color: white;
-                        border: none;
-                        width: 56px;
-                        height: 56px;
-                        border-radius: 50%;
-                        font-size: 24px;
+                        position: static;
+                        background: var(--bg-light);
+                        color: var(--text-secondary);
+                        border: 1px solid var(--border-color);
+                        width: 42px;
+                        height: 42px;
+                        border-radius: 10px;
+                        font-size: 18px;
                         cursor: pointer;
-                        box-shadow: var(--shadow-lg);
-                        transition: all 0.3s ease;
+                        box-shadow: none;
+                        transition: background 0.15s ease, color 0.15s ease, transform 0.2s ease;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        touch-action: manipulation;
+                        -webkit-tap-highlight-color: transparent;
                     }}
                     .theme-toggle:hover {{
-                        transform: scale(1.1) rotate(180deg);
+                        color: var(--primary);
+                        transform: rotate(180deg);
                     }}
                     .theme-toggle:active {{
                         transform: scale(0.95);
@@ -1907,12 +1915,14 @@ def stats():
                         .input-inline {{ gap: 8px; }}
                         .input-inline input[type=text] {{ padding: 12px; font-size: 16px; }}
                         .input-inline button {{ padding: 12px 16px; font-size: 0.95em; }}
+                        .theme-toggle {{ width: 38px; height: 38px; border-radius: 10px; font-size: 17px; }}
                     }}
                     @media (max-width: 480px) {{
                         body {{ padding: 0; }}
                         .toolbar {{ padding: 12px 14px; gap: 10px; }}
                         .toolbar-title {{ font-size: 1em; }}
                         .kebab-btn {{ font-size: 24px; padding: 6px 8px; }}
+                        .theme-toggle {{ width: 36px; height: 36px; border-radius: 10px; font-size: 16px; }}
                         .content {{ padding: 12px; }}
                         h1 {{ font-size: 1.15em; margin: 0 0 14px 0; }}
                         h2 {{ font-size: 1em; margin-top: 16px; margin-bottom: 10px; }}
@@ -1937,12 +1947,17 @@ def stats():
             <body>
                 <div class="toolbar">
                     <div class="toolbar-title">Admin</div>
-                    <div class="kebab">
-                        <button class="kebab-btn" id="kebabBtn" aria-label="Menü">⋮</button>
-                        <div class="menu" id="kebabMenu">
-                            <a href="/">⌂ Startseite</a>
-                            <a href="/stats/delete-past">✕ Löschen</a>
-                            <a href="/stats/logout" class="danger">⎋ Abmelden</a>
+                    <div class="toolbar-actions">
+                        <button id="themeToggle" class="theme-toggle" aria-label="Theme wechseln" type="button">
+                            <span class="theme-icon">🌙</span>
+                        </button>
+                        <div class="kebab">
+                            <button class="kebab-btn" id="kebabBtn" aria-label="Menü" type="button">⋮</button>
+                            <div class="menu" id="kebabMenu">
+                                <a href="/">⌂ Startseite</a>
+                                <a href="/stats/delete-past">✕ Löschen</a>
+                                <a href="/stats/logout" class="danger">⎋ Abmelden</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2006,11 +2021,6 @@ def stats():
                 </div>
             """
             html += """
-
-                <!-- Dark Mode Toggle Button -->
-                <button id="themeToggle" class="theme-toggle" aria-label="Theme wechseln">
-                    <span class="theme-icon">🌙</span>
-                </button>
 
                 <script>
                     // Accordion toggle
