@@ -2007,6 +2007,11 @@ def stats():
             """
             html += """
 
+                <!-- Dark Mode Toggle Button -->
+                <button id="themeToggle" class="theme-toggle" aria-label="Theme wechseln">
+                    <span class="theme-icon">🌙</span>
+                </button>
+
                 <script>
                     // Accordion toggle
                     (function(){
@@ -2039,7 +2044,9 @@ def stats():
                     // Dark Mode Toggle
                     (function() {
                         const themeToggle = document.getElementById('themeToggle');
+                        if (!themeToggle) return;
                         const icon = themeToggle.querySelector('.theme-icon');
+                        if (!icon) return;
                         
                         // Kayıtlı tema tercihini yükle
                         const savedTheme = localStorage.getItem('theme');
@@ -2057,11 +2064,6 @@ def stats():
                         });
                     })();
                 </script>
-                
-                <!-- Dark Mode Toggle Button -->
-                <button id="themeToggle" class="theme-toggle" aria-label="Theme wechseln">
-                    <span class="theme-icon">🌙</span>
-                </button>
             </body>
             </html>
             """
