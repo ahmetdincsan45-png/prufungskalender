@@ -13,6 +13,7 @@ from functools import wraps
 from flask_cors import CORS
 import requests
 import json
+import time
 import hashlib
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -157,6 +158,9 @@ FALLBACK_DIR = DATA_DIR / "ferien_fallback"
 FEIERTAGE_CACHE_DIR = DATA_DIR / "feiertage_cache"
 SEED_FALLBACK_DIR = Path(__file__).parent / "ferien_fallback_seed"
 print("🗄️ Using SQLite path:", DB_PATH)
+
+# Tatil cache TTL (saniye): cache tazeyse dış API'ye çıkma
+HOLIDAY_CACHE_TTL_SECONDS = int(os.getenv("HOLIDAY_CACHE_TTL_SECONDS", "86400"))
 
 # -------------------- Bağlantı --------------------
 def get_db_connection():
@@ -314,9 +318,17 @@ def index():
 @app.route('/events')
 def events():
     try:
+        # FullCalendar görünüm aralığı (YYYY-MM-DD)
+        start_arg = (request.args.get('start') or '')[:10]
+        end_arg = (request.args.get('end') or '')[:10]
+
         with get_db_connection() as conn:
             cur = conn.cursor()
-            cur.execute('SELECT * FROM exams ORDER BY date')
+            if start_arg and end_arg:
+                # end_arg FullCalendar'da exclusive (genelde) — burada da exclusive ele al
+                cur.execute('SELECT * FROM exams WHERE date >= ? AND date < ? ORDER BY date', (start_arg, end_arg))
+            else:
+                cur.execute('SELECT * FROM exams ORDER BY date')
             exams = cur.fetchall()
             events_list = []
             today = datetime.now().strftime('%Y-%m-%d')
@@ -333,9 +345,6 @@ def events():
                 })
 
         # Obst (meyve günü) planları: takvimde tam gün etkinlik olarak göster
-        # FullCalendar görünüm aralığı ile filtrelemeye çalış
-        start_arg = (request.args.get('start') or '')[:10]
-        end_arg = (request.args.get('end') or '')[:10]
         try:
             with get_db_connection() as conn:
                 if start_arg and end_arg:
@@ -397,6 +406,22 @@ def events():
             fallback_dir = FALLBACK_DIR
             cache_dir.mkdir(parents=True, exist_ok=True)
             fallback_dir.mkdir(parents=True, exist_ok=True)
+
+            def _cache_is_fresh(p: Path) -> bool:
+                try:
+                    if not p.exists():
+                        return False
+                    age = time.time() - p.stat().st_mtime
+                    return age <= HOLIDAY_CACHE_TTL_SECONDS
+                except Exception:
+                    return False
+
+            def _read_json_file(p: Path):
+                try:
+                    return json.loads(p.read_text(encoding='utf-8'))
+                except Exception:
+                    return None
+
             # Hafta sonlarını boyamamak için: verilen aralığı yalnızca hafta içi bloklar halinde arka plan olarak ekle
             def add_weekday_background_ranges(start_str: str, end_exclusive_str: str) -> int:
                 appended = 0
@@ -445,26 +470,31 @@ def events():
             for y in sorted(years_to_fetch):
                 ferien = None
                 ferien_url = f'https://ferien-api.de/api/v1/holidays/BY/{y}'
-                try:
-                    response = requests.get(ferien_url, timeout=5)
-                    if response.status_code == 200:
-                        ferien = response.json()
-                        # Yalnızca dolu liste döndüyse cache'e yaz (boş [] ise yazma)
-                        try:
-                            if isinstance(ferien, list) and len(ferien) > 0:
-                                (cache_dir / f"BY_{y}.json").write_text(response.text, encoding='utf-8')
-                        except Exception:
-                            pass
-                    else:
-                        raise RuntimeError(f"HTTP {response.status_code}")
-                except Exception as _:
-                    # Cache'den dene
-                    cache_file = cache_dir / f"BY_{y}.json"
-                    if cache_file.exists():
-                        try:
-                            ferien = requests.utils.json.loads(cache_file.read_text(encoding='utf-8'))
-                        except Exception as _:
-                            ferien = None
+                cache_file = cache_dir / f"BY_{y}.json"
+
+                # Cache-first: tazeyse direkt cache oku, dış API'ye çıkma
+                if _cache_is_fresh(cache_file):
+                    ferien = _read_json_file(cache_file)
+
+                # Cache yoksa/eskidiyse network dene
+                if ferien is None:
+                    try:
+                        response = requests.get(ferien_url, timeout=5)
+                        if response.status_code == 200:
+                            ferien = response.json()
+                            # Yalnızca dolu liste döndüyse cache'e yaz (boş [] ise yazma)
+                            try:
+                                if isinstance(ferien, list) and len(ferien) > 0:
+                                    cache_file.write_text(response.text, encoding='utf-8')
+                            except Exception:
+                                pass
+                        else:
+                            raise RuntimeError(f"HTTP {response.status_code}")
+                    except Exception:
+                        # Network yoksa cache (stale da olsa) oku
+                        if cache_file.exists():
+                            ferien = _read_json_file(cache_file)
+
                 # Eğer API boş liste döndüyse veya hiç veri yoksa, yıllık lokal fallback'i dene
                 try:
                     if not ferien or (isinstance(ferien, list) and len(ferien) == 0):
@@ -495,24 +525,26 @@ def events():
                 feiertage = None
                 feiertage_url = f'https://date.nager.at/api/v3/PublicHolidays/{y}/DE'
                 cache_file = FEIERTAGE_CACHE_DIR / f"DE_{y}.json"
-                try:
-                    resp = requests.get(feiertage_url, timeout=5)
-                    if resp.status_code == 200:
-                        feiertage = resp.json()
-                        # doluysa cachele
-                        try:
-                            if isinstance(feiertage, list) and len(feiertage) > 0:
-                                cache_file.write_text(resp.text, encoding='utf-8')
-                        except Exception:
-                            pass
-                    else:
-                        raise RuntimeError(f"HTTP {resp.status_code}")
-                except Exception:
-                    if cache_file.exists():
-                        try:
-                            feiertage = json.loads(cache_file.read_text(encoding='utf-8'))
-                        except Exception:
-                            feiertage = None
+                # Cache-first
+                if _cache_is_fresh(cache_file):
+                    feiertage = _read_json_file(cache_file)
+
+                if feiertage is None:
+                    try:
+                        resp = requests.get(feiertage_url, timeout=5)
+                        if resp.status_code == 200:
+                            feiertage = resp.json()
+                            # doluysa cachele
+                            try:
+                                if isinstance(feiertage, list) and len(feiertage) > 0:
+                                    cache_file.write_text(resp.text, encoding='utf-8')
+                            except Exception:
+                                pass
+                        else:
+                            raise RuntimeError(f"HTTP {resp.status_code}")
+                    except Exception:
+                        if cache_file.exists():
+                            feiertage = _read_json_file(cache_file)
                 if not feiertage or (isinstance(feiertage, list) and len(feiertage) == 0):
                     continue
                 for ft in feiertage:
@@ -562,7 +594,10 @@ def events():
                     _ = add_weekday_background_ranges(start_incl, end_ex)
                 except Exception:
                     continue
-        return jsonify(events_list)
+        resp = jsonify(events_list)
+        # Kısa süreli cache: aynı görünüm aralığı için tekrar hesaplamayı azaltır
+        resp.headers['Cache-Control'] = 'public, max-age=60'
+        return resp
     except Exception as e:
         print(f"❌ Events error: {e}")
         return jsonify([])
