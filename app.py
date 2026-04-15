@@ -308,12 +308,34 @@ def index():
             if after_cutoff
             else "SELECT * FROM exams WHERE date >= ? ORDER BY date, id LIMIT 1"
         )
+        obst_free_count = 0
+        obst_next_free_date = None
         with get_db_connection() as conn:
             next_exam = conn.execute(query, (today,)).fetchone()
-        return render_template("index.html", next_exam=next_exam)
+            try:
+                taken_rows = conn.execute("SELECT date FROM obst_schedule").fetchall()
+                taken_dates = {r['date'] for r in taken_rows} if taken_rows else set()
+                free_dates = sorted([d for d in OBST_ALLOWED_DATES if d not in taken_dates])
+                obst_free_count = len(free_dates)
+                obst_next_free_date = free_dates[0] if free_dates else None
+            except Exception:
+                obst_free_count = 0
+                obst_next_free_date = None
+
+        return render_template(
+            "index.html",
+            next_exam=next_exam,
+            obst_free_count=obst_free_count,
+            obst_next_free_date=obst_next_free_date,
+        )
     except Exception as e:
         print("❌ Index error:", e)
-        return render_template("index.html", next_exam=None)
+        return render_template(
+            "index.html",
+            next_exam=None,
+            obst_free_count=0,
+            obst_next_free_date=None,
+        )
 
 @app.route('/events')
 def events():
