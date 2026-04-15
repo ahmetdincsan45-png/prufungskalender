@@ -70,23 +70,30 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="date_display" class="form-label fw-bold">
+                            <div class="form-label fw-bold">
                                 <i class="bi bi-calendar"></i> Datum *
-                            </label>
-                            <select class="form-select" id="date" name="date" required>
-                                <option value="" selected disabled>Bitte Datum auswählen</option>
-                                {% for d in allowed_dates %}
-                                    <option value="{{ d }}">{{ d | strftime('%d.%m.%Y') }}</option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">Nur die vorgesehenen Datumsangaben sind auswählbar.</div>
+                            </div>
+
+                            {% if allowed_dates and allowed_dates|length > 0 %}
+                                <div class="list-group">
+                                    {% for d in allowed_dates %}
+                                        <label class="list-group-item d-flex gap-2 align-items-center">
+                                            <input class="form-check-input flex-shrink-0" type="radio" name="date" value="{{ d }}" {% if loop.first %}required{% endif %}>
+                                            <span>{{ d | strftime('%d.%m.%Y') }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                                <div class="form-text">Nur die vorgesehenen Datumsangaben sind auswählbar.</div>
+                            {% else %}
+                                <div class="text-muted">Aktuell sind keine freien Termine verfügbar.</div>
+                            {% endif %}
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="/" class="btn btn-secondary me-md-2">
                                 <i class="bi bi-arrow-left"></i> Zurück
                             </a>
-                            <button type="submit" class="btn btn-warning">
+                            <button type="submit" class="btn btn-warning" {% if not allowed_dates or allowed_dates|length == 0 %}disabled{% endif %}>
                                 <i class="bi bi-check-circle"></i> Speichern
                             </button>
                         </div>
