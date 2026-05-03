@@ -341,8 +341,8 @@
                 font-size: 0.9rem !important;
                 line-height: 1.05;
                 font-weight: 700;
-                width: min(100%, calc(100vw - 32px));
-                max-width: min(100%, calc(100vw - 32px));
+                width: clamp(88px, 30vw, 128px);
+                max-width: clamp(88px, 30vw, 128px);
                 text-align: center;
             }
             .fc .fc-toolbar-title .flag-title-svg {
@@ -688,13 +688,14 @@
                 var canvas = syncCalendarTitle._canvas || (syncCalendarTitle._canvas = document.createElement('canvas'));
                 var context = canvas.getContext('2d');
                 var fitToViewport = window.innerWidth <= 768;
-                var maxTitleWidth = fitToViewport ? Math.max(window.innerWidth - 32, 120) : null;
+                var titleBounds = titleEl.getBoundingClientRect();
+                var maxTitleWidth = fitToViewport ? Math.max(Math.floor(titleBounds.width || 0), 88) : null;
 
                 context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
                 var measuredTextWidth = context.measureText(titleText).width;
                 if (fitToViewport && maxTitleWidth && measuredTextWidth > 0) {
                     var fittedFontSize = Math.floor(fontSize * ((maxTitleWidth - 14) / measuredTextWidth));
-                    fontSize = Math.max(10, Math.min(fontSize, fittedFontSize));
+                    fontSize = Math.max(8, Math.min(fontSize, fittedFontSize));
                     context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
                     measuredTextWidth = context.measureText(titleText).width;
                 }
