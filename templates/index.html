@@ -341,12 +341,12 @@
                 font-size: 0.9rem !important;
                 line-height: 1.05;
                 font-weight: 700;
-                width: clamp(88px, 30vw, 128px);
-                max-width: clamp(88px, 30vw, 128px);
+                width: auto;
+                max-width: min(calc(100vw - 32px), 180px);
                 text-align: center;
             }
             .fc .fc-toolbar-title .flag-title-svg {
-                width: 100%;
+                width: auto;
                 max-width: 100%;
                 height: auto;
             }
@@ -689,7 +689,7 @@
                 var context = canvas.getContext('2d');
                 var fitToViewport = window.innerWidth <= 768;
                 var titleBounds = titleEl.getBoundingClientRect();
-                var maxTitleWidth = fitToViewport ? Math.max(Math.floor(titleBounds.width || 0), 88) : null;
+                var maxTitleWidth = fitToViewport ? Math.min(Math.max(window.innerWidth - 32, 120), 180) : null;
 
                 context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
                 var measuredTextWidth = context.measureText(titleText).width;
@@ -701,6 +701,11 @@
                 }
 
                 var textWidth = Math.ceil(measuredTextWidth) + 14;
+                if (fitToViewport && maxTitleWidth) {
+                    titleEl.style.width = Math.min(textWidth, maxTitleWidth) + 'px';
+                } else {
+                    titleEl.style.width = '';
+                }
                 var viewBoxWidth = Math.max(textWidth, 120);
                 var viewBoxHeight = Math.max(Math.ceil(fontSize * 1.6), 42);
                 var baselineY = Math.round(viewBoxHeight * 0.76);
