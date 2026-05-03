@@ -38,7 +38,7 @@
         }
         
         .fc-toolbar-title {
-            font-size: 5.7rem;
+            font-size: 7.125rem;
         }
         /* Titel (h2) in der Toolbar vertikal zentrieren */
         .fc .fc-toolbar .fc-toolbar-chunk {
@@ -682,6 +682,19 @@
                 var viewBoxHeight = Math.max(Math.ceil(fontSize * 1.6), 42);
                 var baselineY = Math.round(viewBoxHeight * 0.76);
                 var escapedTitle = escapeXml(titleText);
+                var gradientStops = isMobile
+                    ? '<stop offset="0%" stop-color="#111111" />' +
+                      '<stop offset="20%" stop-color="#111111" />' +
+                      '<stop offset="40%" stop-color="#c00000" />' +
+                      '<stop offset="62%" stop-color="#d00000" />' +
+                      '<stop offset="74%" stop-color="#d4a017" />' +
+                      '<stop offset="100%" stop-color="#ffd24a" />'
+                    : '<stop offset="0%" stop-color="#111111" />' +
+                      '<stop offset="26%" stop-color="#111111" />' +
+                      '<stop offset="44%" stop-color="#c00000" />' +
+                      '<stop offset="62%" stop-color="#d00000" />' +
+                      '<stop offset="74%" stop-color="#d4a017" />' +
+                      '<stop offset="100%" stop-color="#ffd24a" />';
 
                 titleEl.dataset.titleText = titleText;
                 titleEl.setAttribute('aria-label', titleText);
@@ -689,12 +702,7 @@
                     '<svg class="flag-title-svg" viewBox="0 0 ' + viewBoxWidth + ' ' + viewBoxHeight + '" role="img" aria-hidden="true" focusable="false">' +
                         '<defs>' +
                             '<linearGradient id="calendar-title-gradient" x1="0" y1="0" x2="0" y2="1">' +
-                                '<stop offset="0%" stop-color="#111111" />' +
-                                '<stop offset="20%" stop-color="#111111" />' +
-                                '<stop offset="40%" stop-color="#c00000" />' +
-                                '<stop offset="62%" stop-color="#d00000" />' +
-                                '<stop offset="74%" stop-color="#d4a017" />' +
-                                '<stop offset="100%" stop-color="#ffd24a" />' +
+                                gradientStops +
                             '</linearGradient>' +
                         '</defs>' +
                         '<text x="50%" y="' + baselineY + '" text-anchor="middle" font-size="' + fontSize + '" font-weight="' + escapeXml(fontWeight) + '" font-family="' + escapeXml(fontFamily) + '" fill="url(#calendar-title-gradient)">' + escapedTitle + '</text>' +
