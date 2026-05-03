@@ -332,7 +332,7 @@
         }
         
         /* Mobile Responsive-Anpassungen */
-        @media (max-width: 768px) {
+        @media (max-width: 768px) and (pointer: coarse) {
             .container-fluid {
                 padding: 10px;
             }
@@ -642,7 +642,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             var todayBtn = document.getElementById('todayBtn');
-            var isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+            function useMobileCalendarLayout() {
+                return window.matchMedia('(max-width: 768px) and (pointer: coarse)').matches;
+            }
+
+            var isMobile = useMobileCalendarLayout();
 
             function escapeXml(value) {
                 return String(value)
@@ -682,7 +687,7 @@
                 var viewBoxHeight = Math.max(Math.ceil(fontSize * 1.6), 42);
                 var baselineY = Math.round(viewBoxHeight * 0.76);
                 var escapedTitle = escapeXml(titleText);
-                var gradientStops = isMobile
+                                var gradientStops = useMobileCalendarLayout()
                     ? '<stop offset="0%" stop-color="#111111" />' +
                       '<stop offset="20%" stop-color="#111111" />' +
                       '<stop offset="40%" stop-color="#c00000" />' +
