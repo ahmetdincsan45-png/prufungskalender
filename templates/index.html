@@ -63,6 +63,13 @@
             width: auto;
             overflow: visible;
         }
+        html:not(.mobile-calendar-layout) .fc .fc-toolbar-title {
+            padding-bottom: 8px;
+            min-height: 1em;
+        }
+        html:not(.mobile-calendar-layout) .fc .fc-toolbar-title .flag-title-svg {
+            height: 1.05em;
+        }
         /* Gradient-Linie unter dem "November 2025"-Titel – zu den Rändern auslaufend */
         .fc .fc-toolbar .fc-toolbar-chunk:nth-child(2)::after {
             content: "";
@@ -714,7 +721,7 @@
                 var viewBoxWidth = fitToViewport ? textWidth : Math.max(textWidth, 120);
                 var viewBoxHeight = fitToViewport
                     ? Math.max(Math.ceil(fontSize * 1.25), 18)
-                    : Math.max(Math.ceil(fontSize * 1.6), 42);
+                    : Math.max(Math.ceil(fontSize * 1.2), 24);
                 var baselineY = Math.round(viewBoxHeight * 0.76);
                 var escapedTitle = escapeXml(titleText);
                                 var gradientStops = useMobileCalendarLayout()
