@@ -656,7 +656,7 @@
             function syncCalendarTitle() {
                 var titleEl = document.querySelector('.fc-toolbar-title');
                 if (!titleEl) return;
-                var titleText = (titleEl.getAttribute('aria-label') || titleEl.dataset.titleText || titleEl.textContent || '').trim();
+                var titleText = (titleEl.textContent || titleEl.dataset.titleText || titleEl.getAttribute('aria-label') || '').trim();
                 if (!titleText) return;
 
                 var computed = window.getComputedStyle(titleEl);
