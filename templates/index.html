@@ -653,10 +653,20 @@
                     .replace(/'/g, '&#39;');
             }
 
+            function getCalendarTitleText(titleEl) {
+                if (!titleEl) return '';
+                var directText = Array.from(titleEl.childNodes || [])
+                    .filter(function(node) { return node.nodeType === Node.TEXT_NODE; })
+                    .map(function(node) { return node.textContent || ''; })
+                    .join('')
+                    .trim();
+                return directText || titleEl.dataset.titleText || titleEl.getAttribute('aria-label') || '';
+            }
+
             function syncCalendarTitle() {
                 var titleEl = document.querySelector('.fc-toolbar-title');
                 if (!titleEl) return;
-                var titleText = (titleEl.textContent || titleEl.dataset.titleText || titleEl.getAttribute('aria-label') || '').trim();
+                var titleText = getCalendarTitleText(titleEl).trim();
                 if (!titleText) return;
 
                 var computed = window.getComputedStyle(titleEl);
