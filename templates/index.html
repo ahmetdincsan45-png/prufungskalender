@@ -44,6 +44,7 @@
         .fc .fc-toolbar .fc-toolbar-chunk {
             display: flex;
             align-items: center;
+            position: relative;
         }
         .fc .fc-toolbar-title {
             margin: 0;
@@ -52,24 +53,27 @@
             vertical-align: middle;
             padding-bottom: 15px;
             position: relative;
-            background-image: linear-gradient(
-                180deg,
-                rgba(0, 0, 0, 0.98) 0%,
-                rgba(0, 0, 0, 0.98) 16%,
-                rgba(150, 0, 0, 0.96) 40%,
-                rgba(255, 215, 0, 0.98) 52%,
-                rgba(255, 224, 64, 1) 100%
-            );
-            background-size: 100% 108%;
-            background-position: center top;
-            background-repeat: no-repeat;
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            -webkit-text-fill-color: transparent;
+            color: #ffcf33;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+        .fc .fc-toolbar-title::before,
+        .fc .fc-toolbar-title::after {
+            content: attr(data-title);
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .fc .fc-toolbar-title::before {
+            color: #111111;
+            clip-path: inset(0 0 74% 0);
+        }
+        .fc .fc-toolbar-title::after {
+            color: #8f0000;
+            clip-path: inset(20% 0 36% 0);
         }
         /* Gradient-Linie unter dem "November 2025"-Titel – zu den Rändern auslaufend */
-        .fc .fc-toolbar-title::after {
+        .fc .fc-toolbar .fc-toolbar-chunk:nth-child(2)::after {
             content: "";
             position: absolute;
             bottom: 0;
@@ -343,7 +347,16 @@
                 padding: 10px;
             }
             .fc-toolbar-title {
-                font-size: 1.2rem !important;
+                font-size: 1.45rem !important;
+                line-height: 1.05;
+                font-weight: 800;
+                color: #e0b100;
+            }
+            .fc .fc-toolbar-title::before {
+                clip-path: inset(0 0 72% 0);
+            }
+            .fc .fc-toolbar-title::after {
+                clip-path: inset(18% 0 40% 0);
             }
             /* Auf Mobilgeräten auch den Abstand zwischen Toolbar-Elementen reduzieren */
             .fc-header-toolbar {
@@ -644,6 +657,12 @@
             var calendarEl = document.getElementById('calendar');
             var todayBtn = document.getElementById('todayBtn');
             var isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+            function syncCalendarTitle() {
+                var titleEl = document.querySelector('.fc-toolbar-title');
+                if (!titleEl) return;
+                titleEl.setAttribute('data-title', (titleEl.textContent || '').trim());
+            }
             
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
@@ -688,10 +707,14 @@
                 },
                 eventDidMount: function(info) {
                     // Ferien günlerinde gün numarasını beyaz yapma işlemi toplu olarak yapılacak
+                },
+                datesSet: function() {
+                    syncCalendarTitle();
                 }
             });
             
             calendar.render();
+            syncCalendarTitle();
 
             // (Saat kaldırıldı) Canlı saat isteğe bağlı olarak tekrar eklenebilir
 
