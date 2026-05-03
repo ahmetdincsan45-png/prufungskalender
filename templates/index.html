@@ -333,67 +333,60 @@
         }
         
         /* Mobile Responsive-Anpassungen */
-        @media (max-width: 768px) and (pointer: coarse) {
-            .container-fluid {
-                padding: 10px;
-            }
-            .fc-toolbar-title {
-                font-size: 0.9rem !important;
-                line-height: 1.05;
-                font-weight: 700;
-                width: fit-content;
-                max-width: min(calc(100vw - 32px), 180px);
-                text-align: center;
-                min-height: 1em;
-                padding-bottom: 6px;
-            }
-            .fc .fc-toolbar-title .flag-title-svg {
-                width: auto;
-                max-width: 100%;
-                height: auto;
-            }
-            /* Auf Mobilgeräten auch den Abstand zwischen Toolbar-Elementen reduzieren */
-            .fc-header-toolbar {
-                gap: 3px;
-            }
-            .filter-section {
-                padding: 10px;
-                margin-bottom: 1px;
-            }
-            .warning-box {
-                padding: 6px;
-                font-size: 0.8rem;
-            }
-            h1 {
-                font-size: 1.8rem !important;
-            }
-            .next-exam-info h5 {
-                font-size: 1rem;
-            }
-            .next-exam-info .fw-bold {
-                font-size: 0.95rem;
-            }
-            .next-exam-info small {
-                font-size: 0.8rem;
-            }
-            /* Buttons auf Mobilgeräten kompakter machen */
-            .btn {
-                padding: 8px 12px;
-                font-size: 0.85rem;
-            }
-            /* FullCalendar mobil düzenlemeleri */
-            .fc-header-toolbar {
-                flex-direction: column;
-            }
-            .fc-toolbar-chunk {
-                display: flex;
-                justify-content: center;
-                width: auto;
-            }
-            .fc-button {
-                padding: 4px 8px;
-                font-size: 0.8rem;
-            }
+        html.mobile-calendar-layout .container-fluid {
+            padding: 10px;
+        }
+        html.mobile-calendar-layout .fc-toolbar-title {
+            font-size: 0.9rem !important;
+            line-height: 1.05;
+            font-weight: 700;
+            width: fit-content;
+            max-width: min(calc(100vw - 32px), 180px);
+            text-align: center;
+            min-height: 1em;
+            padding-bottom: 6px;
+        }
+        html.mobile-calendar-layout .fc .fc-toolbar-title .flag-title-svg {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+        }
+        html.mobile-calendar-layout .fc-header-toolbar {
+            gap: 3px;
+            flex-direction: column;
+        }
+        html.mobile-calendar-layout .filter-section {
+            padding: 10px;
+            margin-bottom: 1px;
+        }
+        html.mobile-calendar-layout .warning-box {
+            padding: 6px;
+            font-size: 0.8rem;
+        }
+        html.mobile-calendar-layout h1 {
+            font-size: 1.8rem !important;
+        }
+        html.mobile-calendar-layout .next-exam-info h5 {
+            font-size: 1rem;
+        }
+        html.mobile-calendar-layout .next-exam-info .fw-bold {
+            font-size: 0.95rem;
+        }
+        html.mobile-calendar-layout .next-exam-info small {
+            font-size: 0.8rem;
+        }
+        html.mobile-calendar-layout .btn {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        html.mobile-calendar-layout .fc-toolbar-chunk {
+            display: flex;
+            justify-content: center;
+            width: auto;
+        }
+        html.mobile-calendar-layout .fc-button {
+            padding: 4px 8px;
+            font-size: 0.8rem;
         }
         
         /* Grid-Ränder entfernen */
@@ -653,8 +646,18 @@
             var todayBtn = document.getElementById('todayBtn');
 
             function useMobileCalendarLayout() {
-                return window.matchMedia('(max-width: 768px) and (pointer: coarse)').matches;
+                return window.innerWidth <= 768 && (
+                    navigator.maxTouchPoints > 0 ||
+                    window.matchMedia('(hover: none)').matches ||
+                    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+                );
             }
+
+            function applyMobileCalendarLayoutClass() {
+                document.documentElement.classList.toggle('mobile-calendar-layout', useMobileCalendarLayout());
+            }
+
+            applyMobileCalendarLayoutClass();
 
             var isMobile = useMobileCalendarLayout();
 
