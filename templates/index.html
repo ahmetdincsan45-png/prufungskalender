@@ -53,24 +53,14 @@
             vertical-align: middle;
             padding-bottom: 15px;
             position: relative;
-            color: #ffcf33;
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
-        }
-        .fc .fc-toolbar-title::before,
-        .fc .fc-toolbar-title::after {
-            content: attr(data-title);
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-        .fc .fc-toolbar-title::before {
+            min-height: 1.2em;
             color: #111111;
-            clip-path: inset(0 0 74% 0);
         }
-        .fc .fc-toolbar-title::after {
-            color: #8f0000;
-            clip-path: inset(20% 0 36% 0);
+        .fc .fc-toolbar-title .flag-title-svg {
+            display: block;
+            height: 1.15em;
+            width: auto;
+            overflow: visible;
         }
         /* Gradient-Linie unter dem "November 2025"-Titel – zu den Rändern auslaufend */
         .fc .fc-toolbar .fc-toolbar-chunk:nth-child(2)::after {
@@ -350,13 +340,9 @@
                 font-size: 1.45rem !important;
                 line-height: 1.05;
                 font-weight: 800;
-                color: #e0b100;
             }
-            .fc .fc-toolbar-title::before {
-                clip-path: inset(0 0 72% 0);
-            }
-            .fc .fc-toolbar-title::after {
-                clip-path: inset(18% 0 40% 0);
+            .fc .fc-toolbar-title .flag-title-svg {
+                height: 1.2em;
             }
             /* Auf Mobilgeräten auch den Abstand zwischen Toolbar-Elementen reduzieren */
             .fc-header-toolbar {
@@ -658,10 +644,50 @@
             var todayBtn = document.getElementById('todayBtn');
             var isMobile = window.matchMedia('(max-width: 768px)').matches;
 
+            function escapeXml(value) {
+                return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
             function syncCalendarTitle() {
                 var titleEl = document.querySelector('.fc-toolbar-title');
                 if (!titleEl) return;
-                titleEl.setAttribute('data-title', (titleEl.textContent || '').trim());
+                var titleText = (titleEl.getAttribute('aria-label') || titleEl.dataset.titleText || titleEl.textContent || '').trim();
+                if (!titleText) return;
+
+                var computed = window.getComputedStyle(titleEl);
+                var fontSize = parseFloat(computed.fontSize) || 24;
+                var fontWeight = computed.fontWeight || '700';
+                var fontFamily = computed.fontFamily || 'system-ui';
+                var canvas = syncCalendarTitle._canvas || (syncCalendarTitle._canvas = document.createElement('canvas'));
+                var context = canvas.getContext('2d');
+                context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
+
+                var textWidth = Math.ceil(context.measureText(titleText).width) + 14;
+                var viewBoxWidth = Math.max(textWidth, 120);
+                var viewBoxHeight = Math.max(Math.ceil(fontSize * 1.6), 42);
+                var baselineY = Math.round(viewBoxHeight * 0.76);
+                var escapedTitle = escapeXml(titleText);
+
+                titleEl.dataset.titleText = titleText;
+                titleEl.setAttribute('aria-label', titleText);
+                titleEl.innerHTML = '' +
+                    '<svg class="flag-title-svg" viewBox="0 0 ' + viewBoxWidth + ' ' + viewBoxHeight + '" role="img" aria-hidden="true" focusable="false">' +
+                        '<defs>' +
+                            '<linearGradient id="calendar-title-gradient" x1="0" y1="0" x2="0" y2="1">' +
+                                '<stop offset="0%" stop-color="#111111" />' +
+                                '<stop offset="22%" stop-color="#111111" />' +
+                                '<stop offset="58%" stop-color="#8f0000" />' +
+                                '<stop offset="76%" stop-color="#c97d00" />' +
+                                '<stop offset="100%" stop-color="#ffd84d" />' +
+                            '</linearGradient>' +
+                        '</defs>' +
+                        '<text x="50%" y="' + baselineY + '" text-anchor="middle" font-size="' + fontSize + '" font-weight="' + escapeXml(fontWeight) + '" font-family="' + escapeXml(fontFamily) + '" fill="url(#calendar-title-gradient)">' + escapedTitle + '</text>' +
+                    '</svg>';
             }
             
             var calendar = new FullCalendar.Calendar(calendarEl, {
