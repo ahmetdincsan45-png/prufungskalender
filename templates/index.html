@@ -13,11 +13,11 @@
     <!-- FullCalendar 6 -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
     
-    <!-- Bootstrap Icons (ikonların görünmesi için head içine alınmalı) -->
+    <!-- Bootstrap Icons (muss im Head eingebunden werden, damit Icons sichtbar sind) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     
     <style>
-        /* Basit düz arka plan */
+        /* Einfacher, flacher Hintergrund */
         body {
             background: #f5f6fa;
             background-attachment: fixed;
@@ -40,7 +40,7 @@
         .fc-toolbar-title {
             font-size: 1.5rem;
         }
-        /* Başlığı (h2) toolbar içinde dikey olarak tam ortaya hizala */
+        /* Titel (h2) in der Toolbar vertikal zentrieren */
         .fc .fc-toolbar .fc-toolbar-chunk {
             display: flex;
             align-items: center;
@@ -53,14 +53,14 @@
             padding-bottom: 15px;
             position: relative;
         }
-        /* "November 2025" başlığının altına gradyan çizgi - kenarlara doğru solan */
+        /* Gradient-Linie unter dem "November 2025"-Titel – zu den Rändern auslaufend */
         .fc .fc-toolbar-title::after {
             content: "";
             position: absolute;
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 100vw; /* Ekran genişliği kadar */
+            width: 100vw; /* über gesamte Bildschirmbreite */
             height: 1px;
             background-image:
                 linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,1), rgba(0,0,0,0));
@@ -68,7 +68,7 @@
             background-size: 100% 1px;
             background-position: center bottom;
         }
-        /* Takvim başlık (toolbar) üst/alt boşluklarını ayarla */
+        /* Abstände der Kalender-Toolbar (oben/unten) anpassen */
         .fc .fc-toolbar.fc-header-toolbar {
             margin-top: 10px !important;
             margin-bottom: 15px !important;
@@ -84,14 +84,23 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .action-buttons .btn {
+            margin: 0;
+        }
         .warning-box {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
             border-radius: 6px;
-            padding: 8px; /* daha kompakt */
-            margin-bottom: 12px; /* daha az boşluk */
+            padding: 8px; /* kompakter */
+            margin-bottom: 12px; /* weniger Abstand */
             color: #856404;
-            font-size: 0.85rem; /* yazıları küçült */
+            font-size: 0.85rem; /* kleinere Schrift */
         }
         /* Offline Mode Indicator */
         @keyframes slideIn {
@@ -107,13 +116,13 @@
         .offline-indicator {
             animation: slideIn 0.3s ease-out;
         }
-        /* Nächste Prüfung geri sayım metnini bir tık küçült (≈14px) */
+        /* Countdown-Text für "Nächste Prüfung" etwas kleiner (≈14px) */
         #countdownText { font-size: 0.875rem; }
-        /* Alarm ikonuna sallanma animasyonu (çalar saat efekti) */
-        /* SVG tabanlı ikon: her yerde güvenilir görünüm için */
+        /* Wecker-Icon: Wackelanimation (Wecker-Effekt) */
+        /* SVG-basiertes Icon: zuverlässige Darstellung überall */
         #alarmIcon svg { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; }
         #alarmIcon svg path { fill: currentColor; }
-        /* Bootstrap Icons alarm şekline sadık kal: doğru SVG kullan */
+        /* Form des Bootstrap-Alarm-Icons beibehalten: korrektes SVG verwenden */
         @keyframes ringBell {
             0%   { transform: rotate(0deg); }
             8%   { transform: rotate(14deg); }
@@ -129,23 +138,23 @@
             88%  { transform: rotate(1.5deg); }
             100% { transform: rotate(0deg); }
         }
-        /* Sağ-sol hafif titreşim (ikon boyutu sabit kalır) */
+        /* Leichtes Links-Rechts-Wackeln (Icon-Größe bleibt konstant) */
         @keyframes bellShakeX {
             0%, 100% { transform: translateX(0); }
             50%      { transform: translateX(1px); }
         }
-        /* Zil çizgileri: çalma hissi veren küçük yaylar */
-            /* Zil çizgileri: çalma hissi veren küçük yaylar (inline, aynı layer) */
-            /* İkonu yazıdan hafif yukarıda tutmak için negatif vertical-align */
+        /* Glocken-Linien: kleine Bögen für den "klingelt"-Effekt */
+            /* Glocken-Linien: kleine Bögen (inline, gleiche Ebene) */
+            /* Negatives vertical-align: Icon leicht über dem Text halten */
             #alarmIcon { display: inline-block; position: relative; line-height: 1; vertical-align: -2px; margin-right: 6px; z-index: 2; }
             #alarmIcon i { display: inline-block; line-height: 1; font-size: 1rem; vertical-align: -2px; }
-            /* Yaylar kaldırıldı: alarm ikonunu sade tut */
+            /* Bögen entfernt: Alarm-Icon schlicht halten */
         @keyframes bellMarks {
               0%   { opacity: 0; transform: scale(0.9); }
               50%  { opacity: 0.6; transform: scale(1); }
               100% { opacity: 0; transform: scale(0.9); }
         }
-        /* Boyutu sabit tut: sadece çok hafif dikey titreşim, ölçek yok */
+        /* Größe konstant halten: nur sehr leichtes vertikales Zittern, kein Scaling */
         @keyframes bellJitter {
             0%, 100% { transform: translateY(0); }
             50%      { transform: translateY(-1px); }
@@ -158,9 +167,9 @@
             backface-visibility: hidden;
         }
 
-        /* Desen: 3 kez yukarı zıpla → sola çapraz → sağa çapraz → 3 kez yukarı zıpla */
+        /* Pattern: 3x hochspringen → links diagonal → rechts diagonal → 3x hochspringen */
         @keyframes bellPattern {
-            /* 3 kısa yukarı zıplama */
+            /* 3 kurze Sprünge nach oben */
             0%   { transform: translate(0, 0); }
             6%   { transform: translate(0, -3px); }
             12%  { transform: translate(0, 0); }
@@ -168,24 +177,24 @@
             24%  { transform: translate(0, 0); }
             30%  { transform: translate(0, -3px); }
             36%  { transform: translate(0, 0); }
-            /* Sola çapraz küçük zıplama */
+            /* Kleiner Sprung links diagonal */
             46%  { transform: translate(-2px, -2px); }
             52%  { transform: translate(0, 0); }
-            /* Sağa çapraz küçük zıplama */
+            /* Kleiner Sprung rechts diagonal */
             62%  { transform: translate(2px, -2px); }
             68%  { transform: translate(0, 0); }
-            /* Son 3 kısa yukarı zıplama */
+            /* Letzte 3 kurze Sprünge nach oben */
             76%  { transform: translate(0, -3px); }
             84%  { transform: translate(0, 0); }
             92%  { transform: translate(0, -3px); }
             100% { transform: translate(0, 0); }
         }
-        /* Başlık ile altındaki bölüm arasındaki boşluğu %50 azalt (1.5rem -> 0.75rem) */
+        /* Abstand zwischen Titel und Abschnitt darunter um 50% reduzieren (1.5rem -> 0.75rem) */
         h1.text-center.mb-4 {
             margin-bottom: 0.75rem !important;
         }
 
-        /* Takvim ikonunun içine kısaltılmış gün adını yazma (ikon boyutu sabit kalır) */
+        /* Abgekürzten Wochentag in das Kalender-Icon schreiben (Icon-Größe bleibt konstant) */
         .calendar-day {
             position: relative;
             display: inline-block;
@@ -197,113 +206,113 @@
         }
         .calendar-day i.bi {
             display: block;
-            font-size: 1em; /* ikon kapsayıcıyla aynı kutuya otursun */
+            font-size: 1em; /* in die gleiche Box wie der Icon-Container passen */
             line-height: 1em;
-            color: inherit; /* buton rengi ile aynı */
-            font-style: normal; /* i etiketi italik olmasın */
+            color: inherit; /* gleiche Farbe wie der Button */
+            font-style: normal; /* i-Tag nicht kursiv */
         }
         .calendar-day .day-abbr {
             position: absolute;
-            inset: 0; /* tüm kenarlardan sıfırla, tam kutuyu kapla */
+            inset: 0; /* an allen Seiten 0, füllt die Box komplett */
             display: grid;
-            place-items: center; /* hem yatay hem dikey tam merkez */
-            transform: translateY(0.08em); /* optik merkez için hafif aşağı kaydır */
-            font-weight: 300; /* ince */
-            font-size: 0.52em; /* okunabilirliği koru */
-            letter-spacing: 0; /* doğal aralık */
+            place-items: center; /* horizontal & vertikal zentriert */
+            transform: translateY(0.08em); /* leicht nach unten für optisches Zentrum */
+            font-weight: 300; /* dünn */
+            font-size: 0.52em; /* Lesbarkeit erhalten */
+            letter-spacing: 0; /* natürlicher Abstand */
             color: currentColor;
             pointer-events: none;
-            text-transform: none; /* Mo, Di, Mi, Do, Fr, Sa, So formatını koru */
+            text-transform: none; /* Format Mo, Di, Mi, Do, Fr, Sa, So beibehalten */
             line-height: 1;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
         
-        /* Hafta sonu (Cumartesi/Pazar) gün numaralarını kırmızı yap */
+        /* Wochenend-Tage (Sa/So): Tagesnummer rot */
         .fc-day-sat .fc-daygrid-day-number,
         .fc-day-sun .fc-daygrid-day-number {
             color: #dc3545 !important; /* Bootstrap danger tonu */
         }
 
-        /* Hafta sonu sütun başlıklarını (Sa, So) kırmızı yap ve alt çizgiyi kaldır */
+        /* Wochenend-Spaltenüberschriften (Sa, So): rot + Unterstreichung entfernen */
         .fc .fc-col-header a.fc-col-header-cell-cushion {
-            text-decoration: none; /* Bootstrap link underline'ını kaldır */
+            text-decoration: none; /* Bootstrap-Link-Unterstreichung entfernen */
         }
         .fc .fc-col-header .fc-day-sat a.fc-col-header-cell-cushion,
         .fc .fc-col-header .fc-day-sun a.fc-col-header-cell-cushion {
             color: #dc3545 !important;
         }
 
-        /* Takvim içindeki tüm linklerde (gün numarası, başlık, "daha fazla" vb.) alt çizgiyi kaldır */
+        /* Alle Links im Kalender (Tagesnummer, Titel, "mehr" etc.) ohne Unterstreichung */
         .fc a,
         .fc a:hover,
         .fc a:focus {
             text-decoration: none;
         }
 
-        /* Gün hücrelerinde pürüzsüz geçişler için temel transition */
+        /* Grund-Transition für weiche Übergänge in Tageszellen */
         .fc .fc-daygrid-day-frame {
             transition: background-color 180ms ease, box-shadow 180ms ease;
         }
 
-        /* Masaüstü: hover desteği olan cihazlarda hafif vurgu */
+        /* Desktop: dezente Hervorhebung bei Hover-fähigen Geräten */
         @media (hover: hover) {
             .fc .fc-daygrid-day-frame:hover {
                 background-color: rgba(0, 0, 0, 0.03);
             }
         }
 
-        /* Mobil/Dokunmatik: kısa süreli tap geri bildirimi */
+        /* Mobil/Touch: kurzes Tap-Feedback */
         @media (hover: none) {
             .fc .fc-daygrid-day-frame:active {
                 background-color: rgba(0, 0, 0, 0.06);
             }
         }
         
-        /* Bugünün arka planını hücre çerçevesine uygula ki köşeler oval kalsın */
+        /* Hintergrund von "Heute" auf den Frame anwenden, damit Ecken rund bleiben */
         .fc .fc-daygrid-day.fc-day-today { 
-            background-color: transparent !important; /* td seviyesinde sarıyı kaldır */
+            background-color: transparent !important; /* gelbes td-Highlight entfernen */
         }
         .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame {
-            background-color: rgba(255, 193, 7, 0.25) !important; /* sarı vurguyu yuvarlak çerçevenin içine uygula */
+            background-color: rgba(255, 193, 7, 0.25) !important; /* gelbes Highlight in den runden Frame legen */
         }
         
-        /* Takvim kutucuklarının kenar çizgilerini yuvarlak gösterme tekniği */
-        /* 1) Varsayılan tablo kenarlıklarını kapat */
+        /* Technik: runde Kanten für Kalender-Zellen */
+        /* 1) Standard-Tabellenränder deaktivieren */
         .fc-theme-standard td, .fc-theme-standard th {
             border: 0 !important;
         }
-        /* 2) Her gün hücresinin iç çerçevesini yuvarlak ve ince çizgiyle oluştur */
+        /* 2) Inneren Frame pro Tag mit runder Kante + dünner Linie erstellen */
         .fc .fc-daygrid-day-frame {
             border-radius: 8px;
             overflow: hidden;
             box-shadow: inset 0 0 0 1px var(--fc-border-color);
         }
         
-        /* Ferien (background event) günlerinde gün numarasını beyaz yap */
+        /* Ferien (Background-Event): Tagesnummer weiß */
         .fc-daygrid-day[data-ferientag="true"] .fc-daygrid-day-number {
             color: #fff !important;
             text-shadow: 0 0 2px #000;
         }
         
-        /* Ferien (background event) günlerinde gün numarasını beyaz yap - daha güçlü seçici */
+        /* Ferien (Background-Event): Tagesnummer weiß (stärkerer Selektor) */
         .fc-daygrid-day-bg + .fc-daygrid-day-events + .fc-daygrid-day-top .fc-daygrid-day-number {
             color: #fff !important;
             text-shadow: 0 0 2px #000;
         }
-        /* Alternatif: arka planı hafif gri olan hücrede gün numarası normal siyah olsun */
+        /* Alternative: bei hellgrauem Hintergrund Tagesnummer normal schwarz */
         .fc-daygrid-day .fc-daygrid-day-bg[style*="background-color: rgb(240, 240, 240)"] ~ .fc-daygrid-day-top .fc-daygrid-day-number {
             color: #333 !important;
             text-shadow: none;
         }
-        /* Bugün: gün numarasını 2 tık daha kalın ve biraz daha büyük yap */
+        /* Heute: Tagesnummer etwas fetter und etwas größer */
         .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
             font-weight: 700 !important;
             font-size: 1.15em; /* ≈ +2 kademe büyüklük */
         }
         
-        /* Mobil responsive düzenlemeler */
+        /* Mobile Responsive-Anpassungen */
         @media (max-width: 768px) {
             .container-fluid {
                 padding: 10px;
@@ -311,7 +320,7 @@
             .fc-toolbar-title {
                 font-size: 1.2rem !important;
             }
-            /* Mobilde toolbar elemanları arası boşluğu da azalt */
+            /* Auf Mobilgeräten auch den Abstand zwischen Toolbar-Elementen reduzieren */
             .fc-header-toolbar {
                 gap: 3px;
             }
@@ -335,7 +344,7 @@
             .next-exam-info small {
                 font-size: 0.8rem;
             }
-            /* Butonları mobilde daha kompakt yap */
+            /* Buttons auf Mobilgeräten kompakter machen */
             .btn {
                 padding: 8px 12px;
                 font-size: 0.85rem;
@@ -354,7 +363,7 @@
             }
         }
         
-        /* Grid kenarlarını temizle */
+        /* Grid-Ränder entfernen */
         .fc-theme-standard .fc-scrollgrid {
             border-left: 0 !important;
             border-right: 0 !important;
@@ -363,7 +372,7 @@
             border-radius: 0 !important;
         }
 
-        /* Sadece takvim bölümünü tam genişlik (full-bleed) yap, container padding'ini telafi et */
+        /* Nur den Kalenderbereich full-bleed machen und Container-Padding ausgleichen */
         .calendar-bleed {
             margin-left: -10px;  /* .container-fluid padding: 10px */
             margin-right: -10px;
@@ -374,7 +383,7 @@
                 padding: 5px;
             }
             .calendar-bleed {
-                margin-left: -5px;   /* mobilde container padding 5px */
+                margin-left: -5px;   /* mobil: container padding 5px */
                 margin-right: -5px;
             }
             /* Nächste Prüfung satırını mobilde ortala */
@@ -400,11 +409,20 @@
                 min-width: 160px;
                 display: inline-block;
             }
-            /* Buton grubu ortalama */
+            /* Button-Gruppe zentrieren */
             .text-end {
                 text-align: center !important;
             }
-            /* Mobilde yatay kaydırmayı engelle, yalnız dikey kaydırmaya izin ver */
+            .action-buttons {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+            .action-buttons .btn {
+                width: 100%;
+                min-width: 0;
+            }
+            /* Mobil: horizontales Scrollen verhindern, nur vertikal erlauben */
             #calendar {
                 touch-action: pan-y;
                 overflow-x: hidden;
@@ -412,7 +430,7 @@
         }
     </style>
     <style>
-        /* Double-tap zoomu azaltmak için dokunma optimizasyonu */
+        /* Touch-Optimierung: Double-Tap-Zoom reduzieren */
         html, body { touch-action: manipulation; }
     </style>
 </head>
@@ -465,7 +483,8 @@
                             {% endif %}
                         </div>
                         <div class="col-md-6 text-end">
-                            <button id="todayBtn" class="btn btn-outline-primary me-2">
+                            <div class="action-buttons">
+                            <button id="todayBtn" class="btn btn-outline-primary">
                                 <span class="calendar-day" aria-hidden="true">
                                     <!-- Sade ikon: gün sayfası detayları yok, arka "Fri" benzeri görüntü kalkar -->
                                     <i class="bi bi-calendar"></i>
@@ -473,15 +492,16 @@
                                 </span>
                                 Heute
                             </button>
-                            <a href="/add" class="btn btn-success me-2">
+                            <a href="/add" class="btn btn-success">
                                 <i class="bi bi-plus-circle"></i> Prüfung hinzufügen
                             </a>
-                            <a href="/obst" class="btn btn-warning me-2">
+                            <a href="/obst" class="btn btn-warning">
                                 <i class="bi bi-basket2"></i> Obst
                             </a>
                             <a href="/delete" class="btn btn-danger">
                                 <i class="bi bi-trash"></i> Prüfung löschen
                             </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -829,7 +849,7 @@
                 
                 // Offline Mode: Events'i cache'e ekle
                 if (typeof cacheExams === 'function') {
-                    cacheExams(events).catch(e => console.warn('Cache hatası:', e));
+                    cacheExams(events).catch(e => console.warn('Cache-Fehler:', e));
                 }
             });
         });
@@ -849,7 +869,7 @@
                 });
         }
         
-        // API subjects'i cache'e ekle
+        // Subjects-API im Cache speichern
         fetch('/api/subjects')
             .then(r => r.json())
             .then(data => {
