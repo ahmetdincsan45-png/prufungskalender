@@ -85,13 +85,20 @@
             margin-bottom: 20px;
         }
         .action-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
+            width: min(100%, 420px);
+            margin-left: auto;
         }
         .action-buttons .btn {
             margin: 0;
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
         }
         .warning-box {
             background-color: #fff3cd;
@@ -413,14 +420,8 @@
             .text-end {
                 text-align: center !important;
             }
-            .action-buttons {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
             .action-buttons .btn {
-                width: 100%;
-                min-width: 0;
+                white-space: normal;
             }
             /* Mobil: horizontales Scrollen verhindern, nur vertikal erlauben */
             #calendar {
