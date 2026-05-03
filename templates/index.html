@@ -341,9 +341,11 @@
                 font-size: 0.9rem !important;
                 line-height: 1.05;
                 font-weight: 700;
-                width: auto;
+                width: fit-content;
                 max-width: min(calc(100vw - 32px), 180px);
                 text-align: center;
+                min-height: 1em;
+                padding-bottom: 6px;
             }
             .fc .fc-toolbar-title .flag-title-svg {
                 width: auto;
@@ -386,7 +388,7 @@
             .fc-toolbar-chunk {
                 display: flex;
                 justify-content: center;
-                width: 100%;
+                width: auto;
             }
             .fc-button {
                 padding: 4px 8px;
@@ -706,8 +708,10 @@
                 } else {
                     titleEl.style.width = '';
                 }
-                var viewBoxWidth = Math.max(textWidth, 120);
-                var viewBoxHeight = Math.max(Math.ceil(fontSize * 1.6), 42);
+                var viewBoxWidth = fitToViewport ? textWidth : Math.max(textWidth, 120);
+                var viewBoxHeight = fitToViewport
+                    ? Math.max(Math.ceil(fontSize * 1.25), 18)
+                    : Math.max(Math.ceil(fontSize * 1.6), 42);
                 var baselineY = Math.round(viewBoxHeight * 0.76);
                 var escapedTitle = escapeXml(titleText);
                                 var gradientStops = useMobileCalendarLayout()
