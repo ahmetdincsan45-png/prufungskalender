@@ -338,12 +338,17 @@
                 padding: 10px;
             }
             .fc-toolbar-title {
-                font-size: 0.6rem !important;
+                font-size: 0.9rem !important;
                 line-height: 1.05;
                 font-weight: 700;
+                width: min(100%, calc(100vw - 32px));
+                max-width: min(100%, calc(100vw - 32px));
+                text-align: center;
             }
             .fc .fc-toolbar-title .flag-title-svg {
-                height: 0.9em;
+                width: 100%;
+                max-width: 100%;
+                height: auto;
             }
             /* Auf Mobilgeräten auch den Abstand zwischen Toolbar-Elementen reduzieren */
             .fc-header-toolbar {
@@ -381,6 +386,7 @@
             .fc-toolbar-chunk {
                 display: flex;
                 justify-content: center;
+                width: 100%;
             }
             .fc-button {
                 padding: 4px 8px;
@@ -681,9 +687,19 @@
                 var fontFamily = computed.fontFamily || 'system-ui';
                 var canvas = syncCalendarTitle._canvas || (syncCalendarTitle._canvas = document.createElement('canvas'));
                 var context = canvas.getContext('2d');
-                context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
+                var fitToViewport = window.innerWidth <= 768;
+                var maxTitleWidth = fitToViewport ? Math.max(window.innerWidth - 32, 120) : null;
 
-                var textWidth = Math.ceil(context.measureText(titleText).width) + 14;
+                context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
+                var measuredTextWidth = context.measureText(titleText).width;
+                if (fitToViewport && maxTitleWidth && measuredTextWidth > 0) {
+                    var fittedFontSize = Math.floor(fontSize * ((maxTitleWidth - 14) / measuredTextWidth));
+                    fontSize = Math.max(10, Math.min(fontSize, fittedFontSize));
+                    context.font = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
+                    measuredTextWidth = context.measureText(titleText).width;
+                }
+
+                var textWidth = Math.ceil(measuredTextWidth) + 14;
                 var viewBoxWidth = Math.max(textWidth, 120);
                 var viewBoxHeight = Math.max(Math.ceil(fontSize * 1.6), 42);
                 var baselineY = Math.round(viewBoxHeight * 0.76);
